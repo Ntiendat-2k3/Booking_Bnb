@@ -42,24 +42,36 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-      <div className="w-full max-w-sm rounded-xl border bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold">Admin Login</h1>
-        <p className="mt-1 text-sm text-zinc-600">Đăng nhập tài khoản có role = admin</p>
-
+    <div className="flex items-center justify-center min-h-screen bg-zinc-50">
+      <div className="w-full max-w-sm p-6 bg-white shadow-sm rounded-xl">
         <form onSubmit={onSubmit} className="mt-4 space-y-3">
           <div className="space-y-1">
             <label className="text-sm">Email</label>
-            <input className="w-full rounded-md border px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+            <input
+              className="w-full px-3 py-2 border rounded-md"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              required
+            />
           </div>
           <div className="space-y-1">
             <label className="text-sm">Mật khẩu</label>
-            <input className="w-full rounded-md border px-3 py-2" value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
+            <input
+              className="w-full px-3 py-2 border rounded-md"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              required
+            />
           </div>
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-          <button disabled={loading} className="w-full rounded-md bg-zinc-900 px-3 py-2 text-white disabled:opacity-60">
+          <button
+            disabled={loading}
+            className="w-full px-3 py-2 text-white rounded-md bg-zinc-900 disabled:opacity-60"
+          >
             {loading ? "Đang đăng nhập..." : "Đăng nhập"}
           </button>
         </form>
