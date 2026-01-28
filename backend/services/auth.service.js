@@ -104,6 +104,10 @@ module.exports = {
       throw err;
     }
     if (row.revoked_at) {
+      // Token reuse detected (stolen old refresh token).
+      // Revoke ALL active refresh tokens of this user as a safety measure.
+      await refreshRepo.revokeAllByUserId(row.user_id);
+
       const err = new Error("Refresh token revoked");
       err.status = 401;
       throw err;

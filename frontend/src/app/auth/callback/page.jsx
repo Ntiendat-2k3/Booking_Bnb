@@ -2,9 +2,7 @@
 
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
-import { setTokens, setUser } from "@/store/authSlice";
-import { saveAuthStorage } from "@/store/storage";
-import { fetchProfile } from "@/store/authThunks";
+import { refreshSession, fetchProfile, ensureCsrf } from "@/store/authThunks";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function AuthCallbackPage() {
@@ -13,17 +11,23 @@ export default function AuthCallbackPage() {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    const accessToken = params.get("accessToken");
-    const refreshToken = params.get("refreshToken");
+    const success = params.get("success");
 
-    if (accessToken && refreshToken) {
-      dispatch(setTokens({ accessToken, refreshToken }));
-      saveAuthStorage({ accessToken, refreshToken });
-      dispatch(fetchProfile()).finally(() => router.replace("/profile"));
-    } else {
-      dispatch(setUser(null));
+    async function run() {
+      try {
+        await dispatch(ensureCsrf());
+        if (success === "1") {
+          // refresh cookie already set by backend -> rotate access cookie
+          await dispatch(refreshSession());
+          await dispatch(fetchProfile());
+          router.replace("/profile");
+          return;
+        }
+      } catch {}
       router.replace("/login");
     }
+
+    run();
   }, [dispatch, params, router]);
 
   return <div className="mx-auto max-w-md rounded-lg border p-4">Đang xử lý đăng nhập...</div>;

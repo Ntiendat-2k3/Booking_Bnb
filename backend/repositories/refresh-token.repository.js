@@ -13,7 +13,14 @@ module.exports = class RefreshTokenRepository extends Repository {
   revokeByHash(tokenHash) {
     return this.model.update(
       { revoked_at: new Date() },
-      { where: { token_hash: tokenHash, revoked_at: null } }
+      { where: { token_hash: tokenHash, revoked_at: null } },
+    );
+  }
+
+  revokeAllByUserId(userId) {
+    return this.model.update(
+      { revoked_at: new Date() },
+      { where: { user_id: userId, revoked_at: null } },
     );
   }
 };

@@ -2,21 +2,15 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
   user: null,
-  accessToken: null,
-  refreshToken: null,
-  status: "idle", // idle | loading | error
+  status: "idle", // idle|loading|error
   error: null,
+  csrfReady: false,
 };
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setTokens: (state, action) => {
-      state.accessToken = action.payload.accessToken;
-      state.refreshToken = action.payload.refreshToken;
-      state.error = null;
-    },
     setUser: (state, action) => {
       state.user = action.payload;
     },
@@ -26,15 +20,17 @@ const authSlice = createSlice({
     setError: (state, action) => {
       state.error = action.payload;
     },
+    setCsrfReady: (state, action) => {
+      state.csrfReady = action.payload;
+    },
     clearAuth: (state) => {
       state.user = null;
-      state.accessToken = null;
-      state.refreshToken = null;
       state.status = "idle";
       state.error = null;
+      state.csrfReady = state.csrfReady; // keep
     },
   },
 });
 
-export const { setTokens, setUser, setStatus, setError, clearAuth } = authSlice.actions;
+export const { setUser, setStatus, setError, setCsrfReady, clearAuth } = authSlice.actions;
 export default authSlice.reducer;

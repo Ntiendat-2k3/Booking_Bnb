@@ -11,11 +11,6 @@ function getCookie(name) {
   return m ? decodeURIComponent(m[2]) : null;
 }
 
-/**
- * Safe defaults:
- * - credentials: "include" to send httpOnly cookies (access + refresh)
- * - CSRF: double-submit cookie. For unsafe methods, send X-CSRF-Token = csrf_token cookie.
- */
 export async function apiFetch(path, opts = {}) {
   const headers = new Headers(opts.headers || {});
   headers.set("Content-Type", "application/json");
@@ -28,12 +23,7 @@ export async function apiFetch(path, opts = {}) {
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
 
-  const res = await fetch(apiUrl(path), {
-    credentials: "include",
-    ...opts,
-    headers,
-  });
-
+  const res = await fetch(apiUrl(path), { credentials: "include", ...opts, headers });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
 

@@ -1,15 +1,56 @@
 const passport = require("passport");
 const authService = require("../../../services/auth.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
+const {
+  refreshCookieName,
+  accessCookieName,
+  csrfCookieName,
+  refreshCookieOptions,
+  accessCookieOptions,
+  csrfCookieOptions,
+} = require("../../../utils/cookies");
+const { generateCsrfToken } = require("../../../utils/csrf");
+
+function ensureCsrfCookie(res, req) {
+  // If missing, set a new csrf token cookie (double-submit pattern)
+  const existing = req.cookies?.[csrfCookieName()];
+  const token = existing || generateCsrfToken();
+  if (!existing) {
+    res.cookie(csrfCookieName(), token, csrfCookieOptions());
+  }
+  return token;
+}
+
+function setAuthCookies(res, req, { accessToken, refreshToken }) {
+  // refresh cookie (httpOnly, /api/v1/auth)
+  res.cookie(refreshCookieName(), refreshToken, refreshCookieOptions());
+  // access cookie (httpOnly, /)
+  res.cookie(accessCookieName(), accessToken, accessCookieOptions());
+  // csrf cookie (NOT httpOnly)
+  const csrfToken = ensureCsrfCookie(res, req);
+  return csrfToken;
+}
 
 module.exports = {
+  csrf: async (req, res) => {
+    const token = ensureCsrfCookie(res, req);
+    return successResponse(res, { csrfToken: token }, "CSRF ready", 200);
+  },
+
   register: async (req, res) => {
     try {
-      const data = await authService.registerLocal(
-        req.body,
-        { ip: req.ip, userAgent: req.headers["user-agent"] }
-      );
-      return successResponse(res, data, "Register successfully", 201);
+      const data = await authService.registerLocal(req.body, {
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      const csrfToken = setAuthCookies(res, req, {
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+      });
+
+      // Don't expose refresh token to JS. Access token is in cookie.
+      return successResponse(res, { user: data.user, csrfToken }, "Register successfully", 201);
     } catch (e) {
       return errorResponse(res, e.message || "Internal server error", e.status || 500);
     }
@@ -26,9 +67,11 @@ module.exports = {
           userAgent: req.headers["user-agent"],
         });
 
+        const csrfToken = setAuthCookies(res, req, tokens);
+
         return successResponse(
           res,
-          { user: authService.sanitizeUser(user), ...tokens },
+          { user: authService.sanitizeUser(user), csrfToken },
           "Login successfully",
           200
         );
@@ -51,20 +94,20 @@ module.exports = {
           userAgent: req.headers["user-agent"],
         });
 
-        // mode=json -> trả JSON để test bằng Postman
+        const csrfToken = setAuthCookies(res, req, tokens);
+
         if (req.query.mode === "json") {
           return successResponse(
             res,
-            { user: authService.sanitizeUser(user), ...tokens },
+            { user: authService.sanitizeUser(user), csrfToken },
             "Google login successfully",
             200
           );
         }
 
-        // mặc định redirect về FE
+        // Redirect về FE, KHÔNG đưa token lên URL
         const url = new URL((process.env.FRONTEND_URL || "http://localhost:3001") + "/auth/callback");
-        url.searchParams.set("accessToken", tokens.accessToken);
-        url.searchParams.set("refreshToken", tokens.refreshToken);
+        url.searchParams.set("success", "1");
         return res.redirect(url.toString());
       } catch (e) {
         return errorResponse(res, e.message || "Internal server error", e.status || 500);
@@ -77,21 +120,31 @@ module.exports = {
   },
 
   refresh: async (req, res) => {
-    const { refresh_token: refreshToken } = req.body;
+    const refreshToken = req.cookies?.[refreshCookieName()];
     try {
-      const tokens = await authService.refresh(
-        refreshToken,
-        { ip: req.ip, userAgent: req.headers["user-agent"] }
-      );
-      return successResponse(res, tokens, "Refreshed", 200);
+      const tokens = await authService.refresh(refreshToken, {
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      const csrfToken = setAuthCookies(res, req, tokens);
+
+      return successResponse(res, { ok: true, csrfToken }, "Refreshed", 200);
     } catch (e) {
+      // clear cookies if invalid/revoked
+      res.clearCookie(refreshCookieName(), { path: "/api/v1/auth" });
+      res.clearCookie(accessCookieName(), { path: "/" });
       return errorResponse(res, e.message || "Invalid refresh token", e.status || 401);
     }
   },
 
   logout: async (req, res) => {
-    const { refresh_token: refreshToken } = req.body;
+    const refreshToken = req.cookies?.[refreshCookieName()];
     await authService.logout(refreshToken);
+
+    res.clearCookie(refreshCookieName(), { path: "/api/v1/auth" });
+    res.clearCookie(accessCookieName(), { path: "/" });
+
     return successResponse(res, null, "Logout successfully", 200);
   },
 };
