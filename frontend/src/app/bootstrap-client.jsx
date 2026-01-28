@@ -5,9 +5,11 @@ import { useDispatch } from "react-redux";
 import { bootstrapAuth } from "@/store/authThunks";
 
 export default function BootstrapClient() {
-  const dispatch = useDispatch<any>();
+  const dispatch = useDispatch();
+
   useEffect(() => {
     dispatch(bootstrapAuth());
   }, [dispatch]);
+
   return null;
 }

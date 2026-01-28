@@ -2,17 +2,16 @@
 
 import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import type { RootState } from "@/store/store";
 import { fetchProfile } from "@/store/authThunks";
 import Link from "next/link";
 
 export default function ProfilePage() {
-  const dispatch = useDispatch<any>();
-  const { user, status, error } = useSelector((s: RootState) => s.auth);
+  const dispatch = useDispatch();
+  const { user, status, error } = useSelector((s) => s.auth);
 
   useEffect(() => {
     if (!user) dispatch(fetchProfile());
-  }, [dispatch]); // keep simple
+  }, [dispatch]); // simple
 
   if (!user) {
     return (
@@ -38,7 +37,9 @@ export default function ProfilePage() {
         </div>
         <p className="text-sm text-slate-700">{user.email}</p>
         <p className="text-sm text-slate-700">Provider: {user.provider}</p>
-        {user.provider_id ? <p className="text-sm text-slate-700">Provider ID: {user.provider_id}</p> : null}
+        {user.provider_id ? (
+          <p className="text-sm text-slate-700">Provider ID: {user.provider_id}</p>
+        ) : null}
       </div>
 
       {status === "loading" ? <p className="text-sm text-slate-600">Đang tải...</p> : null}

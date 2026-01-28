@@ -1,7 +1,6 @@
-export type AuthStorage = { accessToken: string | null; refreshToken: string | null };
 const KEY = "airbnb_auth_v1";
 
-export function loadAuthStorage(): AuthStorage {
+export function loadAuthStorage() {
   if (typeof window === "undefined") return { accessToken: null, refreshToken: null };
   try {
     const raw = window.localStorage.getItem(KEY);
@@ -16,7 +15,7 @@ export function loadAuthStorage(): AuthStorage {
   }
 }
 
-export function saveAuthStorage(s: AuthStorage) {
+export function saveAuthStorage(s) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(KEY, JSON.stringify(s));
 }

@@ -10,7 +10,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function AuthCallbackPage() {
   const params = useSearchParams();
   const router = useRouter();
-  const dispatch = useDispatch<any>();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const accessToken = params.get("accessToken");

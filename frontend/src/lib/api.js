@@ -1,16 +1,11 @@
-export type ApiError = { status: number; message: string };
-
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
-export function apiUrl(path: string) {
+export function apiUrl(path) {
   if (path.startsWith("http")) return path;
   return API_BASE.replace(/\/$/, "") + path;
 }
 
-export async function apiFetch<T>(
-  path: string,
-  opts: RequestInit & { accessToken?: string } = {}
-): Promise<T> {
+export async function apiFetch(path, opts = {}) {
   const headers = new Headers(opts.headers || {});
   headers.set("Content-Type", "application/json");
   if (opts.accessToken) headers.set("Authorization", `Bearer ${opts.accessToken}`);
@@ -21,7 +16,9 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     const message = data?.message || "Request failed";
-    throw { status: res.status, message } as ApiError;
+    const err = new Error(message);
+    err.status = res.status;
+    throw err;
   }
-  return data as T;
+  return data;
 }

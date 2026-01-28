@@ -5,11 +5,7 @@ import BootstrapClient from "./bootstrap-client";
 
 export const metadata = { title: "Airbnb App", description: "User Page" };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }) {
   return (
     <html lang="vi">
       <body>
