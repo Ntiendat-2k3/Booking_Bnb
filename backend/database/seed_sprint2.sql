@@ -1,5 +1,3 @@
-\encoding UTF8
-SET client_encoding TO 'UTF8';
 -- Seed data for Sprint 2 (Listings browsing)
 BEGIN;
 -- Users (hosts/admin/demo users)
@@ -17,15 +15,15 @@ ON CONFLICT (id) DO NOTHING;
 -- Amenities
 INSERT INTO amenities (id,name,slug,"group",is_active,created_at,updated_at)
 VALUES
-('4d0c13b1-7888-5b78-a830-5084257cf3d4','Wifi','wifi','Essentials',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('0abf391c-4e96-59a7-be71-5c5008359a8f','Bếp','kitchen','Essentials',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('32eb84e1-8bb2-52b9-ab92-41813dcdd782','Điều hoà','aircon','Essentials',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('e5d5f4b6-cc1a-58ff-bd3a-a5cd57775231','Máy giặt','washer','Essentials',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('504bc3ba-2fcd-53ea-b136-aff7e1a7d199','Chỗ làm việc','workspace','Essentials',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('b066ce17-b82b-5d2e-aacb-85b766c5e7ec','Hồ bơi','pool','Features',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('c8946de4-f00d-5d15-a411-fb8e8af47519','Phòng gym','gym','Features',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('c58fd325-826d-544a-88d6-3085d6672ad0','Chỗ đậu xe','parking','Features',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
-('61ef1d0d-4479-5f9c-baea-26e7df0a1555','TV','tv','Essentials',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00'),
+('4d0c13b1-7888-5b78-a830-5084257cf3d4','Wifi','wifi','Essentials',TRUE,'2025-10-31 10:00:00'),
+('0abf391c-4e96-59a7-be71-5c5008359a8f','Bếp','kitchen','Essentials',TRUE,'2025-10-31 10:00:00'),
+('32eb84e1-8bb2-52b9-ab92-41813dcdd782','Điều hoà','aircon','Essentials',TRUE,'2025-10-31 10:00:00'),
+('e5d5f4b6-cc1a-58ff-bd3a-a5cd57775231','Máy giặt','washer','Essentials',TRUE,'2025-10-31 10:00:00'),
+('504bc3ba-2fcd-53ea-b136-aff7e1a7d199','Chỗ làm việc','workspace','Essentials',TRUE,'2025-10-31 10:00:00'),
+('b066ce17-b82b-5d2e-aacb-85b766c5e7ec','Hồ bơi','pool','Features',TRUE,'2025-10-31 10:00:00'),
+('c8946de4-f00d-5d15-a411-fb8e8af47519','Phòng gym','gym','Features',TRUE,'2025-10-31 10:00:00'),
+('c58fd325-826d-544a-88d6-3085d6672ad0','Chỗ đậu xe','parking','Features',TRUE,'2025-10-31 10:00:00'),
+('61ef1d0d-4479-5f9c-baea-26e7df0a1555','TV','tv','Essentials',TRUE,'2025-10-31 10:00:00'),
 ('a9963428-0687-59d3-9481-458c5307219e','Cho phép thú cưng','pet','Policies',TRUE,'2025-10-31 10:00:00','2025-10-31 10:00:00')
 ON CONFLICT (id) DO NOTHING;
 

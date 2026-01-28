@@ -15,7 +15,7 @@ export default function RootLayout({ children }) {
           <BootstrapClient />
           <Navbar />
           <CategoryTabs />
-          <main className="max-w-6xl px-4 py-6 mx-auto">{children}</main>
+          <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
         </Providers>
       </body>
     </html>

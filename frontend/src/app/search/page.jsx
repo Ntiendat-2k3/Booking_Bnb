@@ -6,18 +6,7 @@ import { serverGetJson } from "@/lib/serverApi";
 export default async function SearchPage({ searchParams }) {
   const sp = await searchParams;
   const q = new URLSearchParams();
-  const keys = [
-    "city",
-    "min_price",
-    "max_price",
-    "guests",
-    "bedrooms",
-    "sort",
-    "page",
-    "limit",
-    "property_type",
-    "room_type",
-  ];
+  const keys = ["city","min_price","max_price","guests","bedrooms","sort","page","limit","property_type","room_type"];
   keys.forEach((k) => {
     const v = sp?.[k];
     if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
@@ -39,9 +28,7 @@ export default async function SearchPage({ searchParams }) {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-xl font-semibold">Kết quả tìm kiếm</h1>
-          <p className="text-sm text-slate-600">
-            {meta?.total ?? items.length} chỗ ở
-          </p>
+          <p className="text-sm text-slate-600">{meta?.total ?? items.length} chỗ ở</p>
         </div>
       </div>
 
@@ -54,7 +41,7 @@ export default async function SearchPage({ searchParams }) {
           </div>
 
           {!items.length ? (
-            <div className="p-6 mt-6 bg-white border rounded-2xl text-slate-600">
+            <div className="mt-6 rounded-2xl border bg-white p-6 text-slate-600">
               Không có kết quả. Thử đổi city hoặc điều chỉnh giá/khách.
             </div>
           ) : null}
@@ -63,14 +50,13 @@ export default async function SearchPage({ searchParams }) {
         </div>
 
         <aside className="hidden lg:block">
-          <div className="sticky p-5 bg-white border shadow-sm top-24 rounded-2xl">
+          <div className="sticky top-24 rounded-2xl border bg-white p-5 shadow-sm">
             <div className="text-sm font-semibold">Bản đồ (Sprint 2+)</div>
             <p className="mt-2 text-sm text-slate-600">
-              Map sẽ làm ở Sprint 3/4 (Mapbox/Leaflet). Hiện đang placeholder để
-              giống UI Airbnb/Booking.
+              Map sẽ làm ở Sprint 3/4 (Mapbox/Leaflet). Hiện đang placeholder để giống UI Airbnb/Booking.
             </p>
             <div className="mt-4 overflow-hidden rounded-xl bg-slate-100">
-              <div className="flex items-center justify-center h-64 text-slate-500">
+              <div className="flex h-64 items-center justify-center text-slate-500">
                 Map placeholder
               </div>
             </div>

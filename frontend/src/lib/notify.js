@@ -1,5 +1,11 @@
 import Notify from "simple-notify";
 
+/**
+ * Simple wrapper to use Simple-Notify consistently across the app.
+ * Usage:
+ *   notifySuccess("Đã thêm vào yêu thích");
+ *   notifyError("Có lỗi xảy ra");
+ */
 const base = {
   effect: "fade",
   speed: 250,
@@ -26,11 +32,5 @@ export function notifyWarning(text, title = "Cảnh báo") {
 }
 
 export function notifyError(text, title = "Lỗi") {
-  return new Notify({
-    ...base,
-    status: "error",
-    title,
-    text,
-    autotimeout: 2600,
-  });
+  return new Notify({ ...base, status: "error", title, text, autotimeout: 2600 });
 }

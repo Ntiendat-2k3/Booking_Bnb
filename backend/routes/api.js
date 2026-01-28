@@ -36,5 +36,41 @@ router.get("/v1/listings", listingController.list);
 router.get("/v1/listings/:id", listingController.detail);
 router.get("/v1/amenities", amenityController.list);
 
+
+// Uploads (Cloudinary) - host/admin only
+const uploadController = require("../controllers/api/v1/upload.controller");
+const hostListingImageController = require("../controllers/api/v1/host_listing_image.controller");
+const requireRole = require("../middlewares/api/role.middleware");
+const { upload, uploadErrorHandler } = require("../middlewares/upload.middleware");
+const { uploadLimiter } = require("../middlewares/rateLimit");
+
+router.post(
+  "/v1/uploads/listing-image",
+  uploadLimiter,
+  authMiddleware,
+  requireRole(["admin", "host"]),
+  csrfMiddleware,
+  upload.single("image"),
+  uploadErrorHandler,
+  uploadController.uploadListingImage
+);
+
+router.post(
+  "/v1/host/listings/:id/images",
+  authMiddleware,
+  requireRole(["admin", "host"]),
+  csrfMiddleware,
+  hostListingImageController.attach
+);
+
+router.delete(
+  "/v1/host/listings/:id/images/:imageId",
+  authMiddleware,
+  requireRole(["admin", "host"]),
+  csrfMiddleware,
+  hostListingImageController.remove
+);
+
+
 module.exports = router;
 

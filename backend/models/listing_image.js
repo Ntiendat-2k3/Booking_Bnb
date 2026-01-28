@@ -21,6 +21,12 @@ module.exports = (sequelize, DataTypes) => {
       listing_id: { type: DataTypes.UUID, allowNull: false },
 
       url: { type: DataTypes.TEXT, allowNull: false },
+      public_id: { type: DataTypes.TEXT, allowNull: true },
+      width: { type: DataTypes.INTEGER, allowNull: true },
+      height: { type: DataTypes.INTEGER, allowNull: true },
+      bytes: { type: DataTypes.INTEGER, allowNull: true },
+      format: { type: DataTypes.STRING(20), allowNull: true },
+      resource_type: { type: DataTypes.STRING(20), allowNull: false, defaultValue: "image" },
       sort_order: {
         type: DataTypes.INTEGER,
         allowNull: false,

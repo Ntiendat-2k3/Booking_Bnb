@@ -25,4 +25,13 @@ const authRefreshLimiter = rateLimit({
   message: { status: "error", message: "Too many requests, please slow down." },
 });
 
-module.exports = { authLoginLimiter, authRegisterLimiter, authRefreshLimiter };
+const uploadLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { status: "error", message: "Too many uploads, please slow down." },
+});
+
+module.exports = { authLoginLimiter, authRegisterLimiter, authRefreshLimiter, uploadLimiter };
+
