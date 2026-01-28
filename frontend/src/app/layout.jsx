@@ -1,6 +1,8 @@
 import "./globals.css";
+import "simple-notify/dist/simple-notify.css";
 import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
+import CategoryTabs from "@/components/CategoryTabs";
 import BootstrapClient from "./bootstrap-client";
 
 export const metadata = { title: "Airbnb App", description: "User Page" };
@@ -12,7 +14,8 @@ export default function RootLayout({ children }) {
         <Providers>
           <BootstrapClient />
           <Navbar />
-          <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+          <CategoryTabs />
+          <main className="max-w-6xl px-4 py-6 mx-auto">{children}</main>
         </Providers>
       </body>
     </html>

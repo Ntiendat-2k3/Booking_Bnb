@@ -1,11 +1,7 @@
 import { apiFetch } from "@/lib/api";
-import {
-  clearAuth,
-  setCsrfReady,
-  setError,
-  setStatus,
-  setUser,
-} from "./authSlice";
+import { clearAuth, setCsrfReady, setError, setStatus, setUser } from "./authSlice";
+import { fetchFavorites } from "./favoritesThunks";
+import { clearFavorites } from "./favoritesSlice";
 
 export const ensureCsrf = () => async (dispatch) => {
   try {
@@ -23,6 +19,7 @@ export const bootstrapAuth = () => async (dispatch) => {
   try {
     await dispatch(refreshSession());
     await dispatch(fetchProfile());
+    await dispatch(fetchFavorites());
   } catch {
     // ignore (not logged in)
   }
@@ -71,10 +68,7 @@ export const loginLocal = (body) => async (dispatch) => {
 export const refreshSession = () => async (dispatch) => {
   await dispatch(ensureCsrf());
   // will rotate cookies if refresh cookie exists
-  await apiFetch("/api/v1/auth/refresh", {
-    method: "POST",
-    body: JSON.stringify({}),
-  });
+  await apiFetch("/api/v1/auth/refresh", { method: "POST", body: JSON.stringify({}) });
 };
 
 export const fetchProfile = () => async (dispatch) => {
@@ -104,10 +98,8 @@ export const fetchProfile = () => async (dispatch) => {
 export const logout = () => async (dispatch) => {
   try {
     await dispatch(ensureCsrf());
-    await apiFetch("/api/v1/auth/logout", {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
+    await apiFetch("/api/v1/auth/logout", { method: "POST", body: JSON.stringify({}) });
   } catch {}
   dispatch(clearAuth());
+  dispatch(clearFavorites());
 };

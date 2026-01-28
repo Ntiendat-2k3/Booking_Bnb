@@ -21,4 +21,20 @@ router.get("/v1/auth/profile", authMiddleware, authController.profile);
 router.post("/v1/auth/refresh", authRefreshLimiter, csrfMiddleware, authController.refresh);
 router.post("/v1/auth/logout", csrfMiddleware, authController.logout);
 
+// Favorites (Sprint 2+)
+const favoriteController = require("../controllers/api/v1/favorite.controller");
+router.get("/v1/favorites", authMiddleware, favoriteController.list);
+router.post("/v1/favorites/:listingId", authMiddleware, csrfMiddleware, favoriteController.toggle);
+
+
+
+// Public listings browsing (Sprint 2)
+const listingController = require("../controllers/api/v1/listing.controller");
+const amenityController = require("../controllers/api/v1/amenity.controller");
+
+router.get("/v1/listings", listingController.list);
+router.get("/v1/listings/:id", listingController.detail);
+router.get("/v1/amenities", amenityController.list);
+
 module.exports = router;
+
