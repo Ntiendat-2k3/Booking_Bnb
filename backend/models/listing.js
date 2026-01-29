@@ -68,10 +68,12 @@ module.exports = (sequelize, DataTypes) => {
       },
 
       status: {
-        type: DataTypes.ENUM("draft", "published", "paused"),
+        type: DataTypes.ENUM("draft", "pending", "published", "paused", "rejected"),
         allowNull: false,
         defaultValue: "draft",
       },
+
+      reject_reason: { type: DataTypes.TEXT, allowNull: true },
 
       deleted_at: { type: DataTypes.DATE, allowNull: true },
     },

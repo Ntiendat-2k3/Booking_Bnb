@@ -72,5 +72,31 @@ router.delete(
 );
 
 
+// Host onboarding (guest -> host)
+const hostController = require("../controllers/api/v1/host.controller");
+router.post("/v1/host/apply", authMiddleware, csrfMiddleware, hostController.apply);
+
+// Host listings CRUD (Sprint 3)
+const hostListingController = require("../controllers/api/v1/host_listing.controller");
+router.get("/v1/host/listings", authMiddleware, requireRole(["admin", "host"]), hostListingController.list);
+router.post("/v1/host/listings", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.create);
+router.get("/v1/host/listings/:id", authMiddleware, requireRole(["admin", "host"]), hostListingController.detail);
+router.patch("/v1/host/listings/:id", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.update);
+router.put("/v1/host/listings/:id/amenities", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.setAmenities);
+router.post("/v1/host/listings/:id/submit", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.submit);
+router.post("/v1/host/listings/:id/pause", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.pause);
+router.post("/v1/host/listings/:id/resume", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.resume);
+
+// Admin moderation (Sprint 3+)
+const adminListingController = require("../controllers/api/v1/admin_listing.controller");
+const adminUserController = require("../controllers/api/v1/admin_user.controller");
+router.get("/v1/admin/listings", authMiddleware, requireRole(["admin"]), adminListingController.list);
+router.post("/v1/admin/listings/:id/approve", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminListingController.approve);
+router.post("/v1/admin/listings/:id/reject", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminListingController.reject);
+
+router.get("/v1/admin/users", authMiddleware, requireRole(["admin"]), adminUserController.list);
+router.patch("/v1/admin/users/:id/role", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminUserController.setRole);
+
+
 module.exports = router;
 

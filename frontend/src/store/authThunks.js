@@ -103,3 +103,17 @@ export const logout = () => async (dispatch) => {
   dispatch(clearAuth());
   dispatch(clearFavorites());
 };
+
+
+export const becomeHost = () => async (dispatch) => {
+  try {
+    await dispatch(ensureCsrf());
+    const res = await apiFetch("/api/v1/host/apply", { method: "POST", body: JSON.stringify({}) });
+    // API returns updated user profile (data)
+    dispatch(setUser(res.data));
+    return true;
+  } catch (e) {
+    dispatch(setError(e?.message || "Upgrade host failed"));
+    return false;
+  }
+};

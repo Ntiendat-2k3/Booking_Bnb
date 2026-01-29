@@ -20,9 +20,15 @@ export default function Navbar() {
         <SearchPills />
 
         <div className="flex items-center gap-3">
-          <Link href="/host/listings" className="hidden md:inline rounded-full px-3 py-2 text-sm hover:bg-slate-100">
-            Trở thành host
-          </Link>
+                    {user?.role === "host" || user?.role === "admin" ? (
+            <Link href="/host/listings" className="hidden md:inline rounded-full px-3 py-2 text-sm hover:bg-slate-100">
+              Quản lý phòng
+            </Link>
+          ) : (
+            <Link href="/host" className="hidden md:inline rounded-full px-3 py-2 text-sm hover:bg-slate-100">
+              Trở thành host
+            </Link>
+          )}
 
           <button className="hidden md:inline-flex rounded-full p-2 hover:bg-slate-100" aria-label="Language">
             <GlobeIcon className="h-5 w-5" />

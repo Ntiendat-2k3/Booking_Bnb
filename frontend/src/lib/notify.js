@@ -1,11 +1,3 @@
-import Notify from "simple-notify";
-
-/**
- * Simple wrapper to use Simple-Notify consistently across the app.
- * Usage:
- *   notifySuccess("Đã thêm vào yêu thích");
- *   notifyError("Có lỗi xảy ra");
- */
 const base = {
   effect: "fade",
   speed: 250,
@@ -19,18 +11,35 @@ const base = {
   type: "outline",
 };
 
+const show = async (text, title, status, customOpts = {}) => {
+  // Kiểm tra nếu không phải môi trường browser thì dừng lại ngay
+  if (typeof window === "undefined") return;
+
+  // Dynamic Import: Chỉ tải thư viện khi hàm này được gọi
+  const Notify = (await import("simple-notify")).default;
+
+  new Notify({
+    ...base,
+    status,
+    title,
+    text,
+    ...customOpts,
+  });
+};
+
 export function notifySuccess(text, title = "Thành công") {
-  return new Notify({ ...base, status: "success", title, text });
+  show(text, title, "success");
 }
 
 export function notifyInfo(text, title = "Thông tin") {
-  return new Notify({ ...base, status: "info", title, text });
+  show(text, title, "info");
 }
 
 export function notifyWarning(text, title = "Cảnh báo") {
-  return new Notify({ ...base, status: "warning", title, text });
+  show(text, title, "warning");
 }
 
 export function notifyError(text, title = "Lỗi") {
-  return new Notify({ ...base, status: "error", title, text, autotimeout: 2600 });
+  // Error thường cần hiển thị lâu hơn chút
+  show(text, title, "error", { autotimeout: 2600 });
 }
