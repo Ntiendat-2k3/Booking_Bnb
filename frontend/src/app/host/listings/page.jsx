@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { ensureCsrf, fetchProfile } from "@/store/authThunks";
 import { apiFetch } from "@/lib/api";
-import { notifyError } from "@/lib/notify";
+import { notifyError, notifySuccess } from "@/lib/notify";
 import { useRouter } from "next/navigation";
 
 const STATUS_TABS = [
@@ -62,6 +62,20 @@ export default function HostListingsPage() {
       setLoading(false);
     }
   }
+
+
+async function onDelete(id) {
+  const ok = window.confirm("Xóa phòng này? (Chỉ nên xóa khi chưa published)");
+  if (!ok) return;
+  try {
+    await dispatch(ensureCsrf());
+    await apiFetch(`/api/v1/host/listings/${id}`, { method: "DELETE", body: JSON.stringify({}) });
+    notifySuccess("Đã xóa phòng");
+    await load();
+  } catch (e) {
+    notifyError(e?.message || "Xóa thất bại");
+  }
+}
 
   useEffect(() => {
     load();

@@ -4,6 +4,7 @@ import { StarIcon } from "@/components/icons";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import RoomTabs from "@/components/RoomTabs";
+import MapboxStaticMap from "@/components/MapboxStaticMap";
 
 function avgRating(reviews) {
   if (!reviews?.length) return null;
@@ -161,8 +162,8 @@ const listing = res.data?.listing;
               <p className="mt-2 text-slate-700">
                 {listing.address || "Địa chỉ đang cập nhật"} • {listing.city}, {listing.country}
               </p>
-              <div className="mt-4 h-64 overflow-hidden rounded-2xl border bg-slate-50 flex items-center justify-center text-slate-600">
-                Map (Sprint 3+) – bạn sẽ tích hợp Google Map/Mapbox ở đây
+              <div className="mt-4">
+                <MapboxStaticMap lat={listing.lat} lng={listing.lng} />
               </div>
             </section>
           </div>

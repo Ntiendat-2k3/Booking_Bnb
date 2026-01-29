@@ -1,4 +1,5 @@
-const { Listing, User, ListingImage, Amenity, ListingAmenity, Sequelize } = require("../models");
+const { Listing, User, ListingImage, Amenity, ListingAmenity, sequelize, Sequelize } = require("../models");
+const { destroy } = require("./cloudinary.service");
 const { Op } = Sequelize;
 
 function isUuid(v) {
@@ -237,6 +238,13 @@ module.exports = {
       throw err;
     }
 
+    const amenityCount = await ListingAmenity.count({ where: { listing_id: id } });
+    if (amenityCount < 1) {
+      const err = new Error("Bạn cần chọn ít nhất 1 tiện nghi trước khi gửi duyệt");
+      err.status = 400;
+      throw err;
+    }
+
     await listing.update({ status: "pending", reject_reason: null });
     return { listing };
   },
@@ -262,4 +270,47 @@ module.exports = {
     await listing.update({ status: "published" });
     return { listing };
   },
+
+
+async deleteListing(user, id) {
+  const { listing } = await this.getByIdForUser(user, id);
+
+  // Host can delete draft/rejected/paused/pending; admin can delete any
+  if (user.role !== "admin") {
+    const allowed = new Set(["draft", "rejected", "paused", "pending"]);
+    if (!allowed.has(listing.status)) {
+      const err = new Error("Listing cannot be deleted in this status");
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  return sequelize.transaction(async (t) => {
+    // Load images to delete on Cloudinary
+    const images = await ListingImage.findAll({
+      where: { listing_id: id },
+      attributes: ["id", "public_id"],
+      transaction: t,
+    });
+
+    // Delete Cloudinary assets (best-effort)
+    for (const img of images) {
+      if (img.public_id) {
+        try {
+          await destroy(img.public_id);
+        } catch {
+          // ignore cloudinary errors
+        }
+      }
+    }
+
+    await ListingImage.destroy({ where: { listing_id: id }, transaction: t });
+    await ListingAmenity.destroy({ where: { listing_id: id }, transaction: t });
+
+    await listing.update({ deleted_at: new Date() }, { transaction: t });
+
+    return { ok: true };
+  });
+},
+
 };

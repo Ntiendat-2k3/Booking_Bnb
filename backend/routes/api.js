@@ -70,6 +70,14 @@ router.delete(
   csrfMiddleware,
   hostListingImageController.remove
 );
+router.patch(
+  "/v1/host/listings/:id/images/:imageId/cover",
+  authMiddleware,
+  requireRole(["admin", "host"]),
+  csrfMiddleware,
+  hostListingImageController.setCover
+);
+
 
 
 // Host onboarding (guest -> host)
@@ -82,6 +90,7 @@ router.get("/v1/host/listings", authMiddleware, requireRole(["admin", "host"]), 
 router.post("/v1/host/listings", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.create);
 router.get("/v1/host/listings/:id", authMiddleware, requireRole(["admin", "host"]), hostListingController.detail);
 router.patch("/v1/host/listings/:id", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.update);
+router.delete("/v1/host/listings/:id", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.destroy);
 router.put("/v1/host/listings/:id/amenities", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.setAmenities);
 router.post("/v1/host/listings/:id/submit", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.submit);
 router.post("/v1/host/listings/:id/pause", authMiddleware, requireRole(["admin", "host"]), csrfMiddleware, hostListingController.pause);
@@ -99,4 +108,3 @@ router.patch("/v1/admin/users/:id/role", authMiddleware, requireRole(["admin"]),
 
 
 module.exports = router;
-

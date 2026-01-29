@@ -1,5 +1,6 @@
 import "./globals.css";
 import "simple-notify/dist/simple-notify.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import CategoryTabs from "@/components/CategoryTabs";

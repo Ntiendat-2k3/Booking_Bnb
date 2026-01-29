@@ -101,4 +101,18 @@ module.exports = {
       return errorResponse(res, e.message || "Resume failed", e.status || 500);
     }
   },
+
+
+// DELETE /api/v1/host/listings/:id
+destroy: async (req, res) => {
+  try {
+    if (!isUuid(req.params.id)) return errorResponse(res, "Invalid listing id", 400);
+    const user = req.user?.user;
+    const data = await hostListingService.deleteListing(user, req.params.id);
+    return successResponse(res, data, "Deleted", 200);
+  } catch (e) {
+    return errorResponse(res, e.message || "Delete failed", e.status || 500);
+  }
+},
+
 };

@@ -19,6 +19,7 @@ import { ensureCsrf, fetchProfile } from "@/store/authThunks";
 import { apiFetch } from "@/lib/api";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import ListingImageUploader from "@/components/ListingImageUploader";
+import MapboxAddressPicker from "@/components/MapboxAddressPicker";
 
 function groupAmenities(items = []) {
   const map = new Map();
@@ -203,6 +204,19 @@ export default function HostListingManagePage() {
     }
   }
 
+
+async function onDelete() {
+  const ok = window.confirm("Xóa phòng này? Hành động không thể hoàn tác.");
+  if (!ok) return;
+  try {
+    await apiFetch(`/api/v1/host/listings/${id}`, { method: "DELETE", body: JSON.stringify({}) });
+    notifySuccess("Đã xóa phòng");
+    router.replace("/host/listings");
+  } catch (e) {
+    notifyError(e?.message || "Xóa thất bại");
+  }
+}
+
   if (loading) {
     return <div className="rounded-2xl border bg-white p-6 text-slate-600">Loading...</div>;
   }
@@ -289,18 +303,17 @@ export default function HostListingManagePage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-semibold">Địa chỉ</label>
-              <input value={form.address} onChange={(e) => setField("address", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
+            <div className="sm:col-span-2">
+              <MapboxAddressPicker
+                address={form.address}
+                city={form.city}
+                country={form.country}
+                lat={form.lat}
+                lng={form.lng}
+                onChange={(patch) => setForm((p) => ({ ...p, ...patch }))}
+              />
             </div>
-            <div>
-              <label className="text-sm font-semibold">Thành phố</label>
-              <input value={form.city} onChange={(e) => setField("city", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
-            </div>
-            <div>
-              <label className="text-sm font-semibold">Quốc gia</label>
-              <input value={form.country} onChange={(e) => setField("country", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
-            </div>
+
             <div>
               <label className="text-sm font-semibold">Giá / đêm (VND)</label>
               <input type="number" value={form.price_per_night} onChange={(e) => setField("price_per_night", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
