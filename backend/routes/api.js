@@ -107,4 +107,23 @@ router.get("/v1/admin/users", authMiddleware, requireRole(["admin"]), adminUserC
 router.patch("/v1/admin/users/:id/role", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminUserController.setRole);
 
 
+// Bookings + Payments (Sprint 4)
+const bookingController = require("../controllers/api/v1/booking.controller");
+const paymentController = require("../controllers/api/v1/payment.controller");
+
+router.post("/v1/bookings", authMiddleware, csrfMiddleware, bookingController.create);
+router.get("/v1/bookings/me", authMiddleware, bookingController.myBookings);
+router.post("/v1/bookings/:id/cancel", authMiddleware, csrfMiddleware, bookingController.cancel);
+
+router.post(
+  "/v1/bookings/:id/payments/vnpay",
+  authMiddleware,
+  csrfMiddleware,
+  paymentController.createVnpay,
+);
+
+router.get("/v1/payments/vnpay/return", paymentController.vnpayReturn);
+router.get("/v1/payments/vnpay/ipn", paymentController.vnpayIpn);
+
+
 module.exports = router;

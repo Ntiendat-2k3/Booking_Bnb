@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import RoomTabs from "@/components/RoomTabs";
 import MapboxStaticMap from "@/components/MapboxStaticMap";
+import BookingCard from "@/components/BookingCard";
 
 function avgRating(reviews) {
   if (!reviews?.length) return null;
@@ -168,47 +169,7 @@ const listing = res.data?.listing;
             </section>
           </div>
 
-          {/* Payment box (UI only like Airbnb) */}
-          <aside className="h-fit lg:sticky lg:top-28 rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="flex items-end justify-between">
-              <div className="text-xl font-semibold">
-                {formatVND(listing.price_per_night)} <span className="text-sm font-normal text-slate-600">/ đêm</span>
-              </div>
-              <div className="flex items-center gap-1 text-sm text-slate-700">
-                <StarIcon className="h-4 w-4 text-slate-900" />
-                <span>{rating ? rating.toFixed(2) : "Mới"}</span>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border">
-              <div className="grid grid-cols-2">
-                <div className="border-b border-r p-3">
-                  <div className="text-[10px] font-semibold uppercase text-slate-700">Nhận phòng</div>
-                  <div className="mt-1 text-sm text-slate-600">--/--/----</div>
-                </div>
-                <div className="border-b p-3">
-                  <div className="text-[10px] font-semibold uppercase text-slate-700">Trả phòng</div>
-                  <div className="mt-1 text-sm text-slate-600">--/--/----</div>
-                </div>
-              </div>
-              <div className="p-3">
-                <div className="text-[10px] font-semibold uppercase text-slate-700">Khách</div>
-                <div className="mt-1 text-sm text-slate-600">1 khách</div>
-              </div>
-            </div>
-
-            <button
-              className="mt-4 w-full rounded-xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
-              disabled
-              title="Sprint 3: Booking + Payment"
-            >
-              Đặt phòng (Sprint 3)
-            </button>
-
-            <p className="mt-3 text-xs text-slate-600">
-              Sprint 2: giao diện + hiển thị dữ liệu. Sprint 3 mới làm đặt phòng/thanh toán.
-            </p>
-          </aside>
+          <BookingCard listing={listing} />
         </div>
       </div>
     </div>
