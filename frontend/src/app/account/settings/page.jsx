@@ -66,7 +66,9 @@ export default function AccountSettingsPage() {
       const st = await apiFetch("/api/v1/users/me/settings", { method: "GET" });
       setSettings(st.data);
 
-      const p = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+      const p = await apiFetch("/api/v1/users/me/payment-methods", {
+        method: "GET",
+      });
       setPm(p.data?.items || []);
     } catch (e) {
       if (e?.status === 401) {
@@ -102,7 +104,9 @@ export default function AccountSettingsPage() {
     try {
       const fd = new FormData();
       fd.append("image", file);
-      const res = await apiUpload("/api/v1/users/me/avatar", fd, { method: "POST" });
+      const res = await apiUpload("/api/v1/users/me/avatar", fd, {
+        method: "POST",
+      });
       dispatch(setUser(res.data?.user));
       notifySuccess("Đã cập nhật ảnh đại diện");
     } catch (e) {
@@ -132,10 +136,16 @@ export default function AccountSettingsPage() {
     try {
       await apiFetch("/api/v1/users/me/payment-methods", {
         method: "POST",
-        body: JSON.stringify({ provider: newProvider, type: newType, label: newLabel }),
+        body: JSON.stringify({
+          provider: newProvider,
+          type: newType,
+          label: newLabel,
+        }),
       });
       setNewLabel("");
-      const p = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+      const p = await apiFetch("/api/v1/users/me/payment-methods", {
+        method: "GET",
+      });
       setPm(p.data?.items || []);
       notifySuccess("Đã thêm phương thức thanh toán");
     } catch (e) {
@@ -151,7 +161,9 @@ export default function AccountSettingsPage() {
         method: "POST",
         body: JSON.stringify({}),
       });
-      const p = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+      const p = await apiFetch("/api/v1/users/me/payment-methods", {
+        method: "GET",
+      });
       setPm(p.data?.items || []);
       notifySuccess("Đã đặt mặc định");
     } catch (e) {
@@ -160,12 +172,14 @@ export default function AccountSettingsPage() {
   }
 
   async function removePm(id) {
-    if (!confirm("Xóa phương thức này?") ) return;
+    if (!confirm("Xóa phương thức này?")) return;
     try {
       await apiFetch(`/api/v1/users/me/payment-methods/${id}`, {
         method: "DELETE",
       });
-      const p = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+      const p = await apiFetch("/api/v1/users/me/payment-methods", {
+        method: "GET",
+      });
       setPm(p.data?.items || []);
       notifySuccess("Đã xóa");
     } catch (e) {
@@ -178,7 +192,10 @@ export default function AccountSettingsPage() {
     try {
       await apiFetch("/api/v1/users/me/change-password", {
         method: "POST",
-        body: JSON.stringify({ current_password: currentPw, new_password: newPw }),
+        body: JSON.stringify({
+          current_password: currentPw,
+          new_password: newPw,
+        }),
       });
       setCurrentPw("");
       setNewPw("");
@@ -192,38 +209,42 @@ export default function AccountSettingsPage() {
 
   if (!user) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10">
-        <div className="rounded-2xl border bg-white p-6">Bạn cần đăng nhập.</div>
+      <div className="max-w-3xl px-4 py-10 mx-auto">
+        <div className="p-6 bg-white border rounded-2xl">
+          Bạn cần đăng nhập.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="max-w-4xl px-4 py-8 mx-auto">
       <h1 className="text-2xl font-semibold">Account settings</h1>
-      <p className="mt-1 text-slate-600">Cập nhật hồ sơ, quyền riêng tư và phương thức thanh toán.</p>
+      <p className="mt-1 text-slate-600">
+        Cập nhật hồ sơ, quyền riêng tư và phương thức thanh toán.
+      </p>
 
       {profileLoading ? (
         <div className="mt-6 text-slate-600">Đang tải...</div>
       ) : (
         <div className="mt-6 space-y-6">
           {/* Profile */}
-          <section className="rounded-2xl border bg-white p-5">
+          <section className="p-5 bg-white border rounded-2xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Hồ sơ</h2>
             </div>
-            <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+            <div className="flex flex-col gap-4 mt-4 sm:flex-row">
               <div className="shrink-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={user.avatar_url || "https://i.pravatar.cc/150"}
                   alt=""
-                  className="h-16 w-16 rounded-full object-cover"
+                  className="object-cover w-16 h-16 rounded-full"
                 />
                 <input
                   type="file"
                   accept="image/*"
-                  className="mt-2 w-full text-sm"
+                  className="w-full mt-2 text-sm"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
                     if (f) uploadAvatar(f);
@@ -232,13 +253,13 @@ export default function AccountSettingsPage() {
                 />
               </div>
 
-              <div className="flex-1 grid gap-3">
+              <div className="grid flex-1 gap-3">
                 <label className="text-sm font-medium">
                   Họ tên
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    className="w-full px-3 py-2 mt-1 border rounded-xl"
                     placeholder="Nguyễn Văn A"
                   />
                 </label>
@@ -247,14 +268,14 @@ export default function AccountSettingsPage() {
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    className="w-full px-3 py-2 mt-1 border rounded-xl"
                     placeholder="09xxxxxxxx"
                   />
                 </label>
                 <div>
                   <button
                     onClick={saveProfile}
-                    className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+                    className="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-brand hover:bg-brand-dark"
                   >
                     Lưu hồ sơ
                   </button>
@@ -264,9 +285,9 @@ export default function AccountSettingsPage() {
           </section>
 
           {/* Privacy */}
-          <section className="rounded-2xl border bg-white p-5">
+          <section className="p-5 bg-white border rounded-2xl">
             <h2 className="text-lg font-semibold">Quyền riêng tư</h2>
-            <div className="mt-3 grid gap-3">
+            <div className="grid gap-3 mt-3">
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -307,27 +328,31 @@ export default function AccountSettingsPage() {
           </section>
 
           {/* Payment methods */}
-          <section className="rounded-2xl border bg-white p-5">
+          <section className="p-5 bg-white border rounded-2xl">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-semibold">Phương thức thanh toán</h2>
-              <button
-                className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-slate-50"
-                onClick={loadAll}
-              >
-                Tải lại
-              </button>
             </div>
 
-            <div className="mt-4 grid gap-3">
+            <div className="grid gap-3 mt-4">
               {pm.length === 0 ? (
-                <div className="text-sm text-slate-600">Chưa có phương thức nào.</div>
+                <div className="text-sm text-slate-600">
+                  Chưa có phương thức nào.
+                </div>
               ) : (
                 <div className="space-y-2">
                   {pm.map((m) => (
-                    <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-4 py-3">
+                    <div
+                      key={m.id}
+                      className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border rounded-2xl"
+                    >
                       <div className="min-w-0">
-                        <div className="truncate font-semibold">
-                          {m.label} {m.is_default ? <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">Default</span> : null}
+                        <div className="font-semibold truncate">
+                          {m.label}{" "}
+                          {m.is_default ? (
+                            <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                              Default
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-xs text-slate-600">
                           {m.provider} • {m.type}
@@ -337,14 +362,14 @@ export default function AccountSettingsPage() {
                         {!m.is_default && (
                           <button
                             onClick={() => setDefault(m.id)}
-                            className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                            className="px-3 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50"
                           >
                             Đặt mặc định
                           </button>
                         )}
                         <button
                           onClick={() => removePm(m.id)}
-                          className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                          className="px-3 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50"
                         >
                           Xóa
                         </button>
@@ -354,16 +379,18 @@ export default function AccountSettingsPage() {
                 </div>
               )}
 
-              <div className="grid gap-3 rounded-2xl border p-4 sm:grid-cols-3">
+              <div className="grid gap-3 p-4 border rounded-2xl sm:grid-cols-3">
                 <label className="text-sm font-medium">
                   Provider
                   <select
                     value={newProvider}
                     onChange={(e) => setNewProvider(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    className="w-full px-3 py-2 mt-1 border rounded-xl"
                   >
                     {PROVIDERS.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
+                      <option key={p.value} value={p.value}>
+                        {p.label}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -372,10 +399,12 @@ export default function AccountSettingsPage() {
                   <select
                     value={newType}
                     onChange={(e) => setNewType(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    className="w-full px-3 py-2 mt-1 border rounded-xl"
                   >
                     {TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
                     ))}
                   </select>
                 </label>
@@ -384,7 +413,7 @@ export default function AccountSettingsPage() {
                   <input
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    className="w-full px-3 py-2 mt-1 border rounded-xl"
                     placeholder="VD: Thẻ Visa **** 4242"
                   />
                 </label>
@@ -392,7 +421,7 @@ export default function AccountSettingsPage() {
                   <button
                     disabled={savingPm}
                     onClick={addPaymentMethod}
-                    className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+                    className="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-60"
                   >
                     Thêm phương thức
                   </button>
@@ -402,21 +431,21 @@ export default function AccountSettingsPage() {
           </section>
 
           {/* Change password */}
-          <section className="rounded-2xl border bg-white p-5">
+          <section className="p-5 bg-white border rounded-2xl">
             <h2 className="text-lg font-semibold">Bảo mật</h2>
             {!canChangePassword ? (
               <div className="mt-2 text-sm text-slate-600">
                 Tài khoản Google không hỗ trợ đổi mật khẩu trong hệ thống.
               </div>
             ) : (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 mt-4 sm:grid-cols-2">
                 <label className="text-sm font-medium">
                   Mật khẩu hiện tại
                   <input
                     type="password"
                     value={currentPw}
                     onChange={(e) => setCurrentPw(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    className="w-full px-3 py-2 mt-1 border rounded-xl"
                   />
                 </label>
                 <label className="text-sm font-medium">
@@ -425,14 +454,14 @@ export default function AccountSettingsPage() {
                     type="password"
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
-                    className="mt-1 w-full rounded-xl border px-3 py-2"
+                    className="w-full px-3 py-2 mt-1 border rounded-xl"
                   />
                 </label>
                 <div className="sm:col-span-2">
                   <button
                     disabled={changingPw}
                     onClick={changePassword}
-                    className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
+                    className="px-4 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50 disabled:opacity-60"
                   >
                     Đổi mật khẩu
                   </button>

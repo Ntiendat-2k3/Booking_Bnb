@@ -1,4 +1,5 @@
 import { serverGetJson } from "@/lib/serverApi";
+import { cache } from "react";
 import { StarIcon } from "@/components/icons";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,22 +14,73 @@ function toNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+const getListingDetail = cache(async (id) => {
+  return serverGetJson(`/api/v1/listings/${id}`, { next: { revalidate: 300 } });
+});
+
+export async function generateMetadata({ params }) {
+  const p = await Promise.resolve(params);
+  const id = p?.id;
+  if (!id || id === "undefined") return { title: "Không tìm thấy phòng" };
+
+  try {
+    const res = await getListingDetail(id);
+    const ok = res?.status === "success" || res?.success === true;
+    const listing = ok ? res.data?.listing : null;
+    if (!listing) return { title: "Không tìm thấy phòng" };
+
+    const images = listing?.images || [];
+    const cover = images.find((x) => x.is_cover) || images[0];
+
+    const title = `${listing.title} | Booking BnB`;
+    const description =
+      (listing.description || "").slice(0, 160) ||
+      `Chỗ ở tại ${listing.city}, ${listing.country}. ${listing.max_guests} khách • ${listing.bedrooms} phòng ngủ.`;
+
+    return {
+      title,
+      description,
+      alternates: { canonical: `/rooms/${listing.id}` },
+      openGraph: {
+        title,
+        description,
+        type: "website",
+        images: cover?.url
+          ? [{ url: cover.url, width: 1200, height: 630, alt: listing.title }]
+          : [],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: cover?.url ? [cover.url] : [],
+      },
+    };
+  } catch {
+    return { title: "Chi tiết phòng" };
+  }
+}
+
 export default async function RoomDetailPage({ params, searchParams }) {
-  const p = await params;
+  const p = await Promise.resolve(params);
+  const sp = await Promise.resolve(searchParams);
   const id = p?.id;
   if (!id || id === "undefined") return notFound();
-  const sp = await searchParams;
 
   let res;
   let fetchError = null;
   try {
-    res = await serverGetJson(`/api/v1/listings/${id}`);
+    res = await getListingDetail(id);
   } catch (e) {
+    // For SEO: return 404 page when listing doesn't exist
+    if (e?.status === 404) return notFound();
     fetchError = e;
   }
 
+  const ok = res?.status === "success" || res?.success === true;
+
   // --- FIX LỖI ĐÓNG THẺ CONTAINER TẠI ĐÂY ---
-  if (fetchError || !res?.success) {
+  if (fetchError || !ok) {
     return (
       <Container className="py-16">
         <div className="max-w-2xl p-6 mx-auto bg-white border rounded-2xl">

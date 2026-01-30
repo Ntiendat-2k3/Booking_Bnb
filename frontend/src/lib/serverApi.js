@@ -5,8 +5,15 @@ export function serverApiUrl(path) {
   return API_BASE.replace(/\/$/, "") + path;
 }
 
-export async function serverGetJson(path) {
-  const res = await fetch(serverApiUrl(path), { cache: "no-store" });
+/**
+ * Server-side fetch helper.
+ *
+ * Defaults to `cache: "no-store"` to keep the current behavior.
+ * You can override caching by passing a second `init` argument, e.g.
+ * `serverGetJson(path, { next: { revalidate: 300 } })`.
+ */
+export async function serverGetJson(path, init = {}) {
+  const res = await fetch(serverApiUrl(path), { cache: "no-store", ...init });
   const data = await res.json();
   if (!res.ok) {
     const err = new Error(data?.message || "Request failed");
