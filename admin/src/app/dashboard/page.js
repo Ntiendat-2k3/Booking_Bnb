@@ -14,6 +14,7 @@ import {
   CreditCard,
   Star,
 } from "lucide-react";
+import RipleLoading from "@/components/loading/RipleLoading";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function DashboardPage() {
     };
   }, [router]);
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <RipleLoading />;
 
   const shortcuts = [
     {

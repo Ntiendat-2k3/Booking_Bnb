@@ -12,6 +12,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Eye, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import RipleLoading from "@/components/loading/RipleLoading";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -27,14 +28,14 @@ function StatusBadge({ status }) {
     status === "published"
       ? "emerald"
       : status === "pending"
-      ? "amber"
-      : status === "rejected"
-      ? "rose"
-      : status === "paused"
-      ? "slate"
-      : status === "draft"
-      ? "zinc"
-      : "zinc";
+        ? "amber"
+        : status === "rejected"
+          ? "rose"
+          : status === "paused"
+            ? "slate"
+            : status === "draft"
+              ? "zinc"
+              : "zinc";
   return <Badge tone={tone}>{status}</Badge>;
 }
 
@@ -50,7 +51,11 @@ export default function Page() {
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState("Nội dung chưa đạt yêu cầu");
 
-  const [confirm, setConfirm] = useState({ open: false, kind: null, item: null });
+  const [confirm, setConfirm] = useState({
+    open: false,
+    kind: null,
+    item: null,
+  });
   const [saving, setSaving] = useState(false);
 
   const filtered = useMemo(() => {
@@ -155,19 +160,25 @@ export default function Page() {
     setRejectOpen(true);
   }
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <RipleLoading />;
 
   return (
     <AdminShell>
       <div className="space-y-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Listings moderation</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Listings moderation
+            </h1>
           </div>
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <div className="w-full md:w-80">
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search id/title/city/host..." />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search id/title/city/host..."
+              />
             </div>
             <Button onClick={refresh} variant="secondary">
               Refresh
@@ -191,35 +202,46 @@ export default function Page() {
         {filtered.length ? (
           <div className="grid grid-cols-1 gap-3">
             {filtered.map((x) => (
-              <div key={x.id} className="rounded-2xl border ui-border ui-panel p-4 shadow-sm">
+              <div
+                key={x.id}
+                className="p-4 border shadow-sm rounded-2xl ui-border ui-panel"
+              >
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="truncate text-base font-semibold ui-fg">
+                      <div className="text-base font-semibold truncate ui-fg">
                         {x.title || "Untitled"}
                       </div>
                       <StatusBadge status={x.status} />
-                      <span className="text-xs font-mono ui-muted">#{x.id}</span>
+                      <span className="font-mono text-xs ui-muted">
+                        #{x.id}
+                      </span>
                     </div>
 
                     <div className="mt-1 text-sm ui-muted">
                       {x.city ? <span>{x.city}</span> : null}
                       {x.city ? <span> • </span> : null}
                       <span className="ui-muted">
-                        Host: {x.host?.full_name || "—"} ({x.host?.email || "—"})
+                        Host: {x.host?.full_name || "—"} ({x.host?.email || "—"}
+                        )
                       </span>
                     </div>
 
                     {x.reject_reason ? (
-                      <div className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                        <span className="font-semibold">Reject reason:</span> {x.reject_reason}
+                      <div className="px-3 py-2 mt-2 text-sm rounded-xl bg-rose-50 text-rose-700">
+                        <span className="font-semibold">Reject reason:</span>{" "}
+                        {x.reject_reason}
                       </div>
                     ) : null}
                   </div>
 
                   <div className="flex flex-wrap gap-2 md:justify-end">
-                    <Button variant="secondary" size="sm" onClick={() => setView(x)}>
-                      <Eye className="h-4 w-4" />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setView(x)}
+                    >
+                      <Eye className="w-4 h-4" />
                       View
                     </Button>
 
@@ -228,10 +250,12 @@ export default function Page() {
                         <Button
                           variant="success"
                           size="sm"
-                          onClick={() => setConfirm({ open: true, kind: "approve", item: x })}
+                          onClick={() =>
+                            setConfirm({ open: true, kind: "approve", item: x })
+                          }
                           disabled={saving}
                         >
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircle2 className="w-4 h-4" />
                           Approve
                         </Button>
                         <Button
@@ -240,7 +264,7 @@ export default function Page() {
                           onClick={() => openReject(x)}
                           disabled={saving}
                         >
-                          <XCircle className="h-4 w-4" />
+                          <XCircle className="w-4 h-4" />
                           Reject
                         </Button>
                       </>
@@ -251,7 +275,7 @@ export default function Page() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border ui-border ui-panel p-8 text-center ui-muted shadow-sm">
+          <div className="p-8 text-center border shadow-sm rounded-2xl ui-border ui-panel ui-muted">
             Không có items.
           </div>
         )}
@@ -271,39 +295,46 @@ export default function Page() {
       >
         {view ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border ui-border p-4">
+            <div className="p-4 border rounded-2xl ui-border">
               <div className="text-sm font-semibold">Summary</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="ui-muted">Status:</span> <StatusBadge status={view.status} />
+                  <span className="ui-muted">Status:</span>{" "}
+                  <StatusBadge status={view.status} />
                 </div>
                 <div>
                   <span className="ui-muted">City:</span> {view.city || "—"}
                 </div>
                 <div>
-                  <span className="ui-muted">Host:</span> {view.host?.full_name || "—"} ({view.host?.email || "—"})
+                  <span className="ui-muted">Host:</span>{" "}
+                  {view.host?.full_name || "—"} ({view.host?.email || "—"})
                 </div>
                 {view.price_per_night != null ? (
                   <div>
-                    <span className="ui-muted">Price/night:</span> {Number(view.price_per_night).toLocaleString()} ₫
+                    <span className="ui-muted">Price/night:</span>{" "}
+                    {Number(view.price_per_night).toLocaleString()} ₫
                   </div>
                 ) : null}
               </div>
             </div>
 
-            <div className="rounded-2xl border ui-border p-4">
+            <div className="p-4 border rounded-2xl ui-border">
               <div className="text-sm font-semibold">Details</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="ui-muted">Address:</span> {view.address || "—"}
+                  <span className="ui-muted">Address:</span>{" "}
+                  {view.address || "—"}
                 </div>
                 <div>
-                  <span className="ui-muted">Guests:</span> {view.max_guests || "—"} • Bedrooms:{" "}
-                  {view.bedrooms || "—"} • Beds: {view.beds || "—"} • Baths: {view.bathrooms || "—"}
+                  <span className="ui-muted">Guests:</span>{" "}
+                  {view.max_guests || "—"} • Bedrooms: {view.bedrooms || "—"} •
+                  Beds: {view.beds || "—"} • Baths: {view.bathrooms || "—"}
                 </div>
                 <div className="pt-2">
-                  <div className="text-xs font-semibold ui-muted">Description</div>
-                  <div className="mt-1 whitespace-pre-wrap rounded-xl bg-white/5 p-3 text-sm ui-muted">
+                  <div className="text-xs font-semibold ui-muted">
+                    Description
+                  </div>
+                  <div className="p-3 mt-1 text-sm whitespace-pre-wrap rounded-xl bg-white/5 ui-muted">
                     {view.description || "—"}
                   </div>
                 </div>
@@ -319,11 +350,19 @@ export default function Page() {
           if (!saving) setRejectOpen(false);
         }}
         title="Reject listing"
-        description={rejectTarget ? `#${rejectTarget.id} • ${rejectTarget.title || "Untitled"}` : ""}
+        description={
+          rejectTarget
+            ? `#${rejectTarget.id} • ${rejectTarget.title || "Untitled"}`
+            : ""
+        }
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setRejectOpen(false)} disabled={saving}>
+            <Button
+              variant="secondary"
+              onClick={() => setRejectOpen(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button
@@ -357,7 +396,11 @@ export default function Page() {
         open={confirm.open}
         onClose={() => setConfirm({ open: false, kind: null, item: null })}
         title="Approve listing?"
-        description={confirm.item ? `#${confirm.item.id} • ${confirm.item.title || "Untitled"}` : ""}
+        description={
+          confirm.item
+            ? `#${confirm.item.id} • ${confirm.item.title || "Untitled"}`
+            : ""
+        }
         confirmText="Approve"
         cancelText="Cancel"
         loading={saving}

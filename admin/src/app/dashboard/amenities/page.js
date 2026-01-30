@@ -12,6 +12,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Plus, Pencil, EyeOff, Eye } from "lucide-react";
 import { toast } from "sonner";
+import RipleLoading from "@/components/loading/RipleLoading";
 
 export default function Page() {
   const router = useRouter();
@@ -21,11 +22,19 @@ export default function Page() {
   const [activeFilter, setActiveFilter] = useState("all");
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({ name: "", group: "", is_active: true });
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    group: "",
+    is_active: true,
+  });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(null); // amenity object
-  const [editForm, setEditForm] = useState({ name: "", group: "", is_active: true });
+  const [editForm, setEditForm] = useState({
+    name: "",
+    group: "",
+    is_active: true,
+  });
 
   const [confirm, setConfirm] = useState({ open: false, item: null });
   const [saving, setSaving] = useState(false);
@@ -48,7 +57,10 @@ export default function Page() {
   }, [items, q, activeFilter]);
 
   async function loadItems() {
-    const res = await apiFetch(`/api/v1/admin/amenities?active=${activeFilter}`, { method: "GET" });
+    const res = await apiFetch(
+      `/api/v1/admin/amenities?active=${activeFilter}`,
+      { method: "GET" },
+    );
     setItems(res.data?.items || []);
   }
 
@@ -169,7 +181,7 @@ export default function Page() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <RipleLoading />;
 
   return (
     <AdminShell>
@@ -187,7 +199,10 @@ export default function Page() {
                 placeholder="Search name / slug / group..."
               />
             </div>
-            <Select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)}>
+            <Select
+              value={activeFilter}
+              onChange={(e) => setActiveFilter(e.target.value)}
+            >
               <option value="all">All</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
@@ -196,14 +211,14 @@ export default function Page() {
               Refresh
             </Button>
             <Button onClick={() => setCreateOpen(true)} variant="primary">
-              <Plus className="h-4 w-4" />
+              <Plus className="w-4 h-4" />
               New
             </Button>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-hidden border shadow-sm rounded-2xl ui-border ui-panel">
+          <table className="w-full text-sm text-left">
             <thead className="bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Name</th>
@@ -219,10 +234,16 @@ export default function Page() {
                 <tr key={a.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
                     <div className="font-medium ui-fg">{a.name}</div>
-                    <div className="mt-0.5 text-xs font-mono ui-muted">ID: {a.id}</div>
+                    <div className="mt-0.5 text-xs font-mono ui-muted">
+                      ID: {a.id}
+                    </div>
                   </td>
-                  <td className="px-4 py-3">{a.group || <span className="ui-muted-2">—</span>}</td>
-                  <td className="px-4 py-3 font-mono text-xs ui-muted">{a.slug}</td>
+                  <td className="px-4 py-3">
+                    {a.group || <span className="ui-muted-2">—</span>}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs ui-muted">
+                    {a.slug}
+                  </td>
                   <td className="px-4 py-3">{a.listing_count ?? "—"}</td>
                   <td className="px-4 py-3">
                     <Badge tone={a.is_active !== false ? "emerald" : "zinc"}>
@@ -231,8 +252,12 @@ export default function Page() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => openEdit(a)}>
-                        <Pencil className="h-4 w-4" />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openEdit(a)}
+                      >
+                        <Pencil className="w-4 h-4" />
                         Edit
                       </Button>
                       <Button
@@ -243,11 +268,11 @@ export default function Page() {
                       >
                         {a.is_active !== false ? (
                           <>
-                            <EyeOff className="h-4 w-4" /> Deactivate
+                            <EyeOff className="w-4 h-4" /> Deactivate
                           </>
                         ) : (
                           <>
-                            <Eye className="h-4 w-4" /> Activate
+                            <Eye className="w-4 h-4" /> Activate
                           </>
                         )}
                       </Button>
@@ -272,17 +297,25 @@ export default function Page() {
         open={createOpen}
         onClose={() => {
           if (!saving) toast.success("Amenity created");
-      setCreateOpen(false);
+          setCreateOpen(false);
         }}
         title="Create amenity"
         description="Tạo tiện ích mới để host chọn khi tạo listing."
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setCreateOpen(false)} disabled={saving}>
+            <Button
+              variant="secondary"
+              onClick={() => setCreateOpen(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
-            <Button variant="primary" onClick={onCreate} disabled={saving || !createForm.name.trim()}>
+            <Button
+              variant="primary"
+              onClick={onCreate}
+              disabled={saving || !createForm.name.trim()}
+            >
               Create
             </Button>
           </>
@@ -293,7 +326,9 @@ export default function Page() {
             <div className="mb-1 text-xs font-semibold ui-muted">Name</div>
             <Input
               value={createForm.name}
-              onChange={(e) => setCreateForm((s) => ({ ...s, name: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((s) => ({ ...s, name: e.target.value }))
+              }
               placeholder="Wifi, Pool, Kitchen..."
             />
           </div>
@@ -301,7 +336,9 @@ export default function Page() {
             <div className="mb-1 text-xs font-semibold ui-muted">Group</div>
             <Input
               value={createForm.group}
-              onChange={(e) => setCreateForm((s) => ({ ...s, group: e.target.value }))}
+              onChange={(e) =>
+                setCreateForm((s) => ({ ...s, group: e.target.value }))
+              }
               placeholder="Basic / Safety / Bedroom..."
             />
           </div>
@@ -309,7 +346,9 @@ export default function Page() {
             <input
               type="checkbox"
               checked={createForm.is_active === true}
-              onChange={(e) => setCreateForm((s) => ({ ...s, is_active: e.target.checked }))}
+              onChange={(e) =>
+                setCreateForm((s) => ({ ...s, is_active: e.target.checked }))
+              }
             />
             Active
           </label>
@@ -320,17 +359,25 @@ export default function Page() {
         open={editOpen}
         onClose={() => {
           if (!saving) toast.success("Amenity updated");
-      setEditOpen(false);
+          setEditOpen(false);
         }}
         title="Edit amenity"
         description={editing ? `ID: ${editing.id}` : ""}
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditOpen(false)} disabled={saving}>
+            <Button
+              variant="secondary"
+              onClick={() => setEditOpen(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
-            <Button variant="primary" onClick={onSaveEdit} disabled={saving || !editForm.name.trim()}>
+            <Button
+              variant="primary"
+              onClick={onSaveEdit}
+              disabled={saving || !editForm.name.trim()}
+            >
               Save
             </Button>
           </>
@@ -341,7 +388,9 @@ export default function Page() {
             <div className="mb-1 text-xs font-semibold ui-muted">Name</div>
             <Input
               value={editForm.name}
-              onChange={(e) => setEditForm((s) => ({ ...s, name: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((s) => ({ ...s, name: e.target.value }))
+              }
               placeholder="Name"
             />
           </div>
@@ -349,7 +398,9 @@ export default function Page() {
             <div className="mb-1 text-xs font-semibold ui-muted">Group</div>
             <Input
               value={editForm.group}
-              onChange={(e) => setEditForm((s) => ({ ...s, group: e.target.value }))}
+              onChange={(e) =>
+                setEditForm((s) => ({ ...s, group: e.target.value }))
+              }
               placeholder="Group (optional)"
             />
           </div>
@@ -357,7 +408,9 @@ export default function Page() {
             <input
               type="checkbox"
               checked={editForm.is_active === true}
-              onChange={(e) => setEditForm((s) => ({ ...s, is_active: e.target.checked }))}
+              onChange={(e) =>
+                setEditForm((s) => ({ ...s, is_active: e.target.checked }))
+              }
             />
             Active
           </label>
@@ -367,13 +420,17 @@ export default function Page() {
       <ConfirmDialog
         open={confirm.open}
         onClose={() => setConfirm({ open: false, item: null })}
-        title={confirm.item?.is_active !== false ? "Deactivate amenity?" : "Activate amenity?"}
-        description={
-          confirm.item
-            ? `${confirm.item.name} (${confirm.item.slug})`
-            : ""
+        title={
+          confirm.item?.is_active !== false
+            ? "Deactivate amenity?"
+            : "Activate amenity?"
         }
-        confirmText={confirm.item?.is_active !== false ? "Deactivate" : "Activate"}
+        description={
+          confirm.item ? `${confirm.item.name} (${confirm.item.slug})` : ""
+        }
+        confirmText={
+          confirm.item?.is_active !== false ? "Deactivate" : "Activate"
+        }
         cancelText="Cancel"
         danger={confirm.item?.is_active !== false}
         loading={saving}

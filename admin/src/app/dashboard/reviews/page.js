@@ -12,6 +12,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import RipleLoading from "@/components/loading/RipleLoading";
 
 const VIS = [
   { key: "all", label: "All" },
@@ -47,7 +48,11 @@ export default function Page() {
   const [busyId, setBusyId] = useState(null);
 
   const [view, setView] = useState(null);
-  const [confirm, setConfirm] = useState({ open: false, kind: null, item: null });
+  const [confirm, setConfirm] = useState({
+    open: false,
+    kind: null,
+    item: null,
+  });
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -63,7 +68,9 @@ export default function Page() {
   }, [items, q]);
 
   async function loadItems() {
-    const res = await apiFetch(`/api/v1/admin/reviews?visibility=${vis}`, { method: "GET" });
+    const res = await apiFetch(`/api/v1/admin/reviews?visibility=${vis}`, {
+      method: "GET",
+    });
     setItems(res.data?.items || []);
   }
 
@@ -114,7 +121,10 @@ export default function Page() {
   async function hideReview(id) {
     setBusyId(id);
     try {
-      await apiFetch(`/api/v1/admin/reviews/${id}/hide`, { method: "POST", body: JSON.stringify({}) });
+      await apiFetch(`/api/v1/admin/reviews/${id}/hide`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
       await loadItems();
     } finally {
       setBusyId(null);
@@ -124,7 +134,10 @@ export default function Page() {
   async function unhideReview(id) {
     setBusyId(id);
     try {
-      await apiFetch(`/api/v1/admin/reviews/${id}/unhide`, { method: "POST", body: JSON.stringify({}) });
+      await apiFetch(`/api/v1/admin/reviews/${id}/unhide`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
       await loadItems();
     } finally {
       setBusyId(null);
@@ -141,7 +154,7 @@ export default function Page() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <RipleLoading />;
 
   return (
     <AdminShell>
@@ -153,7 +166,11 @@ export default function Page() {
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <div className="w-full md:w-72">
-              <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search id / user / listing..." />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search id / user / listing..."
+              />
             </div>
             <Select value={vis} onChange={(e) => setVis(e.target.value)}>
               {VIS.map((x) => (
@@ -168,8 +185,8 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-hidden border shadow-sm rounded-2xl ui-border ui-panel">
+          <table className="w-full text-sm text-left">
             <thead className="bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Review</th>
@@ -186,15 +203,25 @@ export default function Page() {
                 <tr key={r.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
                     <div className="font-mono text-xs ui-muted">#{r.id}</div>
-                    <div className="mt-0.5 text-xs ui-muted font-mono">booking: {r.booking_id ?? "—"}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">
+                      booking: {r.booking_id ?? "—"}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium ui-fg">{r.listing?.title || "—"}</div>
-                    <div className="mt-0.5 text-xs ui-muted font-mono">LID: {r.listing?.id || "—"}</div>
+                    <div className="font-medium ui-fg">
+                      {r.listing?.title || "—"}
+                    </div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">
+                      LID: {r.listing?.id || "—"}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium ui-fg">{r.user?.email || "—"}</div>
-                    <div className="mt-0.5 text-xs ui-muted font-mono">UID: {r.user?.id || "—"}</div>
+                    <div className="font-medium ui-fg">
+                      {r.user?.email || "—"}
+                    </div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">
+                      UID: {r.user?.id || "—"}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Stars rating={r.rating} />
@@ -207,8 +234,12 @@ export default function Page() {
                   <td className="px-4 py-3">{fmtDate(r.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => setView(r)}>
-                        <Eye className="h-4 w-4" />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setView(r)}
+                      >
+                        <Eye className="w-4 h-4" />
                         View
                       </Button>
 
@@ -219,7 +250,7 @@ export default function Page() {
                           onClick={() => unhideReview(r.id)}
                           disabled={busyId === r.id}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="w-4 h-4" />
                           Unhide
                         </Button>
                       ) : (
@@ -229,7 +260,7 @@ export default function Page() {
                           onClick={() => hideReview(r.id)}
                           disabled={busyId === r.id}
                         >
-                          <EyeOff className="h-4 w-4" />
+                          <EyeOff className="w-4 h-4" />
                           Hide
                         </Button>
                       )}
@@ -237,10 +268,12 @@ export default function Page() {
                       <Button
                         variant="danger"
                         size="sm"
-                        onClick={() => setConfirm({ open: true, kind: "delete", item: r })}
+                        onClick={() =>
+                          setConfirm({ open: true, kind: "delete", item: r })
+                        }
                         disabled={busyId === r.id}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="w-4 h-4" />
                         Delete
                       </Button>
                     </div>
@@ -273,11 +306,12 @@ export default function Page() {
       >
         {view ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border ui-border p-4">
+            <div className="p-4 border rounded-2xl ui-border">
               <div className="text-sm font-semibold">Meta</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="ui-muted">Rating:</span> <Stars rating={view.rating} />
+                  <span className="ui-muted">Rating:</span>{" "}
+                  <Stars rating={view.rating} />
                 </div>
                 <div>
                   <span className="ui-muted">Visibility:</span>{" "}
@@ -286,32 +320,41 @@ export default function Page() {
                   </Badge>
                 </div>
                 <div>
-                  <span className="ui-muted">Created:</span> {fmtDate(view.created_at)}
+                  <span className="ui-muted">Created:</span>{" "}
+                  {fmtDate(view.created_at)}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border ui-border p-4">
+            <div className="p-4 border rounded-2xl ui-border">
               <div className="text-sm font-semibold">User / Listing</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="ui-muted">User:</span> {view.user?.email || "—"}{" "}
-                  <span className="text-xs font-mono ui-muted">({view.user?.id || "—"})</span>
+                  <span className="ui-muted">User:</span>{" "}
+                  {view.user?.email || "—"}{" "}
+                  <span className="font-mono text-xs ui-muted">
+                    ({view.user?.id || "—"})
+                  </span>
                 </div>
                 <div>
-                  <span className="ui-muted">Listing:</span> {view.listing?.title || "—"}{" "}
-                  <span className="text-xs font-mono ui-muted">({view.listing?.id || "—"})</span>
+                  <span className="ui-muted">Listing:</span>{" "}
+                  {view.listing?.title || "—"}{" "}
+                  <span className="font-mono text-xs ui-muted">
+                    ({view.listing?.id || "—"})
+                  </span>
                 </div>
                 <div>
                   <span className="ui-muted">Booking:</span>{" "}
-                  <span className="text-xs font-mono">{view.booking_id ?? "—"}</span>
+                  <span className="font-mono text-xs">
+                    {view.booking_id ?? "—"}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border ui-border p-4 md:col-span-2">
+            <div className="p-4 border rounded-2xl ui-border md:col-span-2">
               <div className="text-sm font-semibold">Comment</div>
-              <div className="mt-2 whitespace-pre-wrap rounded-xl bg-white/5 p-4 text-sm ui-muted">
+              <div className="p-4 mt-2 text-sm whitespace-pre-wrap rounded-xl bg-white/5 ui-muted">
                 {view.comment || "—"}
               </div>
             </div>
@@ -323,7 +366,11 @@ export default function Page() {
         open={confirm.open}
         onClose={() => setConfirm({ open: false, kind: null, item: null })}
         title="Delete review?"
-        description={confirm.item ? `#${confirm.item.id} • ${confirm.item.user?.email || ""}` : ""}
+        description={
+          confirm.item
+            ? `#${confirm.item.id} • ${confirm.item.user?.email || ""}`
+            : ""
+        }
         confirmText="Delete"
         cancelText="Cancel"
         danger

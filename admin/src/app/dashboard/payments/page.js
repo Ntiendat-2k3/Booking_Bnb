@@ -11,8 +11,16 @@ import Select from "@/components/ui/Select";
 import Badge from "@/components/ui/Badge";
 import Modal from "@/components/ui/Modal";
 import { Eye } from "lucide-react";
+import RipleLoading from "@/components/loading/RipleLoading";
 
-const STATUS = ["all", "pending", "succeeded", "failed", "cancelled", "refunded"];
+const STATUS = [
+  "all",
+  "pending",
+  "succeeded",
+  "failed",
+  "cancelled",
+  "refunded",
+];
 const PROVIDERS = ["all", "vnpay", "stripe"];
 
 function tone(v) {
@@ -66,7 +74,7 @@ export default function Page() {
   async function loadItems() {
     const res = await apiFetch(
       `/api/v1/admin/payments?status=${status}&provider=${provider}`,
-      { method: "GET" }
+      { method: "GET" },
     );
     setItems(res.data?.items || []);
   }
@@ -120,7 +128,9 @@ export default function Page() {
     setDetailLoading(true);
     setDetail(null);
     try {
-      const res = await apiFetch(`/api/v1/admin/payments/${id}`, { method: "GET" });
+      const res = await apiFetch(`/api/v1/admin/payments/${id}`, {
+        method: "GET",
+      });
       setDetail(res.data?.payment || null);
     } catch (e) {
       toast.error(e?.message || "Failed to load payment");
@@ -129,7 +139,7 @@ export default function Page() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <RipleLoading />;
 
   return (
     <AdminShell>
@@ -154,7 +164,10 @@ export default function Page() {
                 </option>
               ))}
             </Select>
-            <Select value={provider} onChange={(e) => setProvider(e.target.value)}>
+            <Select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+            >
               {PROVIDERS.map((p) => (
                 <option key={p} value={p}>
                   {p}
@@ -167,8 +180,8 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-hidden border shadow-sm rounded-2xl ui-border ui-panel">
+          <table className="w-full text-sm text-left">
             <thead className="bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Payment</th>
@@ -185,21 +198,33 @@ export default function Page() {
                 <tr key={p.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
                     <div className="font-mono text-xs ui-muted">#{p.id}</div>
-                    <div className="mt-0.5 text-xs ui-muted">{(p.provider_txn_ref || p.txn_ref) ? `ref: ${p.provider_txn_ref || p.txn_ref}` : ""}</div>
+                    <div className="mt-0.5 text-xs ui-muted">
+                      {p.provider_txn_ref || p.txn_ref
+                        ? `ref: ${p.provider_txn_ref || p.txn_ref}`
+                        : ""}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-xs ui-muted">{p.booking_id ?? "—"}</span>
+                    <span className="font-mono text-xs ui-muted">
+                      {p.booking_id ?? "—"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">{p.provider || "—"}</td>
                   <td className="px-4 py-3">
                     <Badge tone={tone(p.status)}>{p.status || "—"}</Badge>
                   </td>
-                  <td className="px-4 py-3 font-semibold">{money(p.amount)} ₫</td>
+                  <td className="px-4 py-3 font-semibold">
+                    {money(p.amount)} ₫
+                  </td>
                   <td className="px-4 py-3">{fmtDate(p.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end">
-                      <Button variant="secondary" size="sm" onClick={() => openDetail(p.id)}>
-                        <Eye className="h-4 w-4" />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => openDetail(p.id)}
+                      >
+                        <Eye className="w-4 h-4" />
                         View
                       </Button>
                     </div>
@@ -234,56 +259,69 @@ export default function Page() {
           <div className="py-8 text-sm ui-muted">Loading...</div>
         ) : detail ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border ui-border ui-panel-2 p-4">
+            <div className="p-4 border rounded-2xl ui-border ui-panel-2">
               <div className="text-sm font-semibold">Info</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="ui-muted">Provider:</span> {detail.provider || "—"}
+                  <span className="ui-muted">Provider:</span>{" "}
+                  {detail.provider || "—"}
                 </div>
                 <div>
                   <span className="ui-muted">Status:</span>{" "}
-                  <Badge tone={tone(detail.status)}>{detail.status || "—"}</Badge>
+                  <Badge tone={tone(detail.status)}>
+                    {detail.status || "—"}
+                  </Badge>
                 </div>
                 <div>
                   <span className="ui-muted">Amount:</span>{" "}
-                  <span className="font-semibold">{money(detail.amount)} ₫</span>
+                  <span className="font-semibold">
+                    {money(detail.amount)} ₫
+                  </span>
                 </div>
                 <div>
                   <span className="ui-muted">Booking:</span>{" "}
-                  <span className="font-mono text-xs">{detail.booking_id ?? "—"}</span>
+                  <span className="font-mono text-xs">
+                    {detail.booking_id ?? "—"}
+                  </span>
                 </div>
                 <div>
-                  <span className="ui-muted">Txn ref:</span> {detail.provider_txn_ref || detail.txn_ref || "—"}
+                  <span className="ui-muted">Txn ref:</span>{" "}
+                  {detail.provider_txn_ref || detail.txn_ref || "—"}
                 </div>
                 <div>
-                  <span className="ui-muted">Txn no:</span> {detail.provider_transaction_no || "—"}
+                  <span className="ui-muted">Txn no:</span>{" "}
+                  {detail.provider_transaction_no || "—"}
                 </div>
                 <div>
-                  <span className="ui-muted">Created:</span> {fmtDate(detail.created_at)}
+                  <span className="ui-muted">Created:</span>{" "}
+                  {fmtDate(detail.created_at)}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border ui-border ui-panel-2 p-4">
+            <div className="p-4 border rounded-2xl ui-border ui-panel-2">
               <div className="text-sm font-semibold">Booking snapshot</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="ui-muted">User:</span> {detail.booking?.guest?.email || "—"}
+                  <span className="ui-muted">User:</span>{" "}
+                  {detail.booking?.guest?.email || "—"}
                 </div>
                 <div>
-                  <span className="ui-muted">Listing:</span> {detail.booking?.listing?.title || "—"}
+                  <span className="ui-muted">Listing:</span>{" "}
+                  {detail.booking?.listing?.title || "—"}
                 </div>
                 <div>
                   <span className="ui-muted">Dates:</span>{" "}
-                  {detail.booking?.check_in || "—"} → {detail.booking?.check_out || "—"}
+                  {detail.booking?.check_in || "—"} →{" "}
+                  {detail.booking?.check_out || "—"}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border ui-border ui-panel-2 p-4 md:col-span-2">
+            <div className="p-4 border rounded-2xl ui-border ui-panel-2 md:col-span-2">
               <div className="text-sm font-semibold">Raw payload</div>
               <pre className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-white/5 p-4 text-xs ui-fg">
-{JSON.stringify(detail.payload || {}, null, 2)}
+                {JSON.stringify(detail.payload || {}, null, 2)}
               </pre>
             </div>
           </div>

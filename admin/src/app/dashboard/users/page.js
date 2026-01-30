@@ -12,6 +12,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Eye, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import RipleLoading from "@/components/loading/RipleLoading";
 
 const ROLE_OPTIONS = ["guest", "host", "admin"];
 
@@ -115,7 +116,7 @@ export default function Page() {
     }
   }
 
-  if (loading) return <div className="p-6">Loading...</div>;
+  if (loading) return <RipleLoading />;
 
   return (
     <AdminShell>
@@ -139,9 +140,9 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
+        <div className="overflow-hidden border shadow-sm rounded-2xl ui-border ui-panel">
           <table className="w-full text-sm">
-            <thead className="bg-white/5 text-left ui-muted">
+            <thead className="text-left bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Full name</th>
@@ -154,22 +155,42 @@ export default function Page() {
                 <tr key={u.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
                     <div className="font-medium ui-fg">{u.email}</div>
-                    <div className="mt-0.5 text-xs ui-muted font-mono">ID: {u.id}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">
+                      ID: {u.id}
+                    </div>
                   </td>
-                  <td className="px-4 py-3">{u.full_name || <span className="ui-muted-2">—</span>}</td>
                   <td className="px-4 py-3">
-                    <Badge tone={u.role === "admin" ? "zinc" : u.role === "host" ? "emerald" : "slate"}>
+                    {u.full_name || <span className="ui-muted-2">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      tone={
+                        u.role === "admin"
+                          ? "zinc"
+                          : u.role === "host"
+                            ? "emerald"
+                            : "slate"
+                      }
+                    >
                       {u.role || "—"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => setViewUser(u)}>
-                        <Eye className="h-4 w-4" />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setViewUser(u)}
+                      >
+                        <Eye className="w-4 h-4" />
                         View
                       </Button>
-                      <Button variant="primary" size="sm" onClick={() => openEdit(u)}>
-                        <Pencil className="h-4 w-4" />
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => openEdit(u)}
+                      >
+                        <Pencil className="w-4 h-4" />
                         Edit role
                       </Button>
                     </div>
@@ -202,7 +223,7 @@ export default function Page() {
       >
         {viewUser ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border ui-border p-4">
+            <div className="p-4 border rounded-2xl ui-border">
               <div className="text-sm font-semibold">Profile</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
@@ -211,14 +232,22 @@ export default function Page() {
                 </div>
                 <div>
                   <span className="ui-muted">Role:</span>{" "}
-                  <Badge tone={viewUser.role === "admin" ? "zinc" : viewUser.role === "host" ? "emerald" : "slate"}>
+                  <Badge
+                    tone={
+                      viewUser.role === "admin"
+                        ? "zinc"
+                        : viewUser.role === "host"
+                          ? "emerald"
+                          : "slate"
+                    }
+                  >
                     {viewUser.role || "—"}
                   </Badge>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border ui-border p-4">
+            <div className="p-4 border rounded-2xl ui-border">
               <div className="text-sm font-semibold">Identifiers</div>
               <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
@@ -244,7 +273,11 @@ export default function Page() {
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setEditUser(null)} disabled={saving}>
+            <Button
+              variant="secondary"
+              onClick={() => setEditUser(null)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button
@@ -262,9 +295,14 @@ export default function Page() {
       >
         <div className="space-y-3">
           <div className="text-sm ui-muted">
-            Chọn role mới cho user. (Chuyển lên <span className="font-semibold">admin</span> sẽ mở toàn quyền quản trị.)
+            Chọn role mới cho user. (Chuyển lên{" "}
+            <span className="font-semibold">admin</span> sẽ mở toàn quyền quản
+            trị.)
           </div>
-          <Select value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+          <Select
+            value={editRole}
+            onChange={(e) => setEditRole(e.target.value)}
+          >
             {ROLE_OPTIONS.map((r) => (
               <option key={r} value={r}>
                 {r}
