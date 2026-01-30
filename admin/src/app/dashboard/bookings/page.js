@@ -168,9 +168,9 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-(--ui-border) bg-(--ui-panel) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/5 text-(--ui-muted)">
+            <thead className="bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Booking</th>
                 <th className="px-4 py-3">User</th>
@@ -184,22 +184,22 @@ export default function Page() {
             </thead>
             <tbody>
               {filtered.map((b) => (
-                <tr key={b.id} className="border-t border-(--ui-border) hover:bg-white/5">
+                <tr key={b.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
-                    <div className="font-mono text-xs text-(--foreground)">#{b.id}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted)">{fmtDate(b.created_at)}</div>
+                    <div className="font-mono text-xs ui-fg">#{b.id}</div>
+                    <div className="mt-0.5 text-xs ui-muted">{fmtDate(b.created_at)}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-(--foreground)">{b.guest?.email || "—"}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted) font-mono">UID: {b.guest?.id || "—"}</div>
+                    <div className="font-medium ui-fg">{b.guest?.email || "—"}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">UID: {b.guest?.id || "—"}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-(--foreground)">{b.listing?.title || "—"}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted) font-mono">LID: {b.listing?.id || "—"}</div>
+                    <div className="font-medium ui-fg">{b.listing?.title || "—"}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">LID: {b.listing?.id || "—"}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-(--foreground)">{b.check_in || "—"} → {b.check_out || "—"}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted)">{b.nights ? `${b.nights} night(s)` : ""}</div>
+                    <div className="ui-fg">{b.check_in || "—"} → {b.check_out || "—"}</div>
+                    <div className="mt-0.5 text-xs ui-muted">{b.nights ? `${b.nights} night(s)` : ""}</div>
                   </td>
                   <td className="px-4 py-3 font-semibold">{money(b.total_amount)} ₫</td>
                   <td className="px-4 py-3">
@@ -208,7 +208,7 @@ export default function Page() {
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
                       <Badge tone={paymentTone(b.last_payment_status)}>{b.last_payment_status || "—"}</Badge>
-                      <div className="text-xs text-(--ui-muted)">{b.last_payment_provider || ""}</div>
+                      <div className="text-xs ui-muted">{b.last_payment_provider || ""}</div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -223,7 +223,7 @@ export default function Page() {
               ))}
               {!filtered.length ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-(--ui-muted)" colSpan={8}>
+                  <td className="px-4 py-10 text-center ui-muted" colSpan={8}>
                     Không có booking.
                   </td>
                 </tr>
@@ -246,51 +246,51 @@ export default function Page() {
         }
       >
         {detailLoading ? (
-          <div className="py-8 text-sm text-(--ui-muted)">Loading...</div>
+          <div className="py-8 text-sm ui-muted">Loading...</div>
         ) : detail ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel-2) p-4">
+            <div className="rounded-2xl border ui-border ui-panel-2 p-4">
               <div className="text-sm font-semibold">Info</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">Status:</span>{" "}
+                  <span className="ui-muted">Status:</span>{" "}
                   <Badge tone={statusTone(detail.status)}>{detail.status}</Badge>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Check-in:</span> {detail.check_in || "—"}
+                  <span className="ui-muted">Check-in:</span> {detail.check_in || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Check-out:</span> {detail.check_out || "—"}
+                  <span className="ui-muted">Check-out:</span> {detail.check_out || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Total:</span>{" "}
+                  <span className="ui-muted">Total:</span>{" "}
                   <span className="font-semibold">{money(detail.total_amount)} ₫</span>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Created:</span> {fmtDate(detail.created_at)}
+                  <span className="ui-muted">Created:</span> {fmtDate(detail.created_at)}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel-2) p-4">
+            <div className="rounded-2xl border ui-border ui-panel-2 p-4">
               <div className="text-sm font-semibold">User / Listing</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">User:</span> {detail.guest?.email || "—"}{" "}
-                  <span className="text-xs font-mono text-(--ui-muted-2)">({detail.guest?.id || "—"})</span>
+                  <span className="ui-muted">User:</span> {detail.guest?.email || "—"}{" "}
+                  <span className="text-xs font-mono ui-muted-2">({detail.guest?.id || "—"})</span>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Listing:</span> {detail.listing?.title || "—"}{" "}
-                  <span className="text-xs font-mono text-(--ui-muted)">({detail.listing?.id || "—"})</span>
+                  <span className="ui-muted">Listing:</span> {detail.listing?.title || "—"}{" "}
+                  <span className="text-xs font-mono ui-muted">({detail.listing?.id || "—"})</span>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel-2) p-4 md:col-span-2">
+            <div className="rounded-2xl border ui-border ui-panel-2 p-4 md:col-span-2">
               <div className="text-sm font-semibold">Payments</div>
-              <div className="mt-3 overflow-hidden rounded-xl border border-(--ui-border)">
+              <div className="mt-3 overflow-hidden rounded-xl border ui-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-white/5 text-(--ui-muted)">
+                  <thead className="bg-white/5 ui-muted">
                     <tr>
                       <th className="px-3 py-2">ID</th>
                       <th className="px-3 py-2">Provider</th>
@@ -301,7 +301,7 @@ export default function Page() {
                   </thead>
                   <tbody>
                     {(detail.payments || []).map((p) => (
-                      <tr key={p.id} className="border-t border-(--ui-border)">
+                      <tr key={p.id} className="border-t ui-border">
                         <td className="px-3 py-2 font-mono text-xs">{p.id}</td>
                         <td className="px-3 py-2">{p.provider || "—"}</td>
                         <td className="px-3 py-2">
@@ -313,7 +313,7 @@ export default function Page() {
                     ))}
                     {!(detail.payments || []).length ? (
                       <tr>
-                        <td className="px-3 py-6 text-(--ui-muted)" colSpan={5}>
+                        <td className="px-3 py-6 ui-muted" colSpan={5}>
                           No payments.
                         </td>
                       </tr>
@@ -323,26 +323,26 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel-2) p-4 md:col-span-2">
+            <div className="rounded-2xl border ui-border ui-panel-2 p-4 md:col-span-2">
               <div className="text-sm font-semibold">Review</div>
               {detail.review ? (
-                <div className="mt-2 rounded-xl bg-white/5 p-4 text-sm text-(--foreground)">
+                <div className="mt-2 rounded-xl bg-white/5 p-4 text-sm ui-fg">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{detail.review.rating}★</span>
-                    <span className="text-(--ui-muted)">•</span>
-                    <span className="text-xs text-(--ui-muted)">{fmtDate(detail.review.created_at)}</span>
+                    <span className="ui-muted">•</span>
+                    <span className="text-xs ui-muted">{fmtDate(detail.review.created_at)}</span>
                   </div>
-                  <div className="mt-2 whitespace-pre-wrap text-(--ui-muted)">
+                  <div className="mt-2 whitespace-pre-wrap ui-muted">
                     {detail.review.comment || "—"}
                   </div>
                 </div>
               ) : (
-                <div className="mt-2 text-sm text-(--ui-muted)">No review.</div>
+                <div className="mt-2 text-sm ui-muted">No review.</div>
               )}
             </div>
           </div>
         ) : (
-          <div className="py-8 text-sm text-(--ui-muted)">No data.</div>
+          <div className="py-8 text-sm ui-muted">No data.</div>
         )}
       </Modal>
     </AdminShell>

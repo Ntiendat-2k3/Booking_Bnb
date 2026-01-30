@@ -11,9 +11,9 @@ export default function SonnerToaster() {
       closeButton
       toastOptions={{
         style: {
-          background: "rgba(15,23,42,.95)",
-          border: "1px solid rgba(35,48,74,.9)",
-          color: "#e5e7eb",
+          background: "rgba(18, 17, 26, 0.95)",
+          border: "1px solid rgba(42, 39, 64, 0.95)",
+          color: "#f4f4f8",
         },
       }}
     />

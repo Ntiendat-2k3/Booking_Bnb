@@ -191,21 +191,21 @@ export default function Page() {
         {filtered.length ? (
           <div className="grid grid-cols-1 gap-3">
             {filtered.map((x) => (
-              <div key={x.id} className="rounded-2xl border border-(--ui-border) bg-(--ui-panel) p-4 shadow-sm">
+              <div key={x.id} className="rounded-2xl border ui-border ui-panel p-4 shadow-sm">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="truncate text-base font-semibold text-(--foreground)">
+                      <div className="truncate text-base font-semibold ui-fg">
                         {x.title || "Untitled"}
                       </div>
                       <StatusBadge status={x.status} />
-                      <span className="text-xs font-mono text-(--ui-muted)">#{x.id}</span>
+                      <span className="text-xs font-mono ui-muted">#{x.id}</span>
                     </div>
 
-                    <div className="mt-1 text-sm text-(--ui-muted)">
+                    <div className="mt-1 text-sm ui-muted">
                       {x.city ? <span>{x.city}</span> : null}
                       {x.city ? <span> • </span> : null}
-                      <span className="text-(--ui-muted)">
+                      <span className="ui-muted">
                         Host: {x.host?.full_name || "—"} ({x.host?.email || "—"})
                       </span>
                     </div>
@@ -251,7 +251,7 @@ export default function Page() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel) p-8 text-center text-(--ui-muted) shadow-sm">
+          <div className="rounded-2xl border ui-border ui-panel p-8 text-center ui-muted shadow-sm">
             Không có items.
           </div>
         )}
@@ -271,39 +271,39 @@ export default function Page() {
       >
         {view ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-(--ui-border) p-4">
+            <div className="rounded-2xl border ui-border p-4">
               <div className="text-sm font-semibold">Summary</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">Status:</span> <StatusBadge status={view.status} />
+                  <span className="ui-muted">Status:</span> <StatusBadge status={view.status} />
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">City:</span> {view.city || "—"}
+                  <span className="ui-muted">City:</span> {view.city || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Host:</span> {view.host?.full_name || "—"} ({view.host?.email || "—"})
+                  <span className="ui-muted">Host:</span> {view.host?.full_name || "—"} ({view.host?.email || "—"})
                 </div>
                 {view.price_per_night != null ? (
                   <div>
-                    <span className="text-(--ui-muted)">Price/night:</span> {Number(view.price_per_night).toLocaleString()} ₫
+                    <span className="ui-muted">Price/night:</span> {Number(view.price_per_night).toLocaleString()} ₫
                   </div>
                 ) : null}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) p-4">
+            <div className="rounded-2xl border ui-border p-4">
               <div className="text-sm font-semibold">Details</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">Address:</span> {view.address || "—"}
+                  <span className="ui-muted">Address:</span> {view.address || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Guests:</span> {view.max_guests || "—"} • Bedrooms:{" "}
+                  <span className="ui-muted">Guests:</span> {view.max_guests || "—"} • Bedrooms:{" "}
                   {view.bedrooms || "—"} • Beds: {view.beds || "—"} • Baths: {view.bathrooms || "—"}
                 </div>
                 <div className="pt-2">
-                  <div className="text-xs font-semibold text-(--ui-muted)">Description</div>
-                  <div className="mt-1 whitespace-pre-wrap rounded-xl bg-white/5 p-3 text-sm text-(--ui-muted)">
+                  <div className="text-xs font-semibold ui-muted">Description</div>
+                  <div className="mt-1 whitespace-pre-wrap rounded-xl bg-white/5 p-3 text-sm ui-muted">
                     {view.description || "—"}
                   </div>
                 </div>
@@ -341,7 +341,7 @@ export default function Page() {
         }
       >
         <div className="space-y-3">
-          <div className="text-sm text-(--ui-muted)">
+          <div className="text-sm ui-muted">
             Nhập lý do để host sửa lại. (Có thể để trống nếu bạn muốn.)
           </div>
           <Textarea

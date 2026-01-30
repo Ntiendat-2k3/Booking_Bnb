@@ -139,9 +139,9 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-(--ui-border) bg-(--ui-panel) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-white/5 text-left text-(--ui-muted)">
+            <thead className="bg-white/5 text-left ui-muted">
               <tr>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Full name</th>
@@ -151,12 +151,12 @@ export default function Page() {
             </thead>
             <tbody>
               {filtered.map((u) => (
-                <tr key={u.id} className="border-t border-(--ui-border) hover:bg-white/5">
+                <tr key={u.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-(--foreground)">{u.email}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted) font-mono">ID: {u.id}</div>
+                    <div className="font-medium ui-fg">{u.email}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">ID: {u.id}</div>
                   </td>
-                  <td className="px-4 py-3">{u.full_name || <span className="text-(--ui-muted-2)">—</span>}</td>
+                  <td className="px-4 py-3">{u.full_name || <span className="ui-muted-2">—</span>}</td>
                   <td className="px-4 py-3">
                     <Badge tone={u.role === "admin" ? "zinc" : u.role === "host" ? "emerald" : "slate"}>
                       {u.role || "—"}
@@ -178,7 +178,7 @@ export default function Page() {
               ))}
               {!filtered.length ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-(--ui-muted)" colSpan={4}>
+                  <td className="px-4 py-10 text-center ui-muted" colSpan={4}>
                     Không có user.
                   </td>
                 </tr>
@@ -202,15 +202,15 @@ export default function Page() {
       >
         {viewUser ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-(--ui-border) p-4">
+            <div className="rounded-2xl border ui-border p-4">
               <div className="text-sm font-semibold">Profile</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">Full name:</span>{" "}
+                  <span className="ui-muted">Full name:</span>{" "}
                   {viewUser.full_name || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Role:</span>{" "}
+                  <span className="ui-muted">Role:</span>{" "}
                   <Badge tone={viewUser.role === "admin" ? "zinc" : viewUser.role === "host" ? "emerald" : "slate"}>
                     {viewUser.role || "—"}
                   </Badge>
@@ -218,15 +218,15 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) p-4">
+            <div className="rounded-2xl border ui-border p-4">
               <div className="text-sm font-semibold">Identifiers</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">User ID:</span>{" "}
+                  <span className="ui-muted">User ID:</span>{" "}
                   <span className="font-mono text-xs">{viewUser.id}</span>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Email:</span> {viewUser.email}
+                  <span className="ui-muted">Email:</span> {viewUser.email}
                 </div>
               </div>
             </div>
@@ -261,7 +261,7 @@ export default function Page() {
         }
       >
         <div className="space-y-3">
-          <div className="text-sm text-(--ui-muted)">
+          <div className="text-sm ui-muted">
             Chọn role mới cho user. (Chuyển lên <span className="font-semibold">admin</span> sẽ mở toàn quyền quản trị.)
           </div>
           <Select value={editRole} onChange={(e) => setEditRole(e.target.value)}>

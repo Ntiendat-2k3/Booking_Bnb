@@ -1,35 +1,84 @@
 @import "tailwindcss";
 
-/* Dark + Pink (Airbnb-ish) theme */
+/*
+  Black + Pink theme.
+
+  NOTE: We intentionally avoid Tailwind "CSS variable utilities" (e.g. bg-(--x))
+  because some builds/configs don't resolve them reliably.
+  All theme colors below are hard-coded via plain CSS classes.
+*/
+
 :root {
-  --background: #0b0f19;      /* page bg */
-  --foreground: #e5e7eb;      /* text */
-
-  --ui-panel: #0f172a;        /* cards / tables */
-  --ui-panel-2: #111c33;      /* inputs / subtle */
-  --ui-border: #23304a;       /* borders */
-  --ui-muted: #94a3b8;        /* muted text */
-  --ui-muted-2: #64748b;
-
-  --ui-primary: #FF385C;      /* Airbnb pink */
-  --ui-primary-2: #E61E4D;    /* hover */
-  --ui-ring: rgba(255, 56, 92, 0.35);
-
   color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: #0a0a0f;
+  color: #f4f4f8;
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* =============================
+   Theme utility classes (SAFE)
+   ============================= */
+
+.app-bg { background: #0a0a0f !important; }
+.ui-fg { color: #f4f4f8 !important; }
+
+.ui-panel { background: #12111a !important; }
+.ui-panel-2 { background: #171626 !important; }
+
+.ui-border { border-color: #2a2740 !important; }
+.ui-muted { color: #b1b0c6 !important; }
+.ui-muted-2 { color: #7d7c98 !important; }
+
+/* brand (pink) */
+.brand-gradient {
+  background: linear-gradient(135deg, #ff2d8a, #e61e74) !important;
+}
+.brand-bg { background: #ff2d8a !important; }
+.brand-bg-hover:hover { background: #e61e74 !important; }
+
+/* focus ring (works even when Tailwind ring colors don't) */
+.focus-ring:focus,
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 45, 138, 0.35);
+}
+
+/* buttons */
+.btn-primary { background: #ff2d8a !important; color: #ffffff !important; }
+.btn-primary:hover { background: #e61e74 !important; }
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: #2a2740 !important;
+  color: #f4f4f8 !important;
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.12) !important; }
+
+.btn-ghost { background: transparent !important; color: #f4f4f8 !important; }
+.btn-ghost:hover { background: rgba(255, 45, 138, 0.10) !important; }
+
+.btn-outline {
+  background: transparent !important;
+  border-color: #2a2740 !important;
+  color: #f4f4f8 !important;
+}
+.btn-outline:hover { background: rgba(255, 45, 138, 0.10) !important; }
+
+/* nav */
+.nav-active { background: #ff2d8a !important; color: #ffffff !important; }
+.nav-link { color: #b1b0c6 !important; }
+.nav-link:hover { background: rgba(255, 45, 138, 0.10) !important; color: #f4f4f8 !important; }
+
+/* inputs */
+.ui-input {
+  background: #171626 !important;
+  border-color: #2a2740 !important;
+  color: #f4f4f8 !important;
+}
+.ui-input::placeholder { color: #7d7c98 !important; }
 
 
 /* --- UI polish: avoid harsh black borders (fallback if border color utils don't resolve) --- */
@@ -40,15 +89,15 @@ body {
 .border-b,
 .border-l,
 .border-r{
-  border-color: var(--ui-border);
+  border-color: #2a2740;
 }
 
 hr{
-  border-color: var(--ui-border);
+  border-color: #2a2740;
 }
 
 table{
-  border-color: var(--ui-border);
+  border-color: #2a2740;
 }
 
 /* soft scrollbars on dark */

@@ -202,9 +202,9 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-(--ui-border) bg-(--ui-panel) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/5 text-(--ui-muted)">
+            <thead className="bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Group</th>
@@ -216,13 +216,13 @@ export default function Page() {
             </thead>
             <tbody>
               {filtered.map((a) => (
-                <tr key={a.id} className="border-t border-(--ui-border) hover:bg-white/5">
+                <tr key={a.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-(--foreground)">{a.name}</div>
-                    <div className="mt-0.5 text-xs font-mono text-(--ui-muted)">ID: {a.id}</div>
+                    <div className="font-medium ui-fg">{a.name}</div>
+                    <div className="mt-0.5 text-xs font-mono ui-muted">ID: {a.id}</div>
                   </td>
-                  <td className="px-4 py-3">{a.group || <span className="text-(--ui-muted-2)">—</span>}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-(--ui-muted)">{a.slug}</td>
+                  <td className="px-4 py-3">{a.group || <span className="ui-muted-2">—</span>}</td>
+                  <td className="px-4 py-3 font-mono text-xs ui-muted">{a.slug}</td>
                   <td className="px-4 py-3">{a.listing_count ?? "—"}</td>
                   <td className="px-4 py-3">
                     <Badge tone={a.is_active !== false ? "emerald" : "zinc"}>
@@ -258,7 +258,7 @@ export default function Page() {
 
               {!filtered.length ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-(--ui-muted)" colSpan={6}>
+                  <td className="px-4 py-10 text-center ui-muted" colSpan={6}>
                     Không có amenity.
                   </td>
                 </tr>
@@ -290,7 +290,7 @@ export default function Page() {
       >
         <div className="space-y-3">
           <div>
-            <div className="mb-1 text-xs font-semibold text-(--ui-muted)">Name</div>
+            <div className="mb-1 text-xs font-semibold ui-muted">Name</div>
             <Input
               value={createForm.name}
               onChange={(e) => setCreateForm((s) => ({ ...s, name: e.target.value }))}
@@ -298,14 +298,14 @@ export default function Page() {
             />
           </div>
           <div>
-            <div className="mb-1 text-xs font-semibold text-(--ui-muted)">Group</div>
+            <div className="mb-1 text-xs font-semibold ui-muted">Group</div>
             <Input
               value={createForm.group}
               onChange={(e) => setCreateForm((s) => ({ ...s, group: e.target.value }))}
               placeholder="Basic / Safety / Bedroom..."
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-(--ui-muted)">
+          <label className="flex items-center gap-2 text-sm ui-muted">
             <input
               type="checkbox"
               checked={createForm.is_active === true}
@@ -338,7 +338,7 @@ export default function Page() {
       >
         <div className="space-y-3">
           <div>
-            <div className="mb-1 text-xs font-semibold text-(--ui-muted)">Name</div>
+            <div className="mb-1 text-xs font-semibold ui-muted">Name</div>
             <Input
               value={editForm.name}
               onChange={(e) => setEditForm((s) => ({ ...s, name: e.target.value }))}
@@ -346,14 +346,14 @@ export default function Page() {
             />
           </div>
           <div>
-            <div className="mb-1 text-xs font-semibold text-(--ui-muted)">Group</div>
+            <div className="mb-1 text-xs font-semibold ui-muted">Group</div>
             <Input
               value={editForm.group}
               onChange={(e) => setEditForm((s) => ({ ...s, group: e.target.value }))}
               placeholder="Group (optional)"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-(--ui-muted)">
+          <label className="flex items-center gap-2 text-sm ui-muted">
             <input
               type="checkbox"
               checked={editForm.is_active === true}

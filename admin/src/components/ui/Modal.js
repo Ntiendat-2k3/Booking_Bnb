@@ -67,20 +67,20 @@ export default function Modal({
           aria-describedby={description ? descId : undefined}
           onMouseDown={(e) => e.stopPropagation()}
           className={cn(
-            "w-full rounded-2xl border border-(--ui-border) bg-(--ui-panel) text-(--foreground) shadow-2xl outline-none",
+            "w-full rounded-2xl border ui-border ui-panel ui-fg shadow-2xl outline-none",
             sizeMap[size] || sizeMap.md
           )}
         >
           {(title || dismissible) ? (
-            <div className="flex items-start justify-between gap-4 border-b border-(--ui-border) p-5">
+            <div className="flex items-start justify-between gap-4 border-b ui-border p-5">
               <div>
                 {title ? (
-                  <div id={titleId} className="text-base font-semibold text-(--foreground)">
+                  <div id={titleId} className="text-base font-semibold ui-fg">
                     {title}
                   </div>
                 ) : null}
                 {description ? (
-                  <div id={descId} className="mt-1 text-sm text-(--ui-muted)">
+                  <div id={descId} className="mt-1 text-sm ui-muted">
                     {description}
                   </div>
                 ) : null}
@@ -102,7 +102,7 @@ export default function Modal({
           <div className="max-h-[70vh] overflow-auto p-5">{children}</div>
 
           {footer ? (
-            <div className="flex flex-col-reverse gap-2 border-t border-(--ui-border) p-5 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-col-reverse gap-2 border-t ui-border p-5 sm:flex-row sm:items-center sm:justify-end">
               {footer}
             </div>
           ) : null}

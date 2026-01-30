@@ -167,9 +167,9 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-(--ui-border) bg-(--ui-panel) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/5 text-(--ui-muted)">
+            <thead className="bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Payment</th>
                 <th className="px-4 py-3">Booking</th>
@@ -182,13 +182,13 @@ export default function Page() {
             </thead>
             <tbody>
               {filtered.map((p) => (
-                <tr key={p.id} className="border-t border-(--ui-border) hover:bg-white/5">
+                <tr key={p.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
-                    <div className="font-mono text-xs text-(--ui-muted)">#{p.id}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted)">{(p.provider_txn_ref || p.txn_ref) ? `ref: ${p.provider_txn_ref || p.txn_ref}` : ""}</div>
+                    <div className="font-mono text-xs ui-muted">#{p.id}</div>
+                    <div className="mt-0.5 text-xs ui-muted">{(p.provider_txn_ref || p.txn_ref) ? `ref: ${p.provider_txn_ref || p.txn_ref}` : ""}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-mono text-xs text-(--ui-muted)">{p.booking_id ?? "—"}</span>
+                    <span className="font-mono text-xs ui-muted">{p.booking_id ?? "—"}</span>
                   </td>
                   <td className="px-4 py-3">{p.provider || "—"}</td>
                   <td className="px-4 py-3">
@@ -208,7 +208,7 @@ export default function Page() {
               ))}
               {!filtered.length ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-(--ui-muted)" colSpan={7}>
+                  <td className="px-4 py-10 text-center ui-muted" colSpan={7}>
                     Không có payment.
                   </td>
                 </tr>
@@ -231,64 +231,64 @@ export default function Page() {
         }
       >
         {detailLoading ? (
-          <div className="py-8 text-sm text-(--ui-muted)">Loading...</div>
+          <div className="py-8 text-sm ui-muted">Loading...</div>
         ) : detail ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel-2) p-4">
+            <div className="rounded-2xl border ui-border ui-panel-2 p-4">
               <div className="text-sm font-semibold">Info</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">Provider:</span> {detail.provider || "—"}
+                  <span className="ui-muted">Provider:</span> {detail.provider || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Status:</span>{" "}
+                  <span className="ui-muted">Status:</span>{" "}
                   <Badge tone={tone(detail.status)}>{detail.status || "—"}</Badge>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Amount:</span>{" "}
+                  <span className="ui-muted">Amount:</span>{" "}
                   <span className="font-semibold">{money(detail.amount)} ₫</span>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Booking:</span>{" "}
+                  <span className="ui-muted">Booking:</span>{" "}
                   <span className="font-mono text-xs">{detail.booking_id ?? "—"}</span>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Txn ref:</span> {detail.provider_txn_ref || detail.txn_ref || "—"}
+                  <span className="ui-muted">Txn ref:</span> {detail.provider_txn_ref || detail.txn_ref || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Txn no:</span> {detail.provider_transaction_no || "—"}
+                  <span className="ui-muted">Txn no:</span> {detail.provider_transaction_no || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Created:</span> {fmtDate(detail.created_at)}
+                  <span className="ui-muted">Created:</span> {fmtDate(detail.created_at)}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel-2) p-4">
+            <div className="rounded-2xl border ui-border ui-panel-2 p-4">
               <div className="text-sm font-semibold">Booking snapshot</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">User:</span> {detail.booking?.guest?.email || "—"}
+                  <span className="ui-muted">User:</span> {detail.booking?.guest?.email || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Listing:</span> {detail.booking?.listing?.title || "—"}
+                  <span className="ui-muted">Listing:</span> {detail.booking?.listing?.title || "—"}
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Dates:</span>{" "}
+                  <span className="ui-muted">Dates:</span>{" "}
                   {detail.booking?.check_in || "—"} → {detail.booking?.check_out || "—"}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) bg-(--ui-panel-2) p-4 md:col-span-2">
+            <div className="rounded-2xl border ui-border ui-panel-2 p-4 md:col-span-2">
               <div className="text-sm font-semibold">Raw payload</div>
-              <pre className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-white/5 p-4 text-xs text-(--foreground)">
+              <pre className="mt-3 max-h-[360px] overflow-auto rounded-xl bg-white/5 p-4 text-xs ui-fg">
 {JSON.stringify(detail.payload || {}, null, 2)}
               </pre>
             </div>
           </div>
         ) : (
-          <div className="py-8 text-sm text-(--ui-muted)">No data.</div>
+          <div className="py-8 text-sm ui-muted">No data.</div>
         )}
       </Modal>
     </AdminShell>

@@ -23,9 +23,9 @@ function Stars({ rating }) {
   const n = Math.max(0, Math.min(5, Number(rating || 0)));
   return (
     <div className="text-sm">
-      <span className="text-(--foreground)">{"★★★★★".slice(0, n)}</span>
+      <span className="ui-fg">{"★★★★★".slice(0, n)}</span>
       <span className="text-zinc-300">{"★★★★★".slice(0, 5 - n)}</span>
-      <span className="ml-2 text-xs text-(--ui-muted)">{n}/5</span>
+      <span className="ml-2 text-xs ui-muted">{n}/5</span>
     </div>
   );
 }
@@ -168,9 +168,9 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-(--ui-border) bg-(--ui-panel) shadow-sm">
+        <div className="overflow-hidden rounded-2xl border ui-border ui-panel shadow-sm">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/5 text-(--ui-muted)">
+            <thead className="bg-white/5 ui-muted">
               <tr>
                 <th className="px-4 py-3">Review</th>
                 <th className="px-4 py-3">Listing</th>
@@ -183,18 +183,18 @@ export default function Page() {
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr key={r.id} className="border-t border-(--ui-border) hover:bg-white/5">
+                <tr key={r.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
-                    <div className="font-mono text-xs text-(--ui-muted)">#{r.id}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted) font-mono">booking: {r.booking_id ?? "—"}</div>
+                    <div className="font-mono text-xs ui-muted">#{r.id}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">booking: {r.booking_id ?? "—"}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-(--foreground)">{r.listing?.title || "—"}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted) font-mono">LID: {r.listing?.id || "—"}</div>
+                    <div className="font-medium ui-fg">{r.listing?.title || "—"}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">LID: {r.listing?.id || "—"}</div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-(--foreground)">{r.user?.email || "—"}</div>
-                    <div className="mt-0.5 text-xs text-(--ui-muted) font-mono">UID: {r.user?.id || "—"}</div>
+                    <div className="font-medium ui-fg">{r.user?.email || "—"}</div>
+                    <div className="mt-0.5 text-xs ui-muted font-mono">UID: {r.user?.id || "—"}</div>
                   </td>
                   <td className="px-4 py-3">
                     <Stars rating={r.rating} />
@@ -249,7 +249,7 @@ export default function Page() {
               ))}
               {!filtered.length ? (
                 <tr>
-                  <td className="px-4 py-10 text-center text-(--ui-muted)" colSpan={7}>
+                  <td className="px-4 py-10 text-center ui-muted" colSpan={7}>
                     Không có review.
                   </td>
                 </tr>
@@ -273,45 +273,45 @@ export default function Page() {
       >
         {view ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-(--ui-border) p-4">
+            <div className="rounded-2xl border ui-border p-4">
               <div className="text-sm font-semibold">Meta</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">Rating:</span> <Stars rating={view.rating} />
+                  <span className="ui-muted">Rating:</span> <Stars rating={view.rating} />
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Visibility:</span>{" "}
+                  <span className="ui-muted">Visibility:</span>{" "}
                   <Badge tone={view.is_hidden ? "rose" : "emerald"}>
                     {view.is_hidden ? "hidden" : "visible"}
                   </Badge>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Created:</span> {fmtDate(view.created_at)}
+                  <span className="ui-muted">Created:</span> {fmtDate(view.created_at)}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) p-4">
+            <div className="rounded-2xl border ui-border p-4">
               <div className="text-sm font-semibold">User / Listing</div>
-              <div className="mt-2 space-y-1 text-sm text-(--foreground)">
+              <div className="mt-2 space-y-1 text-sm ui-fg">
                 <div>
-                  <span className="text-(--ui-muted)">User:</span> {view.user?.email || "—"}{" "}
-                  <span className="text-xs font-mono text-(--ui-muted)">({view.user?.id || "—"})</span>
+                  <span className="ui-muted">User:</span> {view.user?.email || "—"}{" "}
+                  <span className="text-xs font-mono ui-muted">({view.user?.id || "—"})</span>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Listing:</span> {view.listing?.title || "—"}{" "}
-                  <span className="text-xs font-mono text-(--ui-muted)">({view.listing?.id || "—"})</span>
+                  <span className="ui-muted">Listing:</span> {view.listing?.title || "—"}{" "}
+                  <span className="text-xs font-mono ui-muted">({view.listing?.id || "—"})</span>
                 </div>
                 <div>
-                  <span className="text-(--ui-muted)">Booking:</span>{" "}
+                  <span className="ui-muted">Booking:</span>{" "}
                   <span className="text-xs font-mono">{view.booking_id ?? "—"}</span>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-(--ui-border) p-4 md:col-span-2">
+            <div className="rounded-2xl border ui-border p-4 md:col-span-2">
               <div className="text-sm font-semibold">Comment</div>
-              <div className="mt-2 whitespace-pre-wrap rounded-xl bg-white/5 p-4 text-sm text-(--ui-muted)">
+              <div className="mt-2 whitespace-pre-wrap rounded-xl bg-white/5 p-4 text-sm ui-muted">
                 {view.comment || "—"}
               </div>
             </div>

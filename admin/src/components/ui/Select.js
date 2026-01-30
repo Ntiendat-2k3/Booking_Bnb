@@ -8,7 +8,7 @@ const Select = forwardRef(function Select({ className, ...props }, ref) {
     <select
       ref={ref}
       className={cn(
-        "h-10 rounded-xl border border-(--ui-border) bg-(--ui-panel-2) px-3 text-sm text-(--foreground) outline-none transition focus:ring-2 focus:ring-(--ui-ring)",
+        "h-10 rounded-xl border ui-input px-3 text-sm outline-none transition focus-ring",
         className
       )}
       {...props}

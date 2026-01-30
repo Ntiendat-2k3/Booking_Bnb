@@ -37,7 +37,7 @@ export default function LoginPage() {
       }
 
       toast.success("Welcome back");
-      router.replace("/dashboard");
+      router.replace("/dashboard/bookings");
     } catch (e2) {
       setError(e2?.message || "Login failed");
     } finally {
@@ -46,18 +46,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-(--background) p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-(--ui-border) bg-(--ui-panel) p-6 shadow-sm">
+    <div className="flex items-center justify-center min-h-screen p-4 app-bg">
+      <div className="w-full max-w-sm p-6 border shadow-sm rounded-2xl ui-border ui-panel">
         <h1 className="text-xl font-semibold">BnB Admin Console</h1>
 
         <form onSubmit={onSubmit} className="mt-4 space-y-3">
           <div className="space-y-1">
-            <label className="text-sm text-(--ui-muted)">Email</label>
-            <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+            <label className="text-sm ui-muted">Email</label>
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              required
+            />
           </div>
           <div className="space-y-1">
-            <label className="text-sm text-(--ui-muted)">Mật khẩu</label>
-            <Input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required />
+            <label className="text-sm ui-muted">Mật khẩu</label>
+            <Input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              required
+            />
           </div>
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}

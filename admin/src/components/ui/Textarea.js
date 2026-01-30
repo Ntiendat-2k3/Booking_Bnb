@@ -8,7 +8,7 @@ const Textarea = forwardRef(function Textarea({ className, ...props }, ref) {
     <textarea
       ref={ref}
       className={cn(
-        "w-full rounded-xl border border-(--ui-border) bg-(--ui-panel-2) px-3 py-2 text-sm text-(--foreground) outline-none transition placeholder:text-(--ui-muted-2) focus:ring-2 focus:ring-(--ui-ring)",
+        "w-full rounded-xl border ui-input px-3 py-2 text-sm outline-none transition focus-ring",
         className
       )}
       {...props}

@@ -8,7 +8,7 @@ const Input = forwardRef(function Input({ className, ...props }, ref) {
     <input
       ref={ref}
       className={cn(
-        "h-10 w-full rounded-xl border border-(--ui-border) bg-(--ui-panel-2) px-3 text-sm text-(--foreground) outline-none transition placeholder:text-(--ui-muted-2) focus:ring-2 focus:ring-(--ui-ring)",
+        "h-10 w-full rounded-xl border ui-input px-3 text-sm outline-none transition focus-ring",
         className
       )}
       {...props}
