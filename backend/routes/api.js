@@ -145,6 +145,28 @@ router.post("/v1/admin/listings/:id/reject", authMiddleware, requireRole(["admin
 router.get("/v1/admin/users", authMiddleware, requireRole(["admin"]), adminUserController.list);
 router.patch("/v1/admin/users/:id/role", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminUserController.setRole);
 
+// Admin amenities/bookings/payments/reviews (Sprint 6)
+const adminAmenityController = require("../controllers/api/v1/admin_amenity.controller");
+const adminBookingController = require("../controllers/api/v1/admin_booking.controller");
+const adminPaymentController = require("../controllers/api/v1/admin_payment.controller");
+const adminReviewController = require("../controllers/api/v1/admin_review.controller");
+
+router.get("/v1/admin/amenities", authMiddleware, requireRole(["admin"]), adminAmenityController.list);
+router.post("/v1/admin/amenities", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminAmenityController.create);
+router.patch("/v1/admin/amenities/:id", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminAmenityController.update);
+router.post("/v1/admin/amenities/:id/active", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminAmenityController.setActive);
+
+router.get("/v1/admin/bookings", authMiddleware, requireRole(["admin"]), adminBookingController.list);
+router.get("/v1/admin/bookings/:id", authMiddleware, requireRole(["admin"]), adminBookingController.detail);
+
+router.get("/v1/admin/payments", authMiddleware, requireRole(["admin"]), adminPaymentController.list);
+router.get("/v1/admin/payments/:id", authMiddleware, requireRole(["admin"]), adminPaymentController.detail);
+
+router.get("/v1/admin/reviews", authMiddleware, requireRole(["admin"]), adminReviewController.list);
+router.post("/v1/admin/reviews/:id/hide", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminReviewController.hide);
+router.post("/v1/admin/reviews/:id/unhide", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminReviewController.unhide);
+router.delete("/v1/admin/reviews/:id", authMiddleware, requireRole(["admin"]), csrfMiddleware, adminReviewController.remove);
+
 
 // Bookings + Payments (Sprint 4)
 const bookingController = require("../controllers/api/v1/booking.controller");

@@ -73,6 +73,7 @@ module.exports = {
     const { rows, count } = await Review.findAndCountAll({
       where: {
         listing_id: listingId,
+        is_hidden: false,
         [Op.and]: Sequelize.literal('COALESCE("reviewer->setting"."show_reviews", TRUE) = TRUE'),
       },
       include: [

@@ -1,9 +1,21 @@
 @import "tailwindcss";
 
+/* Dark + Pink (Airbnb-ish) theme */
 :root {
-  --background: #f8fafc; /* nền xám rất nhạt */
-  --foreground: #0f172a; /* chữ đậm dễ đọc */
-  color-scheme: light; /* ép browser UI theo light */
+  --background: #0b0f19;      /* page bg */
+  --foreground: #e5e7eb;      /* text */
+
+  --ui-panel: #0f172a;        /* cards / tables */
+  --ui-panel-2: #111c33;      /* inputs / subtle */
+  --ui-border: #23304a;       /* borders */
+  --ui-muted: #94a3b8;        /* muted text */
+  --ui-muted-2: #64748b;
+
+  --ui-primary: #FF385C;      /* Airbnb pink */
+  --ui-primary-2: #E61E4D;    /* hover */
+  --ui-ring: rgba(255, 56, 92, 0.35);
+
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -17,4 +29,29 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+
+/* --- UI polish: avoid harsh black borders (fallback if border color utils don't resolve) --- */
+/* Keep legacy class usage safe (pages use many border utils) */
+
+.border,
+.border-t,
+.border-b,
+.border-l,
+.border-r{
+  border-color: var(--ui-border);
+}
+
+hr{
+  border-color: var(--ui-border);
+}
+
+table{
+  border-color: var(--ui-border);
+}
+
+/* soft scrollbars on dark */
+*{
+  scrollbar-color: rgba(148,163,184,.35) transparent;
 }

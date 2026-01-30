@@ -34,6 +34,10 @@ module.exports = (sequelize, DataTypes) => {
       rating: { type: DataTypes.INTEGER, allowNull: false },
       comment: { type: DataTypes.TEXT, allowNull: true },
 
+      // Sprint 6: moderation
+      is_hidden: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+      updated_at: { type: DataTypes.DATE, allowNull: true },
+
       created_at: { type: DataTypes.DATE, allowNull: false },
     },
     {
