@@ -23,11 +23,27 @@ function badge(status) {
   }
 }
 
+function statusLabel(status) {
+  switch (status) {
+    case "pending_payment":
+      return "Chờ thanh toán";
+    case "confirmed":
+      return "Đã xác nhận";
+    case "completed":
+      return "Đã checkout";
+    case "cancelled":
+      return "Đã hủy";
+    default:
+      return status;
+  }
+}
+
 export default function TripsPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState({ repayId: null, cancelId: null, checkoutId: null });
 
   const paymentStatus = sp.get("payment");
   const bookingId = sp.get("bookingId");
@@ -75,6 +91,7 @@ export default function TripsPage() {
 
   async function repay(bookingId) {
     try {
+      setBusy((s) => ({ ...s, repayId: bookingId }));
       const p = await apiFetch(`/api/v1/bookings/${bookingId}/payments/vnpay`, {
         method: "POST",
         body: JSON.stringify({}),
@@ -84,11 +101,14 @@ export default function TripsPage() {
       window.location.href = url;
     } catch (e) {
       notifyError(e?.message || "Không thể thanh toán lại");
+    } finally {
+      setBusy((s) => ({ ...s, repayId: null }));
     }
   }
 
   async function cancel(bookingId) {
     try {
+      setBusy((s) => ({ ...s, cancelId: bookingId }));
       await apiFetch(`/api/v1/bookings/${bookingId}/cancel`, {
         method: "POST",
         body: JSON.stringify({}),
@@ -97,6 +117,29 @@ export default function TripsPage() {
       await load();
     } catch (e) {
       notifyError(e?.message || "Không thể hủy booking");
+    } finally {
+      setBusy((s) => ({ ...s, cancelId: null }));
+    }
+  }
+
+  async function checkout(bookingId) {
+    try {
+      setBusy((s) => ({ ...s, checkoutId: bookingId }));
+      await apiFetch(`/api/v1/bookings/${bookingId}/checkout`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      notifySuccess("Checkout thành công. Bạn có thể đánh giá ngay!");
+      // Optimistic: hide Checkout immediately and show Review.
+      setItems((prev) =>
+        prev.map((b) => (String(b.id) === String(bookingId) ? { ...b, status: "completed", can_review: true } : b))
+      );
+      // Refresh in background for consistency.
+      load();
+    } catch (e) {
+      notifyError(e?.message || "Không thể checkout");
+    } finally {
+      setBusy((s) => ({ ...s, checkoutId: null }));
     }
   }
 
@@ -121,6 +164,7 @@ export default function TripsPage() {
             const listing = b.listing;
             const cover = listing?.cover_url;
             const lastPayment = (b.payments || [])[0];
+            const isPaid = lastPayment?.status === "succeeded";
             return (
               <div key={b.id} className="rounded-2xl border bg-white p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -133,7 +177,7 @@ export default function TripsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <div className="truncate text-lg font-semibold">{listing?.title || "Phòng"}</div>
-                      <span className={badge(b.status)}>{b.status}</span>
+                      <span className={badge(b.status)}>{statusLabel(b.status)}</span>
                     </div>
                     <div className="mt-1 text-sm text-slate-600">
                       {b.check_in} → {b.check_out} • {b.guests_count} khách
@@ -146,6 +190,12 @@ export default function TripsPage() {
                         Payment: {lastPayment.provider} • {lastPayment.status}
                       </div>
                     )}
+
+                  {b.review && (
+                    <div className="mt-2 text-xs text-slate-600">
+                      Bạn đã đánh giá: <span className="font-semibold">{b.review.rating}★</span>
+                    </div>
+                  )}
                   </div>
 
                   <div className="flex shrink-0 flex-wrap gap-2">
@@ -156,19 +206,49 @@ export default function TripsPage() {
                       Xem phòng
                     </Link>
 
+                    {!b.can_review && b.review && (
+                      <Link
+                        href={`/rooms/${listing?.id}#reviews`}
+                        className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                      >
+                        Xem đánh giá
+                      </Link>
+                    )}
+
+                    {b.can_review && (
+                      <Link
+                        href={`/rooms/${listing?.id}?review=1#reviews`}
+                        className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600"
+                      >
+                        Đánh giá
+                      </Link>
+                    )}
+
+                    {b.status === "confirmed" && isPaid && (
+                      <button
+                        onClick={() => checkout(b.id)}
+                        disabled={busy.checkoutId === b.id}
+                        className={`rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60`}
+                      >
+                        {busy.checkoutId === b.id ? "Đang checkout..." : "Checkout"}
+                      </button>
+                    )}
+
                     {b.status === "pending_payment" && (
                       <>
                         <button
                           onClick={() => repay(b.id)}
-                          className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600"
+                          disabled={busy.repayId === b.id}
+                          className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Thanh toán
+                          {busy.repayId === b.id ? "Đang tạo..." : "Thanh toán"}
                         </button>
                         <button
                           onClick={() => cancel(b.id)}
-                          className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+                          disabled={busy.cancelId === b.id}
+                          className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Hủy
+                          {busy.cancelId === b.id ? "Đang hủy..." : "Hủy"}
                         </button>
                       </>
                     )}

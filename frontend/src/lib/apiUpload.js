@@ -2,7 +2,7 @@ import { apiUrl } from "./api";
 
 function getCookie(name) {
   if (typeof document === "undefined") return null;
-  const m = document.cookie.match(new RegExp("(^|;\s*)" + name + "=([^;]+)"));
+  const m = document.cookie.match(new RegExp("(^|;\\s*)" + name + "=([^;]+)"));
   return m ? decodeURIComponent(m[2]) : null;
 }
 

@@ -76,3 +76,6 @@ Admin Page <==> API (PostgreSQL) <==> User Page
     - Build
     - Test
     - Deploy
+
+
+psql -U postgres -d airbnb_app -a -f backend/database/<name>.sql

@@ -85,6 +85,30 @@ module.exports = {
   async detail(id) {
     const listing = await Listing.findOne({
       where: { id, deleted_at: null, status: "published" },
+      attributes: {
+        include: [
+          [
+            literal(`(
+              SELECT COALESCE(AVG(r.rating), 0)
+              FROM reviews r
+              LEFT JOIN user_settings us ON us.user_id = r.reviewer_id
+              WHERE r.listing_id = "Listing".id
+                AND COALESCE(us.show_reviews, TRUE) = TRUE
+            )`),
+            "avg_rating",
+          ],
+          [
+            literal(`(
+              SELECT COUNT(1)
+              FROM reviews r
+              LEFT JOIN user_settings us ON us.user_id = r.reviewer_id
+              WHERE r.listing_id = "Listing".id
+                AND COALESCE(us.show_reviews, TRUE) = TRUE
+            )`),
+            "review_count",
+          ],
+        ],
+      },
       include: [
         { model: User, as: "host", attributes: ["id", "full_name", "avatar_url"] },
         { model: ListingImage, as: "images", attributes: ["id", "url", "sort_order", "is_cover"], separate: true, order: [["sort_order", "ASC"]] },
@@ -98,15 +122,10 @@ module.exports = {
       throw err;
     }
 
-    // Reviews: simple (top 10 newest)
-    const { Review } = require("../models");
-    const reviews = await Review.findAll({
-      where: { listing_id: id },
-      include: [{ model: User, as: "reviewer", attributes: ["id", "full_name", "avatar_url"] }],
-      order: [["created_at", "DESC"]],
-      limit: 10,
-    });
+    // Reviews (Sprint 5): respect privacy settings
+    const reviewService = require("./review.service");
+    const reviewData = await reviewService.listPublicByListing({ listingId: id, page: 1, limit: 10 });
 
-    return { listing, reviews };
+    return { listing, reviews: reviewData.items };
   },
 };

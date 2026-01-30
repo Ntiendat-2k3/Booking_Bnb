@@ -20,6 +20,26 @@ export default function BookingCard({ listing }) {
   const [guests, setGuests] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  const todayStr = useMemo(() => {
+    // yyyy-mm-dd in local time
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }, []);
+
+  const minCheckOut = useMemo(() => {
+    if (!checkIn) return todayStr;
+    // Require checkout strictly after check-in
+    const d = new Date(checkIn + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }, [checkIn, todayStr]);
+
   const nights = useMemo(() => {
     if (!checkIn || !checkOut) return 0;
     const n = daysBetween(checkIn, checkOut);
@@ -39,6 +59,16 @@ export default function BookingCard({ listing }) {
     }
     if (!checkIn || !checkOut) {
       notifyError("Vui lòng chọn ngày nhận phòng và trả phòng");
+      return;
+    }
+
+    // Disallow past dates (client-side guard; server also validates)
+    if (checkIn < todayStr) {
+      notifyError("Ngày nhận phòng không được ở trong quá khứ");
+      return;
+    }
+    if (checkOut <= checkIn) {
+      notifyError("Ngày trả phòng phải sau ngày nhận phòng");
       return;
     }
     if (!nights) {
@@ -104,7 +134,13 @@ export default function BookingCard({ listing }) {
               type="date"
               className="mt-1 w-full rounded-lg border px-2 py-1 text-sm"
               value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
+              min={todayStr}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCheckIn(v);
+                // If checkout is now invalid, clear it so user re-picks.
+                if (checkOut && v && checkOut <= v) setCheckOut("");
+              }}
             />
           </div>
           <div className="border-b p-3">
@@ -113,6 +149,7 @@ export default function BookingCard({ listing }) {
               type="date"
               className="mt-1 w-full rounded-lg border px-2 py-1 text-sm"
               value={checkOut}
+              min={minCheckOut}
               onChange={(e) => setCheckOut(e.target.value)}
             />
           </div>

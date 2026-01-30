@@ -39,4 +39,15 @@ module.exports = {
       return errorResponse(res, e.message || "Cancel booking failed", e.status || 500);
     }
   },
+
+  async checkout(req, res) {
+    try {
+      const userId = req.user.user.id;
+      const bookingId = req.params.id;
+      const booking = await bookingService.checkout({ userId, bookingId });
+      return successResponse(res, { booking }, "Checkout success");
+    } catch (e) {
+      return errorResponse(res, e.message || "Checkout failed", e.status || 500);
+    }
+  },
 };

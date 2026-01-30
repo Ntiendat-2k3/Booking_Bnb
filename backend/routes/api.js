@@ -4,6 +4,7 @@ const router = express.Router();
 const authController = require("../controllers/api/v1/auth.controller");
 const authMiddleware = require("../middlewares/api/auth.middleware");
 const csrfMiddleware = require("../middlewares/csrf.middleware");
+const { upload, uploadErrorHandler } = require("../middlewares/upload.middleware");
 const { authLoginLimiter, authRegisterLimiter, authRefreshLimiter } = require("../middlewares/rateLimit");
 
 // CSRF bootstrap (double-submit cookie)
@@ -21,6 +22,36 @@ router.get("/v1/auth/profile", authMiddleware, authController.profile);
 router.post("/v1/auth/refresh", authRefreshLimiter, csrfMiddleware, authController.refresh);
 router.post("/v1/auth/logout", csrfMiddleware, authController.logout);
 
+// Account settings (Sprint 5)
+const accountController = require("../controllers/api/v1/account.controller");
+router.get("/v1/users/me", authMiddleware, accountController.me);
+router.patch("/v1/users/me", authMiddleware, csrfMiddleware, accountController.updateProfile);
+router.post("/v1/users/me/change-password", authMiddleware, csrfMiddleware, accountController.changePassword);
+router.post(
+  "/v1/users/me/avatar",
+  authMiddleware,
+  csrfMiddleware,
+  upload.single("image"),
+  uploadErrorHandler,
+  accountController.uploadAvatar,
+);
+router.get("/v1/users/me/settings", authMiddleware, accountController.getSettings);
+router.patch("/v1/users/me/settings", authMiddleware, csrfMiddleware, accountController.updateSettings);
+router.get("/v1/users/me/payment-methods", authMiddleware, accountController.listPaymentMethods);
+router.post("/v1/users/me/payment-methods", authMiddleware, csrfMiddleware, accountController.createPaymentMethod);
+router.post(
+  "/v1/users/me/payment-methods/:id/default",
+  authMiddleware,
+  csrfMiddleware,
+  accountController.setDefaultPaymentMethod,
+);
+router.delete(
+  "/v1/users/me/payment-methods/:id",
+  authMiddleware,
+  csrfMiddleware,
+  accountController.deletePaymentMethod,
+);
+
 // Favorites (Sprint 2+)
 const favoriteController = require("../controllers/api/v1/favorite.controller");
 router.get("/v1/favorites", authMiddleware, favoriteController.list);
@@ -37,11 +68,19 @@ router.get("/v1/listings/:id", listingController.detail);
 router.get("/v1/amenities", amenityController.list);
 
 
+// Reviews (Sprint 5)
+const reviewController = require("../controllers/api/v1/review.controller");
+router.get("/v1/listings/:id/reviews", reviewController.listByListing);
+router.get("/v1/listings/:id/reviews/mine", authMiddleware, reviewController.mineForListing);
+router.post("/v1/listings/:id/reviews", authMiddleware, csrfMiddleware, reviewController.createForListing);
+router.patch("/v1/reviews/:id", authMiddleware, csrfMiddleware, reviewController.update);
+router.delete("/v1/reviews/:id", authMiddleware, csrfMiddleware, reviewController.remove);
+
+
 // Uploads (Cloudinary) - host/admin only
 const uploadController = require("../controllers/api/v1/upload.controller");
 const hostListingImageController = require("../controllers/api/v1/host_listing_image.controller");
 const requireRole = require("../middlewares/api/role.middleware");
-const { upload, uploadErrorHandler } = require("../middlewares/upload.middleware");
 const { uploadLimiter } = require("../middlewares/rateLimit");
 
 router.post(
@@ -114,6 +153,7 @@ const paymentController = require("../controllers/api/v1/payment.controller");
 router.post("/v1/bookings", authMiddleware, csrfMiddleware, bookingController.create);
 router.get("/v1/bookings/me", authMiddleware, bookingController.myBookings);
 router.post("/v1/bookings/:id/cancel", authMiddleware, csrfMiddleware, bookingController.cancel);
+router.post("/v1/bookings/:id/checkout", authMiddleware, csrfMiddleware, bookingController.checkout);
 
 router.post(
   "/v1/bookings/:id/payments/vnpay",
@@ -124,6 +164,4 @@ router.post(
 
 router.get("/v1/payments/vnpay/return", paymentController.vnpayReturn);
 router.get("/v1/payments/vnpay/ipn", paymentController.vnpayIpn);
-
-
 module.exports = router;

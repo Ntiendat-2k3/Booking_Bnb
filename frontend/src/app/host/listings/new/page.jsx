@@ -25,7 +25,6 @@ function numOrNull(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
-
 function intOrNull(v) {
   const n = numOrNull(v);
   return n === null ? null : Math.trunc(n);
@@ -93,6 +92,7 @@ export default function NewListingPage() {
         method: "POST",
         body: JSON.stringify({
           ...form,
+          // Convert empty numeric strings to null to avoid Postgres numeric "" errors
           price_per_night: intOrNull(form.price_per_night),
           max_guests: intOrNull(form.max_guests),
           bedrooms: intOrNull(form.bedrooms) ?? 0,
@@ -105,6 +105,7 @@ export default function NewListingPage() {
       const listing = res.data?.listing;
       if (!listing?.id) throw new Error("Create failed");
 
+      // set amenities
       if (picked.size) {
         await apiFetch(`/api/v1/host/listings/${listing.id}/amenities`, {
           method: "PUT",
@@ -126,151 +127,84 @@ export default function NewListingPage() {
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Tạo phòng mới (Draft)</h1>
-          <p className="text-slate-600">
-            Nội dung phải khớp với Room Detail để admin duyệt.
-          </p>
+          <p className="text-slate-600">Nội dung phải khớp với Room Detail để admin duyệt là lên public ngay.</p>
         </div>
-        <Link
-          href="/host/listings"
-          className="px-4 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50"
-        >
+        <Link href="/host/listings" className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-slate-50">
           ← Quay lại
         </Link>
       </div>
 
       <form onSubmit={onCreate} className="grid gap-6 lg:grid-cols-3">
-        {/* CỘT TRÁI - CHIẾM 2 PHẦN */}
-        <div className="space-y-4 lg:col-span-2">
-          <div className="p-6 space-y-4 bg-white border rounded-2xl">
-            <div>
-              <label className="text-sm font-semibold">Tiêu đề</label>
-              <input
-                value={form.title}
-                onChange={(e) => setField("title", e.target.value)}
-                className="w-full px-3 py-2 mt-2 border rounded-xl"
-                placeholder="Ví dụ: Căn hộ studio trung tâm Q1"
+        <div className="lg:col-span-2 space-y-4 rounded-2xl border bg-white p-6">
+          <div>
+            <label className="text-sm font-semibold">Tiêu đề</label>
+            <input value={form.title} onChange={(e) => setField("title", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" placeholder="Ví dụ: Căn hộ studio trung tâm Q1" />
+          </div>
+
+          <div>
+            <label className="text-sm font-semibold">Mô tả</label>
+            <textarea value={form.description} onChange={(e) => setField("description", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" rows={5} placeholder="Mô tả ngắn gọn, rõ ràng..." />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <MapboxAddressPicker
+                address={form.address}
+                city={form.city}
+                country={form.country}
+                lat={form.lat}
+                lng={form.lng}
+                onChange={(patch) => setForm((p) => ({ ...p, ...patch }))}
               />
             </div>
 
             <div>
-              <label className="text-sm font-semibold">Mô tả</label>
-              <textarea
-                value={form.description}
-                onChange={(e) => setField("description", e.target.value)}
-                className="w-full px-3 py-2 mt-2 border rounded-xl"
-                rows={5}
-                placeholder="Mô tả ngắn gọn, rõ ràng..."
-              />
+              <label className="text-sm font-semibold">Giá / đêm (VND)</label>
+              <input type="number" value={form.price_per_night} onChange={(e) => setField("price_per_night", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <MapboxAddressPicker
-                  address={form.address}
-                  city={form.city}
-                  country={form.country}
-                  lat={form.lat}
-                  lng={form.lng}
-                  onChange={(patch) => setForm((p) => ({ ...p, ...patch }))}
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold">Giá / đêm (VND)</label>
-                <input
-                  type="number"
-                  value={form.price_per_night}
-                  onChange={(e) => setField("price_per_night", e.target.value)}
-                  className="w-full px-3 py-2 mt-2 border rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold">Số khách tối đa</label>
-                <input
-                  type="number"
-                  value={form.max_guests}
-                  onChange={(e) => setField("max_guests", e.target.value)}
-                  className="w-full px-3 py-2 mt-2 border rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold">Phòng ngủ</label>
-                <input
-                  type="number"
-                  value={form.bedrooms}
-                  onChange={(e) => setField("bedrooms", e.target.value)}
-                  className="w-full px-3 py-2 mt-2 border rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold">Giường</label>
-                <input
-                  type="number"
-                  value={form.beds}
-                  onChange={(e) => setField("beds", e.target.value)}
-                  className="w-full px-3 py-2 mt-2 border rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold">Phòng tắm</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={form.bathrooms}
-                  onChange={(e) => setField("bathrooms", e.target.value)}
-                  className="w-full px-3 py-2 mt-2 border rounded-xl"
-                />
-              </div>
+            <div>
+              <label className="text-sm font-semibold">Số khách tối đa</label>
+              <input type="number" value={form.max_guests} onChange={(e) => setField("max_guests", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="text-sm font-semibold">Loại nhà</label>
-                <input
-                  value={form.property_type}
-                  onChange={(e) => setField("property_type", e.target.value)}
-                  className="w-full px-3 py-2 mt-2 border rounded-xl"
-                  placeholder="Apartment/House/..."
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold">Loại phòng</label>
-                <input
-                  value={form.room_type}
-                  onChange={(e) => setField("room_type", e.target.value)}
-                  className="w-full px-3 py-2 mt-2 border rounded-xl"
-                  placeholder="Entire place/Private room/..."
-                />
-              </div>
+            <div>
+              <label className="text-sm font-semibold">Phòng ngủ</label>
+              <input type="number" value={form.bedrooms} onChange={(e) => setField("bedrooms", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Giường</label>
+              <input type="number" value={form.beds} onChange={(e) => setField("beds", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Phòng tắm</label>
+              <input type="number" step="0.5" value={form.bathrooms} onChange={(e) => setField("bathrooms", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" />
             </div>
           </div>
-        </div>
 
-        {/* CỘT PHẢI - CHIẾM 1 PHẦN (TIỆN NGHI & NÚT BẤM) */}
-        <div className="space-y-4">
-          <div className="p-6 bg-white border rounded-2xl">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-sm font-semibold">Loại nhà</label>
+
+              <input value={form.property_type} onChange={(e) => setField("property_type", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" placeholder="Apartment/House/..." />
+            </div>
+            <div>
+              <label className="text-sm font-semibold">Loại phòng</label>
+              <input value={form.room_type} onChange={(e) => setField("room_type", e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-2" placeholder="Entire place/Private room/..." />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+          <div className="rounded-2xl border bg-white p-6">
             <div className="text-sm font-semibold">Tiện nghi</div>
-            <p className="mt-1 text-sm text-slate-600">
-              Chọn các amenities phù hợp.
-            </p>
+            <p className="mt-1 text-sm text-slate-600">Chọn các amenities để hiển thị ở Room Detail.</p>
 
             <div className="mt-3 space-y-4 max-h-[520px] overflow-auto pr-1">
               {groups.map(([g, arr]) => (
                 <div key={g}>
-                  <div className="text-xs font-semibold tracking-wide uppercase text-slate-500">
-                    {g}
-                  </div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{g}</div>
                   <div className="mt-2 space-y-2">
                     {arr.map((a) => (
-                      <label
-                        key={a.id}
-                        className="flex items-center gap-2 text-sm cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={picked.has(a.id)}
-                          onChange={() => toggleAmenity(a.id)}
-                        />
+                      <label key={a.id} className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={picked.has(a.id)} onChange={() => toggleAmenity(a.id)} />
                         {a.name}
                       </label>
                     ))}
@@ -283,7 +217,7 @@ export default function NewListingPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full px-4 py-3 text-sm font-semibold text-white rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-60"
+            className="w-full rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
           >
             {busy ? "Đang tạo..." : "Tạo phòng (Draft)"}
           </button>

@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { Booking, Listing, ListingImage, Sequelize } = require("../models");
+const { Booking, Listing, Payment, Sequelize } = require("../models");
 
 const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES || 15);
 
@@ -48,6 +48,14 @@ module.exports = {
     }
     if (!check_in || !check_out) {
       const err = new Error("check_in and check_out are required");
+      err.status = 400;
+      throw err;
+    }
+
+    // Disallow past check-in (yyyy-mm-dd lexical compare works)
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (String(check_in) < todayStr) {
+      const err = new Error("check_in must be today or later");
       err.status = 400;
       throw err;
     }
@@ -148,10 +156,60 @@ module.exports = {
           separate: true,
           order: [["created_at", "DESC"]],
         },
+        {
+          association: "review",
+          attributes: ["id", "rating", "comment", "created_at"],
+          required: false,
+        },
       ],
     });
 
-    return items;
+    // Add computed can_review flag for FE.
+    const today = new Date().toISOString().slice(0, 10);
+    return items.map((b) => {
+      const plain = b.toJSON();
+      const canReview =
+        !plain.review &&
+        (
+          plain.status === "completed" ||
+          (plain.status === "confirmed" && String(plain.check_out) <= today)
+        );
+      plain.can_review = !!canReview;
+      return plain;
+    });
+  },
+
+  async checkout({ userId, bookingId }) {
+    const booking = await Booking.findByPk(bookingId);
+    if (!booking) {
+      const err = new Error("Booking not found");
+      err.status = 404;
+      throw err;
+    }
+    if (String(booking.guest_id) !== String(userId)) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      throw err;
+    }
+    if (booking.status !== "confirmed") {
+      const err = new Error("Booking is not confirmed");
+      err.status = 400;
+      throw err;
+    }
+
+    const paid = await Payment.findOne({
+      where: { booking_id: booking.id, provider: "vnpay", status: "succeeded" },
+      order: [["created_at", "DESC"]],
+    });
+    if (!paid) {
+      const err = new Error("Booking is not paid");
+      err.status = 400;
+      throw err;
+    }
+
+    booking.status = "completed";
+    await booking.save();
+    return booking;
   },
 
   async cancel({ userId, bookingId }) {
