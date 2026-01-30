@@ -50,7 +50,7 @@ export default function ListingCard({ listing }) {
           aria-label="Yêu thích"
           title={user ? "Lưu vào danh sách yêu thích" : "Đăng nhập để lưu"}
         >
-          {isFav ? <HeartFilled className="h-5 w-5 text-rose-500" /> : <HeartOutline className="h-5 w-5 text-slate-800" />}
+          {isFav ? <HeartFilled className="h-5 w-5 text-brand" /> : <HeartOutline className="h-5 w-5 text-slate-800" />}
         </button>
       </div>
 

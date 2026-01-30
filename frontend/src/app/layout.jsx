@@ -5,6 +5,7 @@ import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import CategoryTabs from "@/components/CategoryTabs";
 import BootstrapClient from "./bootstrap-client";
+import Container from "@/components/layout/Container";
 
 export const metadata = { title: "Airbnb App", description: "User Page" };
 
@@ -16,7 +17,9 @@ export default function RootLayout({ children }) {
           <BootstrapClient />
           <Navbar />
           <CategoryTabs />
-          <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+          <main className="py-6">
+            <Container>{children}</Container>
+          </main>
         </Providers>
       </body>
     </html>

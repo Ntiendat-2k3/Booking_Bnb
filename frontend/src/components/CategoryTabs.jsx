@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import Container from "./layout/Container";
 
 const CATEGORIES = [
   { key: "Căn hộ", label: "Căn hộ" },
@@ -18,8 +19,10 @@ function Chip({ active, children, onClick }) {
       type="button"
       onClick={onClick}
       className={
-        "shrink-0 rounded-full border px-4 py-2 text-sm transition " +
-        (active ? "border-slate-900 bg-slate-900 text-white" : "bg-white hover:bg-slate-50")
+        "shrink-0 rounded-full border px-4 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-brand/30 " +
+        (active
+          ? "border-slate-900 bg-slate-900 text-white"
+          : "border-slate-200 bg-white hover:bg-slate-50")
       }
     >
       {children}
@@ -28,7 +31,8 @@ function Chip({ active, children, onClick }) {
 }
 
 export default function CategoryTabs() {
-  const router = useRouter();  const params = useSearchParams();
+  const router = useRouter();
+  const params = useSearchParams();
 
   const current = params.get("property_type") || "";
 
@@ -43,7 +47,7 @@ export default function CategoryTabs() {
 
   return (
     <div className="border-b bg-white">
-      <div className="mx-auto max-w-6xl px-4">
+      <Container>
         <div className="flex gap-2 overflow-x-auto py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Chip active={!current} onClick={() => go("")}>Tất cả</Chip>
           {CATEGORIES.map((c) => (
@@ -52,7 +56,7 @@ export default function CategoryTabs() {
             </Chip>
           ))}
         </div>
-      </div>
+      </Container>
     </div>
   );
 }

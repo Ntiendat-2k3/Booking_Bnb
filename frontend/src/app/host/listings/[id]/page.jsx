@@ -283,7 +283,7 @@ async function onDelete() {
           ) : null}
 
           {(status === "draft" || status === "rejected") ? (
-            <button onClick={onSubmit} className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600">
+            <button onClick={onSubmit} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
               Gửi duyệt
             </button>
           ) : null}

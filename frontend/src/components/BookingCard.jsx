@@ -184,7 +184,7 @@ export default function BookingCard({ listing }) {
       )}
 
       <button
-        className="mt-4 w-full rounded-xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
+        className="mt-4 w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
         onClick={onReserve}
         disabled={loading}
       >

@@ -54,7 +54,7 @@ export default function SearchPills() {
       <button
         type="button"
         onClick={onSearch}
-        className="m-2 flex items-center justify-center rounded-full bg-rose-500 p-2 text-white"
+        className="m-2 flex items-center justify-center rounded-full bg-brand p-2 text-white hover:bg-brand-dark"
         aria-label="Tìm kiếm"
       >
         <SearchIcon className="h-4 w-4" />

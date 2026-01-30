@@ -48,9 +48,9 @@ export default async function SearchPage({ searchParams }) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {items.map((it) => (
               <ListingCard key={it.id} listing={it} />
             ))}
@@ -65,7 +65,7 @@ export default async function SearchPage({ searchParams }) {
           <Pagination meta={meta} baseParams={baseParams} />
         </div>
 
-        <aside className="hidden lg:block">
+        <aside className="hidden xl:block">
           <div className="sticky top-24 rounded-2xl border bg-white p-5 shadow-sm">
             <div className="text-sm font-semibold">Bản đồ</div>
             <div className="mt-4 overflow-hidden rounded-xl bg-slate-100">

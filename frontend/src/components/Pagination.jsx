@@ -37,7 +37,7 @@ export default function Pagination({ meta, baseParams }) {
           href={pageHref(baseParams, p)}
           className={
             "rounded-lg border px-3 py-2 text-sm hover:bg-slate-50 " +
-            (p === page ? "border-slate-900 bg-slate-900 text-white hover:bg-slate-900" : "")
+            (p === page ? "border-brand bg-brand text-white hover:bg-brand" : "")
           }
         >
           {p}

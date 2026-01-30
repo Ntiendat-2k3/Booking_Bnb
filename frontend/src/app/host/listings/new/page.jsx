@@ -279,7 +279,7 @@ export default function NewListingPage() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full px-4 py-3 text-base font-bold text-white transition-all rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-60"
+            className="w-full px-4 py-3 text-base font-bold text-white transition-all rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-60"
           >
             {busy ? "Đang xử lý..." : "Tạo phòng (Draft)"}
           </button>

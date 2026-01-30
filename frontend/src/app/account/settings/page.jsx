@@ -254,7 +254,7 @@ export default function AccountSettingsPage() {
                 <div>
                   <button
                     onClick={saveProfile}
-                    className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600"
+                    className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
                   >
                     Lưu hồ sơ
                   </button>
@@ -392,7 +392,7 @@ export default function AccountSettingsPage() {
                   <button
                     disabled={savingPm}
                     onClick={addPaymentMethod}
-                    className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
+                    className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
                   >
                     Thêm phương thức
                   </button>

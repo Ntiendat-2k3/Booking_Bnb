@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Container from "./layout/Container";
 
 const SECTIONS = [
   { id: "photos", label: "Ảnh" },
@@ -47,7 +48,7 @@ export default function RoomTabs() {
 
   return (
     <div className="sticky top-16 z-30 border-b bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-4">
+      <Container className="flex items-center gap-6">
         {SECTIONS.map((s) => (
           <button
             key={s.id}
@@ -61,7 +62,7 @@ export default function RoomTabs() {
             {active === s.id ? <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-slate-900" /> : null}
           </button>
         ))}
-      </div>
+      </Container>
     </div>
   );
 }

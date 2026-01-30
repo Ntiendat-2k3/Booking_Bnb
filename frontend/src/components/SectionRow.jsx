@@ -11,11 +11,9 @@ export default function SectionRow({ title, items }) {
         <h2 className="text-xl font-semibold">{title}</h2>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {items.map((it) => (
-          <div key={it.id} className="w-[280px] shrink-0">
-            <ListingCard listing={it} />
-          </div>
+          <ListingCard key={it.id} listing={it} />
         ))}
       </div>
     </section>

@@ -55,7 +55,7 @@ export default function HostOnboardingPage() {
             Bạn cần đăng nhập để đăng phòng.
           </p>
           <div className="mt-4 flex gap-3">
-            <Link href="/login" className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600">
+            <Link href="/login" className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
               Đăng nhập
             </Link>
             <Link href="/" className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-slate-50">
@@ -85,7 +85,7 @@ export default function HostOnboardingPage() {
           <button
             onClick={onConfirm}
             disabled={!checked || busy}
-            className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:opacity-60"
+            className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
           >
             {busy ? "Đang xử lý..." : "Xác nhận"}
           </button>

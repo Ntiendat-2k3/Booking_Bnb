@@ -89,7 +89,7 @@ async function onDelete(id) {
           <h1 className="text-xl font-semibold">Host • Quản lý phòng</h1>
           <p className="mt-2 text-slate-600">Bạn cần đăng nhập.</p>
           <div className="mt-4 flex gap-3">
-            <Link href="/login" className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600">
+            <Link href="/login" className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
               Đăng nhập
             </Link>
           </div>
@@ -105,7 +105,7 @@ async function onDelete(id) {
           <h1 className="text-xl font-semibold">Bạn chưa là Host</h1>
           <p className="mt-2 text-slate-600">Hãy xác nhận để trở thành Host trước khi đăng phòng.</p>
           <div className="mt-4">
-            <Link href="/host" className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600">
+            <Link href="/host" className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
               Trở thành host
             </Link>
           </div>
@@ -124,7 +124,7 @@ async function onDelete(id) {
           </p>
         </div>
 
-        <Link href="/host/listings/new" className="inline-flex w-fit rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600">
+        <Link href="/host/listings/new" className="inline-flex w-fit rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
           + Tạo phòng mới
         </Link>
       </div>

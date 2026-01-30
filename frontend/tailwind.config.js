@@ -5,6 +5,16 @@ module.exports = {
     "./src/components/**/*.{js,jsx}",
     "./src/pages/**/*.{js,jsx}",
   ],
-  theme: { extend: {} },
+  theme: {
+    extend: {
+      colors: {
+        // Airbnb-like brand pink
+        brand: {
+          DEFAULT: "#FF385C",
+          dark: "#E61E4D",
+        },
+      },
+    },
+  },
   plugins: [],
 };

@@ -129,7 +129,7 @@ export default function SearchFilters() {
             📍 Gần tôi
           </button>
 
-          <button onClick={apply} className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600">
+          <button onClick={apply} className="rounded-xl bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark">
             Áp dụng
           </button>
           <button onClick={clear} className="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-slate-50">

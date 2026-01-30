@@ -30,7 +30,8 @@ function MapPopupCard({ listing, onClose }) {
   const cover = listing?.cover_url || listing?.images?.[0]?.url;
   const rating = Number(listing?.avg_rating || 0);
   const ratingText = rating > 0 ? rating.toFixed(1) : "Mới";
-  const distanceKm = listing?.distance_km != null ? Number(listing?.distance_km) : null;
+  const distanceKm =
+    listing?.distance_km != null ? Number(listing?.distance_km) : null;
   const distanceText = Number.isFinite(distanceKm)
     ? `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`
     : null;
@@ -40,15 +41,19 @@ function MapPopupCard({ listing, onClose }) {
       <div className="relative">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={cover} alt={listing?.title || "Listing"} className="h-40 w-full rounded-t-2xl object-cover" />
+          <img
+            src={cover}
+            alt={listing?.title || "Listing"}
+            className="object-cover w-full h-40 rounded-t-2xl"
+          />
         ) : (
-          <div className="h-40 w-full rounded-t-2xl bg-slate-200" />
+          <div className="w-full h-40 rounded-t-2xl bg-slate-200" />
         )}
 
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-full bg-white/95 shadow hover:bg-white"
+          className="absolute grid rounded-full shadow right-2 top-2 h-9 w-9 place-items-center bg-white/95 hover:bg-white"
           aria-label="Đóng"
         >
           ✕
@@ -58,28 +63,36 @@ function MapPopupCard({ listing, onClose }) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="truncate text-base font-semibold">{listing?.title || "Chỗ ở"}</div>
+            <div className="text-base font-semibold truncate">
+              {listing?.title || "Chỗ ở"}
+            </div>
             <div className="mt-1 text-sm text-slate-600">
               {listing?.city || ""}
-              {distanceText ? <span className="ml-2">• Cách bạn {distanceText}</span> : null}
+              {distanceText ? (
+                <span className="ml-2">• Cách bạn {distanceText}</span>
+              ) : null}
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1 text-sm">
-            <StarIcon className="h-4 w-4" />
+          <div className="flex items-center gap-1 text-sm shrink-0">
+            <StarIcon className="w-4 h-4" />
             <span className="font-medium">{ratingText}</span>
             {Number(listing?.review_count || 0) > 0 ? (
-              <span className="text-slate-600">({Number(listing.review_count)})</span>
+              <span className="text-slate-600">
+                ({Number(listing.review_count)})
+              </span>
             ) : null}
           </div>
         </div>
 
-        <div className="mt-3 flex items-end justify-between">
-          <div className="text-base font-semibold">{formatVND(listing?.price_per_night)}</div>
+        <div className="flex items-end justify-between mt-3">
+          <div className="text-base font-semibold">
+            {formatVND(listing?.price_per_night)}
+          </div>
           {id ? (
             <Link
-              href={`/listings/${id}`}
-              className="rounded-xl bg-black px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
+              href={`/rooms/${id}`}
+              className="px-3 py-2 text-sm font-semibold text-white bg-black rounded-xl hover:opacity-90"
             >
               Xem chi tiết
             </Link>
@@ -103,7 +116,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
 
   const user = useMemo(
     () => ({ lat: toNum(userLat), lng: toNum(userLng) }),
-    [userLat, userLng]
+    [userLat, userLng],
   );
 
   const points = useMemo(() => {
@@ -118,7 +131,8 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
   }, [items]);
 
   const initialCenter = useMemo(() => {
-    if (user.lat != null && user.lng != null) return { lat: user.lat, lng: user.lng };
+    if (user.lat != null && user.lng != null)
+      return { lat: user.lat, lng: user.lng };
     if (points.length) return { lat: points[0].lat, lng: points[0].lng };
     return DEFAULT_CENTER;
   }, [user.lat, user.lng, points]);
@@ -190,7 +204,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
       const mapboxgl = (await import("mapbox-gl")).default;
       const el = document.createElement("div");
       el.className =
-        "h-3 w-3 rounded-full bg-blue-600 ring-4 ring-blue-200 shadow";
+        "w-3 h-3 bg-blue-600 rounded-full shadow ring-4 ring-blue-200";
       try {
         userMarkerRef.current?.remove();
       } catch {}
@@ -225,7 +239,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
         const pill = document.createElement("button");
         pill.type = "button";
         pill.className =
-          "rounded-full border px-3 py-1 text-sm font-semibold shadow-sm bg-white text-slate-900 hover:shadow";
+          "px-3 py-1 text-sm font-semibold bg-white border rounded-full shadow-sm text-slate-900 hover:shadow";
         pill.textContent = formatVndPill(it?.price_per_night);
 
         pill.addEventListener("click", (e) => {
@@ -254,15 +268,15 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
   if (!token) {
     return (
       <div className="flex h-[520px] items-center justify-center p-6 text-center text-sm text-slate-600">
-        Thiếu <span className="font-semibold">NEXT_PUBLIC_MAPBOX_TOKEN</span>. Thêm token vào biến môi trường
-        để bật bản đồ.
+        Thiếu <span className="font-semibold">NEXT_PUBLIC_MAPBOX_TOKEN</span>.
+        Thêm token vào biến môi trường để bật bản đồ.
       </div>
     );
   }
 
   return (
     <div className="relative h-[520px] w-full">
-      <div ref={containerRef} className="h-full w-full" />
+      <div ref={containerRef} className="w-full h-full" />
       <MapPopupCard listing={selected} onClose={() => setSelected(null)} />
     </div>
   );

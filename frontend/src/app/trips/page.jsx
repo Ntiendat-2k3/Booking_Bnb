@@ -154,7 +154,7 @@ export default function TripsPage() {
         <div className="mt-6 rounded-2xl border bg-white p-6">
           <div className="font-semibold">Chưa có booking nào</div>
           <p className="mt-1 text-slate-600">Hãy tìm một chỗ ở và đặt phòng.</p>
-          <Link href="/search" className="mt-4 inline-flex rounded-xl bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600">
+          <Link href="/search" className="mt-4 inline-flex rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">
             Tìm phòng
           </Link>
         </div>
@@ -218,7 +218,7 @@ export default function TripsPage() {
                     {b.can_review && (
                       <Link
                         href={`/rooms/${listing?.id}?review=1#reviews`}
-                        className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600"
+                        className="rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
                       >
                         Đánh giá
                       </Link>
@@ -239,7 +239,7 @@ export default function TripsPage() {
                         <button
                           onClick={() => repay(b.id)}
                           disabled={busy.repayId === b.id}
-                          className="rounded-xl bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="rounded-xl bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {busy.repayId === b.id ? "Đang tạo..." : "Thanh toán"}
                         </button>
