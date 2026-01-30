@@ -4,7 +4,6 @@ let _client = null;
 let _ready = false;
 
 function isRedisDisabled() {
-  // allow opt-out for local/dev environments
   const disabled = String(process.env.REDIS_DISABLED || "").toLowerCase();
   const cacheEnabled = String(
     process.env.CACHE_ENABLED || "true",
@@ -44,7 +43,6 @@ async function connectRedis() {
   _client = createClient(buildRedisOptions());
 
   _client.on("error", (err) => {
-    // Don't crash the process: caching is optional.
     console.error("[redis] error:", err?.message || err);
   });
   _client.on("ready", () => {

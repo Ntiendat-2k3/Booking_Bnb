@@ -6,14 +6,31 @@ export function serverApiUrl(path) {
 }
 
 /**
- * Server-side fetch helper.
+ * Server-side fetch helper (intern-style).
  *
- * Defaults to `cache: "no-store"` to keep the current behavior.
- * You can override caching by passing a second `init` argument, e.g.
- * `serverGetJson(path, { next: { revalidate: 300 } })`.
+ * Rule (to avoid Next.js warning):
+ * - If you pass `next: { revalidate: ... }` => we DO NOT set `cache`.
+ * - If you pass `cache: ...` yourself        => we DO NOT override it.
+ * - Otherwise (default)                      => `cache: "no-store"`.
+ *
+ * Examples:
+ *   // Room detail cache 5 minutes:
+ *   serverGetJson("/api/v1/listings/xxx", { next: { revalidate: 300 } })
+ *
+ *   // Search always fresh:
+ *   serverGetJson("/api/v1/listings?..." ) // default no-store
  */
 export async function serverGetJson(path, init = {}) {
-  const res = await fetch(serverApiUrl(path), { cache: "no-store", ...init });
+  const hasNextRevalidate = init?.next?.revalidate !== undefined;
+  const hasExplicitCache = Object.prototype.hasOwnProperty.call(init, "cache");
+
+  const fetchInit =
+    hasNextRevalidate || hasExplicitCache
+      ? { ...init }
+      : { cache: "no-store", ...init };
+
+  const res = await fetch(serverApiUrl(path), fetchInit);
+
   const data = await res.json();
   if (!res.ok) {
     const err = new Error(data?.message || "Request failed");

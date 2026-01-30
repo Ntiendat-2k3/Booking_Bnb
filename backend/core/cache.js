@@ -26,7 +26,6 @@ async function invalidate(patterns = [], { prefix = DEFAULT_PREFIX } = {}) {
     const match = p.startsWith(prefix + ":") ? p : `${prefix}:${p}`;
 
     try {
-      // redis v4 supports async iterator for SCAN
       for await (const key of client.scanIterator({
         MATCH: match,
         COUNT: 200,
@@ -85,16 +84,13 @@ function cache(ttlSeconds = 60, opts = {}) {
       try {
         if (!options.onlyStatusCodes.includes(res.statusCode)) return;
 
-        // Avoid caching very large payloads (defaults to 1MB)
         const maxBytes = Number(process.env.CACHE_MAX_BYTES || 1024 * 1024);
         const raw = typeof body === "string" ? body : JSON.stringify(body);
         if (Buffer.byteLength(raw, "utf8") > maxBytes) return;
 
         const payload = {
           statusCode: res.statusCode,
-          // store as string to replay with res.send
           body: raw,
-          // minimal headers that are safe to replay
           headers: {
             "Content-Type":
               res.get("Content-Type") || "application/json; charset=utf-8",
