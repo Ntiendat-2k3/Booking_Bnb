@@ -4,8 +4,20 @@ const ListingRepository = require("../repositories/listing.repository");
 const listingRepo = new ListingRepository();
 const { literal } = Sequelize;
 
+function hasCoords(filters = {}) {
+  // IMPORTANT: Number(null) === 0 (finite) => must guard explicitly.
+  const lat = filters.lat;
+  const lng = filters.lng;
+  if (lat === null || lat === undefined || lat === "") return false;
+  if (lng === null || lng === undefined || lng === "") return false;
+  return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+}
+
 function parseSort(sort) {
   switch (sort) {
+    case "distance_asc":
+      // "distance_km" is only included when lat/lng is present
+      return [[literal('"distance_km"'), "ASC"], ["created_at", "DESC"]];
     case "price_asc":
       return [["price_per_night", "ASC"]];
     case "price_desc":
@@ -26,6 +38,12 @@ module.exports = {
     const offset = (page - 1) * limit;
 
     const where = listingRepo.buildWhere(filters);
+
+    // Prevent ordering by distance when client hasn't provided lat/lng
+    const hasCoordsFlag = hasCoords(filters);
+    if (filters.sort === "distance_asc" && !hasCoordsFlag) {
+      filters.sort = "newest";
+    }
 
     const attrs = {
       include: [
@@ -57,6 +75,25 @@ module.exports = {
         ],
       ],
     };
+
+    // Nearby search: return distance_km for UI ("Cách bạn X km")
+    const lat = Number(filters.lat);
+    const lng = Number(filters.lng);
+    if (hasCoordsFlag) {
+      attrs.include.push([
+        literal(`(
+          6371 * acos(
+            cos(radians(${lat})) * cos(radians(CAST("Listing"."lat" AS double precision)))
+            * cos(radians(CAST("Listing"."lng" AS double precision)) - radians(${lng}))
+            + sin(radians(${lat})) * sin(radians(CAST("Listing"."lat" AS double precision)))
+          )
+        )`),
+        "distance_km",
+      ]);
+
+      // If client didn't set sort, default to distance for near-me results
+      if (!filters.sort) filters.sort = "distance_asc";
+    }
 
     const order = parseSort(filters.sort);
 

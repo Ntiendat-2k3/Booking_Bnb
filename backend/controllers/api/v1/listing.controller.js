@@ -11,6 +11,12 @@ function toInt(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+function toFloat(v) {
+  if (v === undefined || v === null || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
 module.exports = {
   list: async (req, res) => {
     try {
@@ -23,6 +29,10 @@ module.exports = {
         bedrooms: toInt(req.query.bedrooms),
         room_type: req.query.room_type || null,
         property_type: req.query.property_type || null,
+        // Nearby search ("Near me")
+        lat: toFloat(req.query.lat),
+        lng: toFloat(req.query.lng),
+        radius_km: toFloat(req.query.radius_km),
         sort: req.query.sort || null,
         page: toInt(req.query.page) || 1,
         limit: toInt(req.query.limit) || 20,

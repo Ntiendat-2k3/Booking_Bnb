@@ -19,6 +19,8 @@ export default function ListingCard({ listing }) {
   const cover = listing.cover_url || listing.images?.[0]?.url;
   const rating = Number(listing.avg_rating || 0);
   const ratingText = rating > 0 ? rating.toFixed(2) : "Mới";
+  const distanceKm = listing.distance_km != null ? Number(listing.distance_km) : null;
+  const distanceText = Number.isFinite(distanceKm) ? `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km` : null;
 
   async function onToggleFav(e) {
     e.preventDefault();
@@ -58,6 +60,9 @@ export default function ListingCard({ listing }) {
             {listing.city}, {listing.country}
           </div>
           <div className="truncate text-sm text-slate-600">{listing.title}</div>
+          {distanceText ? (
+            <div className="mt-1 text-xs text-slate-600">Cách bạn {distanceText}</div>
+          ) : null}
           <div className="mt-1 text-sm">
             <span className="font-semibold">{formatVND(listing.price_per_night)}</span>
             <span className="text-slate-600"> / đêm</span>

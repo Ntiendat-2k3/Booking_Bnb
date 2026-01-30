@@ -1,12 +1,28 @@
 import SearchFilters from "@/components/SearchFilters";
 import ListingCard from "@/components/ListingCard";
 import Pagination from "@/components/Pagination";
+import SearchResultsMap from "@/components/SearchResultsMap";
 import { serverGetJson } from "@/lib/serverApi";
 
 export default async function SearchPage({ searchParams }) {
   const sp = await searchParams;
   const q = new URLSearchParams();
-  const keys = ["city","min_price","max_price","guests","bedrooms","sort","page","limit","property_type","room_type"];
+  const keys = [
+    "city",
+    "min_price",
+    "max_price",
+    "guests",
+    "bedrooms",
+    "sort",
+    "page",
+    "limit",
+    "property_type",
+    "room_type",
+    // Nearby search ("Near me")
+    "lat",
+    "lng",
+    "radius_km",
+  ];
   keys.forEach((k) => {
     const v = sp?.[k];
     if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
@@ -51,14 +67,13 @@ export default async function SearchPage({ searchParams }) {
 
         <aside className="hidden lg:block">
           <div className="sticky top-24 rounded-2xl border bg-white p-5 shadow-sm">
-            <div className="text-sm font-semibold">Bản đồ (Sprint 2+)</div>
-            <p className="mt-2 text-sm text-slate-600">
-              Map sẽ làm ở Sprint 3/4 (Mapbox/Leaflet). Hiện đang placeholder để giống UI Airbnb/Booking.
-            </p>
+            <div className="text-sm font-semibold">Bản đồ</div>
             <div className="mt-4 overflow-hidden rounded-xl bg-slate-100">
-              <div className="flex h-64 items-center justify-center text-slate-500">
-                Map placeholder
-              </div>
+              <SearchResultsMap
+                items={items}
+                userLat={sp?.lat}
+                userLng={sp?.lng}
+              />
             </div>
           </div>
         </aside>
