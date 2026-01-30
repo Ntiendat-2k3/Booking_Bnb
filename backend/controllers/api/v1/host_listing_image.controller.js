@@ -2,6 +2,7 @@ const { successResponse, errorResponse } = require("../../../utils/response");
 const { Listing, ListingImage } = require("../../../models");
 const { Op } = require("sequelize");
 const { destroy } = require("../../../services/cloudinary.service");
+const { invalidate } = require("../../../core/cache");
 
 function isUuid(v) {
   return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
@@ -82,6 +83,9 @@ module.exports = {
         await ensureCoverExists(listingId);
       }
 
+      // Invalidate public listing caches (cover image & detail images)
+      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
+
       return successResponse(res, { image: img }, "Attached", 201);
     } catch (e) {
       return errorResponse(res, e.message || "Attach failed", e.status || 500);
@@ -107,6 +111,8 @@ module.exports = {
 
       await ListingImage.update({ is_cover: false }, { where: { listing_id: listingId } }).catch(() => {});
       await img.update({ is_cover: true });
+
+      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
 
       return successResponse(res, { image: img }, "Cover updated", 200);
     } catch (e) {
@@ -144,6 +150,8 @@ module.exports = {
       if (wasCover) {
         await ensureCoverExists(listingId);
       }
+
+      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
 
       return successResponse(res, { ok: true }, "Deleted", 200);
     } catch (e) {

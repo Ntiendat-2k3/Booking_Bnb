@@ -1,5 +1,6 @@
 const { successResponse, errorResponse } = require("../../../utils/response");
 const adminAmenityService = require("../../../services/admin_amenity.service");
+const { invalidate } = require("../../../core/cache");
 
 module.exports = {
   list: async (req, res) => {
@@ -15,6 +16,8 @@ module.exports = {
   create: async (req, res) => {
     try {
       const data = await adminAmenityService.create(req.body || {});
+
+      invalidate(["GET:/api/v1/amenities*", "GET:/api/v1/listings*"]).catch(() => {});
       return successResponse(res, data, "Amenity created", 201);
     } catch (e) {
       return errorResponse(res, e.message || "Create failed", e.status || 500);
@@ -24,6 +27,8 @@ module.exports = {
   update: async (req, res) => {
     try {
       const data = await adminAmenityService.update(req.params.id, req.body || {});
+
+      invalidate(["GET:/api/v1/amenities*", "GET:/api/v1/listings*"]).catch(() => {});
       return successResponse(res, data, "Amenity updated", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update failed", e.status || 500);
@@ -34,6 +39,8 @@ module.exports = {
     try {
       const { is_active } = req.body || {};
       const data = await adminAmenityService.setActive(req.params.id, is_active === true);
+
+      invalidate(["GET:/api/v1/amenities*", "GET:/api/v1/listings*"]).catch(() => {});
       return successResponse(res, data, "Amenity updated", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update failed", e.status || 500);

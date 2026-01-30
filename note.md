@@ -79,3 +79,6 @@ Admin Page <==> API (PostgreSQL) <==> User Page
 
 
 psql -U postgres -d airbnb_app -a -f backend/database/<name>.sql
+
+# run backend test cache
+curl -s -o /dev/null -w "time_total=%{time_total}\n" "http://localhost:3000/api/v1/listings"

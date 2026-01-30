@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
+// Redis cache (optional)
+const { cache } = require("../core/cache");
+
 const authController = require("../controllers/api/v1/auth.controller");
 const authMiddleware = require("../middlewares/api/auth.middleware");
 const csrfMiddleware = require("../middlewares/csrf.middleware");
@@ -63,14 +66,15 @@ router.post("/v1/favorites/:listingId", authMiddleware, csrfMiddleware, favorite
 const listingController = require("../controllers/api/v1/listing.controller");
 const amenityController = require("../controllers/api/v1/amenity.controller");
 
-router.get("/v1/listings", listingController.list);
-router.get("/v1/listings/:id", listingController.detail);
-router.get("/v1/amenities", amenityController.list);
+// Cache public browsing endpoints (safe, no auth)
+router.get("/v1/listings", cache(Number(process.env.CACHE_TTL_LISTINGS || 60)), listingController.list);
+router.get("/v1/listings/:id", cache(Number(process.env.CACHE_TTL_LISTING_DETAIL || 300)), listingController.detail);
+router.get("/v1/amenities", cache(Number(process.env.CACHE_TTL_AMENITIES || 3600)), amenityController.list);
 
 
 // Reviews (Sprint 5)
 const reviewController = require("../controllers/api/v1/review.controller");
-router.get("/v1/listings/:id/reviews", reviewController.listByListing);
+router.get("/v1/listings/:id/reviews", cache(Number(process.env.CACHE_TTL_REVIEWS || 120)), reviewController.listByListing);
 router.get("/v1/listings/:id/reviews/mine", authMiddleware, reviewController.mineForListing);
 router.post("/v1/listings/:id/reviews", authMiddleware, csrfMiddleware, reviewController.createForListing);
 router.patch("/v1/reviews/:id", authMiddleware, csrfMiddleware, reviewController.update);

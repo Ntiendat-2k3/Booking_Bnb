@@ -1,5 +1,6 @@
 const reviewService = require("../../../services/review.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
+const { invalidate } = require("../../../core/cache");
 
 function toInt(v, fallback) {
   const n = Number(v);
@@ -41,6 +42,9 @@ module.exports = {
         rating: req.body?.rating,
         comment: req.body?.comment,
       });
+
+      // A new review can affect listing detail, review list, and rating-based sorts
+      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
       return successResponse(res, review, "Created", 201);
     } catch (e) {
       return errorResponse(res, e.message || "Create review failed", e.status || 500);
@@ -57,6 +61,9 @@ module.exports = {
         rating: req.body?.rating,
         comment: req.body?.comment,
       });
+
+      const listingId = review?.listing_id;
+      invalidate(["GET:/api/v1/listings*", listingId ? `GET:/api/v1/listings/${listingId}*` : null].filter(Boolean)).catch(() => {});
       return successResponse(res, review, "Updated", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update review failed", e.status || 500);
@@ -67,7 +74,10 @@ module.exports = {
     try {
       const userId = req.user.user.id;
       const reviewId = req.params.id;
-      await reviewService.remove({ userId, reviewId });
+      const result = await reviewService.remove({ userId, reviewId });
+
+      const listingId = result?.listing_id;
+      invalidate(["GET:/api/v1/listings*", listingId ? `GET:/api/v1/listings/${listingId}*` : null].filter(Boolean)).catch(() => {});
       return successResponse(res, { ok: true }, "Deleted", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Delete review failed", e.status || 500);

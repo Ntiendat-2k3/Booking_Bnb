@@ -68,7 +68,8 @@ module.exports = {
       err.status = 404;
       throw err;
     }
+    const listingId = review.listing_id;
     await review.destroy();
-    return { ok: true };
+    return { ok: true, listing_id: listingId };
   },
 };

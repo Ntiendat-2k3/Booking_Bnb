@@ -1,5 +1,6 @@
 const { successResponse, errorResponse } = require("../../../utils/response");
 const hostListingService = require("../../../services/host_listing.service");
+const { invalidate } = require("../../../core/cache");
 
 function isUuid(v) {
   return hostListingService.isUuid(v);
@@ -47,6 +48,9 @@ module.exports = {
       if (!isUuid(req.params.id)) return errorResponse(res, "Invalid listing id", 400);
       const user = req.user?.user;
       const data = await hostListingService.update(user, req.params.id, req.body);
+
+      // Listing fields may impact public browsing caches (when published)
+      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
       return successResponse(res, data, "Updated", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update failed", e.status || 500);
@@ -60,6 +64,8 @@ module.exports = {
       const user = req.user?.user;
       const ids = req.body?.amenity_ids || [];
       const data = await hostListingService.setAmenities(user, req.params.id, ids);
+
+      invalidate(["GET:/api/v1/listings*", "GET:/api/v1/amenities*"]).catch(() => {});
       return successResponse(res, data, "Amenities updated", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update failed", e.status || 500);
@@ -72,6 +78,8 @@ module.exports = {
       if (!isUuid(req.params.id)) return errorResponse(res, "Invalid listing id", 400);
       const user = req.user?.user;
       const data = await hostListingService.submitForReview(user, req.params.id);
+
+      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
       return successResponse(res, data, "Submitted for review", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Submit failed", e.status || 500);
@@ -84,6 +92,8 @@ module.exports = {
       if (!isUuid(req.params.id)) return errorResponse(res, "Invalid listing id", 400);
       const user = req.user?.user;
       const data = await hostListingService.pause(user, req.params.id);
+
+      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
       return successResponse(res, data, "Paused", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Pause failed", e.status || 500);
@@ -96,6 +106,8 @@ module.exports = {
       if (!isUuid(req.params.id)) return errorResponse(res, "Invalid listing id", 400);
       const user = req.user?.user;
       const data = await hostListingService.resume(user, req.params.id);
+
+      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
       return successResponse(res, data, "Resumed", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Resume failed", e.status || 500);
@@ -109,6 +121,8 @@ destroy: async (req, res) => {
     if (!isUuid(req.params.id)) return errorResponse(res, "Invalid listing id", 400);
     const user = req.user?.user;
     const data = await hostListingService.deleteListing(user, req.params.id);
+
+    invalidate(["GET:/api/v1/listings*"]).catch(() => {});
     return successResponse(res, data, "Deleted", 200);
   } catch (e) {
     return errorResponse(res, e.message || "Delete failed", e.status || 500);

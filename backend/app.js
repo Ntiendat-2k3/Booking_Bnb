@@ -6,12 +6,18 @@ const passport = require("passport");
 const cors = require("cors");
 require("dotenv").config();
 
+// Optional Redis connection (used by caching middleware)
+const { connectRedis } = require("./utils/redis");
+
 const apiRouter = require("./routes/api");
 const passportLocal = require("./passports/passport.local");
 const passportGoogle = require("./passports/passport.google");
 const { sequelize } = require("./models/index");
 
 var app = express();
+
+// Fire-and-forget connect (server still works without Redis)
+connectRedis().catch(() => {});
 
 const helmet = require("helmet");
 

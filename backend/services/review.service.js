@@ -197,6 +197,7 @@ module.exports = {
       throw err;
     }
     await review.destroy();
-    return true;
+    // Return listing_id so callers can invalidate caches
+    return { ok: true, listing_id: review.listing_id };
   },
 };
