@@ -16,13 +16,16 @@ const { sequelize } = require("./models/index");
 
 var app = express();
 
-// Fire-and-forget connect (server still works without Redis)
 connectRedis().catch(() => {});
 
 const helmet = require("helmet");
 
 // CORS (support FE + Admin + credentials)
-const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "")
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  process.env.FRONTEND_URL ||
+  ""
+)
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -42,14 +45,14 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
-  })
+  }),
 );
 app.options("*", cors({ origin: true, credentials: true }));
 
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 app.use(logger("dev"));
