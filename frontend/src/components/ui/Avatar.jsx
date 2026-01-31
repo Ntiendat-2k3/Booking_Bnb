@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 function initials(name = "") {
   const parts = String(name).trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return "?";
@@ -10,16 +12,14 @@ export default function Avatar({ src, name, size = 28, className = "" }) {
   const style = { width: size, height: size };
 
   if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
     return (
-      <img
+      <Image
         src={src}
         alt={name || "Avatar"}
+        width={size}
+        height={size}
         style={style}
-        className={
-          "rounded-full border border-slate-200 object-cover bg-white " +
-          className
-        }
+        className={"rounded-full border border-slate-200 object-cover bg-white " + className}
       />
     );
   }

@@ -7,6 +7,7 @@ import { ensureCsrf, fetchProfile } from "@/store/authThunks";
 import { apiFetch } from "@/lib/api";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const STATUS_TABS = [
   { key: "all", label: "Tất cả" },
@@ -148,9 +149,14 @@ async function onDelete(id) {
           {filtered.map((x) => (
             <div key={x.id} className="flex flex-col gap-3 rounded-2xl border bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-16 w-24 overflow-hidden rounded-xl bg-slate-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={x.cover_url || "https://picsum.photos/seed/cover/400/300"} alt="" className="h-full w-full object-cover" />
+                <div className="relative h-16 w-24 overflow-hidden rounded-xl bg-slate-100">
+                  <Image
+                    src={x.cover_url || "https://picsum.photos/seed/cover/400/300"}
+                    alt={x.title || "Cover"}
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                  />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">

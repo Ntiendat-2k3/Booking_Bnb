@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { apiUpload } from "@/lib/apiUpload";
 import { apiFetch } from "@/lib/api";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import Image from "next/image";
 
 export default function ListingImageUploader({ listingId }) {
   const [busy, setBusy] = useState(false);
@@ -156,8 +157,16 @@ export default function ListingImageUploader({ listingId }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((im) => (
             <div key={im.id} className="overflow-hidden rounded-2xl border bg-white">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={im.url} alt="" className="h-44 w-full object-cover" />
+              <div className="relative h-44 w-full">
+                <Image
+                  src={im.url}
+                  alt="Listing image"
+                  fill
+                  unoptimized
+                  sizes="(max-width: 1024px) 50vw, 33vw"
+                  className="object-cover"
+                />
+              </div>
               <div className="space-y-2 p-3">
                 <div className="truncate text-xs text-slate-600">
                   {im.is_cover ? (

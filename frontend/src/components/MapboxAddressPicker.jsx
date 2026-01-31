@@ -16,22 +16,22 @@ function asNum(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-async function geocodeForward(q, token) {
+async function geocodeForward(q, token, signal) {
   const url =
     `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json` +
     `?access_token=${encodeURIComponent(token)}` +
     `&autocomplete=true&limit=6&language=vi`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error("Mapbox geocoding failed");
   return res.json();
 }
 
-async function geocodeReverse(lng, lat, token) {
+async function geocodeReverse(lng, lat, token, signal) {
   const url =
     `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
     `?access_token=${encodeURIComponent(token)}` +
     `&limit=1&language=vi`;
-  const res = await fetch(url);
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error("Mapbox reverse geocoding failed");
   return res.json();
 }
@@ -86,6 +86,7 @@ export default function MapboxAddressPicker({
     if (mapRef.current) return;
 
     let cancelled = false;
+    const ac = new AbortController();
 
     (async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
@@ -110,7 +111,7 @@ export default function MapboxAddressPicker({
         const ll = marker.getLngLat();
         onChange?.({ lng: String(ll.lng), lat: String(ll.lat) });
         try {
-          const rev = await geocodeReverse(ll.lng, ll.lat, token);
+          const rev = await geocodeReverse(ll.lng, ll.lat, token, ac.signal);
           const f = rev?.features?.[0];
           if (f?.place_name) {
             onChange?.({
@@ -130,7 +131,7 @@ export default function MapboxAddressPicker({
         onChange?.({ lng: String(ll.lng), lat: String(ll.lat) });
 
         try {
-          const rev = await geocodeReverse(ll.lng, ll.lat, token);
+          const rev = await geocodeReverse(ll.lng, ll.lat, token, ac.signal);
           const f = rev?.features?.[0];
           if (f?.place_name) {
             onChange?.({
@@ -153,13 +154,13 @@ export default function MapboxAddressPicker({
 
     return () => {
       cancelled = true;
+      ac.abort();
       try {
         mapRef.current?.remove();
       } catch {}
       mapRef.current = null;
       markerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Whenever lat/lng change from outside (select suggestion / boot), update map
@@ -197,9 +198,11 @@ export default function MapboxAddressPicker({
     }
 
     setLoadingSug(true);
+    const ac = new AbortController();
+
     const t = setTimeout(async () => {
       try {
-        const data = await geocodeForward(q, token);
+        const data = await geocodeForward(q, token, ac.signal);
         setSuggestions(data?.features || []);
       } catch {
         setSuggestions([]);
@@ -208,8 +211,11 @@ export default function MapboxAddressPicker({
       }
     }, 300);
 
-    return () => clearTimeout(t);
-  }, [query, token]);
+    return () => {
+      ac.abort();
+      clearTimeout(t);
+    };
+  }, [query, token, openSug]);
 
   function selectFeature(f) {
     const center = f?.center; // [lng, lat]

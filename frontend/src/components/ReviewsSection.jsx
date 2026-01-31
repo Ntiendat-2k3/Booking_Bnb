@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { StarIcon } from "@/components/icons";
 import Link from "next/link";
+import Image from "next/image";
 
 function toInt(v, fallback) {
   const n = Number(v);
@@ -249,10 +250,11 @@ export default function ReviewsSection({ listingId, initialAvg, initialCount, au
           {items.map((rv) => (
             <div key={rv.id} className="rounded-2xl border p-4">
               <div className="flex items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={rv.reviewer?.avatar_url || "https://i.pravatar.cc/150"}
-                  alt=""
+                  alt={rv.reviewer?.full_name ? `Avatar ${rv.reviewer.full_name}` : "Avatar"}
+                  width={32}
+                  height={32}
                   className="h-8 w-8 rounded-full object-cover"
                 />
                 <div className="min-w-0">

@@ -2,6 +2,7 @@ import { serverGetJson } from "@/lib/serverApi";
 import { cache } from "react";
 import { StarIcon } from "@/components/icons";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import RoomTabs from "@/components/RoomTabs";
 import Container from "@/components/layout/Container";
@@ -161,11 +162,13 @@ export default async function RoomDetailPage({ params, searchParams }) {
         {/* Photos Grid */}
         <section id="photos" className="pt-6 scroll-mt-28">
           <div className="grid grid-cols-1 gap-2 overflow-hidden md:grid-cols-4 rounded-2xl">
-            <div className="md:col-span-2 h-[300px] md:h-[410px]">
-              <img
+            <div className="md:col-span-2 h-[300px] md:h-[410px] relative">
+              <Image
                 src={cover?.url || "https://picsum.photos/seed/cover/1200/800"}
                 alt={listing.title}
-                className="object-cover w-full h-full transition-all cursor-pointer hover:brightness-90"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover transition-all cursor-pointer hover:brightness-90"
               />
             </div>
             <div className="hidden grid-cols-2 gap-2 md:grid md:col-span-2">
@@ -174,11 +177,13 @@ export default async function RoomDetailPage({ params, searchParams }) {
                 .filter((im) => im.id !== cover?.id)
                 .slice(0, 4)
                 .map((im) => (
-                  <div key={im.id} className="h-[201px]">
-                    <img
+                  <div key={im.id} className="h-[201px] relative">
+                    <Image
                       src={im.url}
-                      alt=""
-                      className="object-cover w-full h-full transition-all cursor-pointer hover:brightness-90"
+                      alt={listing.title}
+                      fill
+                      sizes="25vw"
+                      className="object-cover transition-all cursor-pointer hover:brightness-90"
                     />
                   </div>
                 ))}
@@ -201,9 +206,11 @@ export default async function RoomDetailPage({ params, searchParams }) {
                     {listing.beds} giường • {listing.bathrooms} phòng tắm
                   </div>
                 </div>
-                <img
+                <Image
                   src={listing.host?.avatar_url || "https://i.pravatar.cc/150"}
                   alt="Host"
+                  width={56}
+                  height={56}
                   className="object-cover border rounded-full shadow-sm w-14 h-14"
                 />
               </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { formatVND } from "@/lib/format";
 import { StarIcon } from "@/components/icons";
 
@@ -40,12 +41,15 @@ function MapPopupCard({ listing, onClose }) {
     <div className="absolute bottom-3 left-3 z-10 w-[320px] rounded-2xl border bg-white shadow-lg">
       <div className="relative">
         {cover ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={cover}
-            alt={listing?.title || "Listing"}
-            className="object-cover w-full h-40 rounded-t-2xl"
-          />
+          <div className="relative h-40 w-full">
+            <Image
+              src={cover}
+              alt={listing?.title || "Listing"}
+              fill
+              sizes="320px"
+              className="object-cover rounded-t-2xl"
+            />
+          </div>
         ) : (
           <div className="w-full h-40 rounded-t-2xl bg-slate-200" />
         )}

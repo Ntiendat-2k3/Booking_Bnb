@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { formatVND } from "@/lib/format";
@@ -168,12 +169,15 @@ export default function TripsPage() {
             return (
               <div key={b.id} className="rounded-2xl border bg-white p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={cover || "https://picsum.photos/seed/trip/600/400"}
-                    alt=""
-                    className="h-28 w-full rounded-xl object-cover sm:w-44"
-                  />
+                  <div className="relative h-28 w-full sm:w-44">
+                    <Image
+                      src={cover || "https://picsum.photos/seed/trip/600/400"}
+                      alt={listing?.title || "Trip"}
+                      fill
+                      sizes="(max-width: 640px) 100vw, 176px"
+                      className="rounded-xl object-cover"
+                    />
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <div className="truncate text-lg font-semibold">{listing?.title || "Phòng"}</div>

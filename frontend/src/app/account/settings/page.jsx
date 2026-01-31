@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { apiUpload } from "@/lib/apiUpload";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { setUser } from "@/store/authSlice";
+import Image from "next/image";
 
 const PROVIDERS = [
   { value: "vnpay", label: "VNPay" },
@@ -235,10 +236,11 @@ export default function AccountSettingsPage() {
             </div>
             <div className="flex flex-col gap-4 mt-4 sm:flex-row">
               <div className="shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={user.avatar_url || "https://i.pravatar.cc/150"}
-                  alt=""
+                  alt={user.full_name ? `Avatar ${user.full_name}` : "Avatar"}
+                  width={64}
+                  height={64}
                   className="object-cover w-16 h-16 rounded-full"
                 />
                 <input
