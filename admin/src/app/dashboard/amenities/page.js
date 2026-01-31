@@ -13,12 +13,17 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Plus, Pencil, EyeOff, Eye } from "lucide-react";
 import { toast } from "sonner";
 import RipleLoading from "@/components/loading/RipleLoading";
+import AdminPagination from "@/components/admin/AdminPagination";
+
+const PAGE_SIZE = 10;
+
 
 export default function Page() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState("all");
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -55,6 +60,16 @@ export default function Page() {
       );
     });
   }, [items, q, activeFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   async function loadItems() {
     const res = await apiFetch(
@@ -230,7 +245,7 @@ export default function Page() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((a) => (
+              {pagedItems.map((a) => (
                 <tr key={a.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
                     <div className="font-medium ui-fg">{a.name}</div>
@@ -291,6 +306,8 @@ export default function Page() {
             </tbody>
           </table>
         </div>
+
+          <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
       </div>
 
       <Modal

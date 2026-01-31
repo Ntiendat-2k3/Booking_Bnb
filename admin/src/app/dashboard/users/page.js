@@ -13,14 +13,19 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Eye, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import RipleLoading from "@/components/loading/RipleLoading";
+import AdminPagination from "@/components/admin/AdminPagination";
 
 const ROLE_OPTIONS = ["guest", "host", "admin"];
+
+const PAGE_SIZE = 10;
+
 
 export default function Page() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const [viewUser, setViewUser] = useState(null);
   const [editUser, setEditUser] = useState(null);
@@ -41,6 +46,16 @@ export default function Page() {
       );
     });
   }, [items, q]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   async function loadItems() {
     const res = await apiFetch(`/api/v1/admin/users`, { method: "GET" });
@@ -151,7 +166,7 @@ export default function Page() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((u) => (
+              {pagedItems.map((u) => (
                 <tr key={u.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
                     <div className="font-medium ui-fg">{u.email}</div>
@@ -207,6 +222,8 @@ export default function Page() {
             </tbody>
           </table>
         </div>
+
+          <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
       </div>
 
       <Modal

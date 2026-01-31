@@ -12,6 +12,7 @@ import Badge from "@/components/ui/Badge";
 import Modal from "@/components/ui/Modal";
 import { Eye } from "lucide-react";
 import RipleLoading from "@/components/loading/RipleLoading";
+import AdminPagination from "@/components/admin/AdminPagination";
 
 const STATUS = [
   "all",
@@ -45,11 +46,15 @@ function fmtDate(v) {
   return d.toLocaleString();
 }
 
+const PAGE_SIZE = 10;
+
+
 export default function Page() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
   const [status, setStatus] = useState("all");
   const [provider, setProvider] = useState("all");
 
@@ -70,6 +75,16 @@ export default function Page() {
       );
     });
   }, [items, q]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   async function loadItems() {
     const res = await apiFetch(
@@ -194,7 +209,7 @@ export default function Page() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p) => (
+              {pagedItems.map((p) => (
                 <tr key={p.id} className="border-t ui-border hover:bg-white/5">
                   <td className="px-4 py-3">
                     <div className="font-mono text-xs ui-muted">#{p.id}</div>
@@ -241,6 +256,8 @@ export default function Page() {
             </tbody>
           </table>
         </div>
+
+          <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
       </div>
 
       <Modal

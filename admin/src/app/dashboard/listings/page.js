@@ -13,6 +13,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Eye, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import RipleLoading from "@/components/loading/RipleLoading";
+import AdminPagination from "@/components/admin/AdminPagination";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -39,12 +40,16 @@ function StatusBadge({ status }) {
   return <Badge tone={tone}>{status}</Badge>;
 }
 
+const PAGE_SIZE = 10;
+
+
 export default function Page() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("pending");
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
 
   const [view, setView] = useState(null);
   const [rejectOpen, setRejectOpen] = useState(false);
@@ -73,6 +78,16 @@ export default function Page() {
       );
     });
   }, [items, tab, q]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tab, q]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
 
   async function loadItems() {
     const res = await apiFetch(`/api/v1/admin/listings`, { method: "GET" });
@@ -201,7 +216,7 @@ export default function Page() {
 
         {filtered.length ? (
           <div className="grid grid-cols-1 gap-3">
-            {filtered.map((x) => (
+            {pagedItems.map((x) => (
               <div
                 key={x.id}
                 className="p-4 border shadow-sm rounded-2xl ui-border ui-panel"
