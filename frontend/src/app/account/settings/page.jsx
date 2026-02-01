@@ -314,7 +314,7 @@ export default function AccountSettingsPage() {
                 />
                 Hiển thị đánh giá của tôi
               </label>
-              <label className="flex items-center gap-2 text-sm">
+              {/* <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={settings?.marketing_emails === true}
@@ -325,7 +325,7 @@ export default function AccountSettingsPage() {
                   }}
                 />
                 Nhận email marketing
-              </label>
+              </label> */}
             </div>
           </section>
 

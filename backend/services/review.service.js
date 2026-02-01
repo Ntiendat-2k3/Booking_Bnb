@@ -26,7 +26,6 @@ function applyPrivacyOnReview(row) {
     reviewer.avatar_url = null;
   }
 
-  // remove internal nested settings from payload
   if (reviewer) delete reviewer.setting;
   rv.reviewer = reviewer;
   return rv;
@@ -63,7 +62,6 @@ async function getUserReviewableBooking({ userId, listingId }) {
   return { booking, canReview: true };
 }
 
-
 module.exports = {
   async listPublicByListing({ listingId, page = 1, limit = 10 }) {
     const p = Math.max(1, Number(page || 1));
@@ -74,7 +72,9 @@ module.exports = {
       where: {
         listing_id: listingId,
         is_hidden: false,
-        [Op.and]: Sequelize.literal('COALESCE("reviewer->setting"."show_reviews", TRUE) = TRUE'),
+        [Op.and]: Sequelize.literal(
+          'COALESCE("reviewer->setting"."show_reviews", TRUE) = TRUE',
+        ),
       },
       include: [
         {
@@ -97,9 +97,7 @@ module.exports = {
       distinct: true,
     });
 
-    const items = rows
-      .map(applyPrivacyOnReview)
-      .filter(Boolean);
+    const items = rows.map(applyPrivacyOnReview).filter(Boolean);
 
     return {
       items,
@@ -135,7 +133,10 @@ module.exports = {
       throw err;
     }
 
-    const { booking, canReview } = await getUserReviewableBooking({ userId, listingId });
+    const { booking, canReview } = await getUserReviewableBooking({
+      userId,
+      listingId,
+    });
     if (!canReview || !booking) {
       const err = new Error("You cannot review this listing yet");
       err.status = 400;
