@@ -34,10 +34,11 @@ export default function ListingImageUploader({ listingId }) {
   async function attachImage(payload) {
     const attached = await apiFetch(`/api/v1/host/listings/${listingId}/images`, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: payload,
     });
     return attached.data.image;
   }
+
 
   async function onPick(e) {
     const files = Array.from(e.target.files || []);
@@ -99,7 +100,7 @@ export default function ListingImageUploader({ listingId }) {
     try {
       await apiFetch(`/api/v1/host/listings/${listingId}/images/${image.id}/cover`, {
         method: "PATCH",
-        body: JSON.stringify({}),
+        body: {},
       });
       await loadImages(listingId);
       notifySuccess("Đã đặt làm ảnh cover");
@@ -116,7 +117,6 @@ export default function ListingImageUploader({ listingId }) {
     try {
       await apiFetch(`/api/v1/host/listings/${listingId}/images/${image.id}`, {
         method: "DELETE",
-        body: JSON.stringify({}),
       });
       await loadImages(listingId); // reload because cover may change server-side
       notifySuccess("Đã xóa ảnh");

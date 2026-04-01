@@ -1,36 +1,9 @@
-const { Payment, Booking } = require("../models");
-const { signParams, verifyReturn } = require("../utils/vnpay");
-
-function formatDateGMT7(d) {
-  // yyyyMMddHHmmss in GMT+7
-  const dt = new Date(d.getTime() + 7 * 60 * 60 * 1000);
-  const pad = (n, l = 2) => String(n).padStart(l, "0");
-  const yyyy = dt.getUTCFullYear();
-  const MM = pad(dt.getUTCMonth() + 1);
-  const dd = pad(dt.getUTCDate());
-  const HH = pad(dt.getUTCHours());
-  const mm = pad(dt.getUTCMinutes());
-  const ss = pad(dt.getUTCSeconds());
-  return `${yyyy}${MM}${dd}${HH}${mm}${ss}`;
-}
-
-function getClientIp(req) {
-  const xf = req.headers["x-forwarded-for"];
-  if (xf) return String(xf).split(",")[0].trim();
-  return req.ip || req.connection?.remoteAddress || "127.0.0.1";
-}
-
-function asciiSafeOrderInfo(str) {
-  // Remove accents/specials. VNPay asks for no Vietnamese accents & special chars.
-  return String(str)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9 _:\-./]/g, "")
-    .slice(0, 255);
-}
+const { Payment, Booking, User, Notification, Listing } = require("../models");
+const { sendEmail } = require("../utils/mailer");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 module.exports = {
-  async createVnpayPayment({ bookingId, userId, req }) {
+  async createStripePayment({ bookingId, userId, req }) {
     const booking = await Booking.findByPk(bookingId);
     if (!booking) {
       const err = new Error("Booking not found");
@@ -48,17 +21,6 @@ module.exports = {
       throw err;
     }
 
-    const tmnCode = process.env.VNP_TMNCODE;
-    const hashSecret = process.env.VNP_HASHSECRET;
-    const vnpUrl = process.env.VNP_URL;
-    const returnUrl = process.env.VNP_RETURN_URL;
-
-    if (!tmnCode || !hashSecret || !vnpUrl || !returnUrl) {
-      const err = new Error("VNPay config missing (VNP_TMNCODE, VNP_HASHSECRET, VNP_URL, VNP_RETURN_URL)");
-      err.status = 500;
-      throw err;
-    }
-
     const amount = Number(booking.total_amount);
     if (!Number.isFinite(amount) || amount <= 0) {
       const err = new Error("Invalid booking amount");
@@ -68,110 +30,148 @@ module.exports = {
 
     const payment = await Payment.create({
       booking_id: booking.id,
-      provider: "vnpay",
+      provider: "stripe",
       status: "pending",
       amount: String(amount),
       currency: booking.currency || "VND",
     });
 
-    const createDate = formatDateGMT7(new Date());
-    const expireDate = formatDateGMT7(new Date(Date.now() + 15 * 60 * 1000));
-    const ipAddr = getClientIp(req);
-    const txnRef = String(payment.id).replace(/-/g, "");
+    const frontendBase = process.env.FRONTEND_BASE_URL || "http://localhost:3001";
+    
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{
+        price_data: {
+          currency: (booking.currency || "vnd").toLowerCase(),
+          product_data: { 
+            name: `Booking ${booking.id}`,
+            description: `Thanh toán phòng trên hệ thống`
+          },
+          unit_amount: Math.round(amount), // VND no decimals in Stripe
+        },
+        quantity: 1,
+      }],
+      mode: 'payment',
+      success_url: `${frontendBase}/trips?payment=success&bookingId=${booking.id}`,
+      cancel_url: `${frontendBase}/trips?payment=failed&bookingId=${booking.id}`,
+      client_reference_id: String(payment.id),
+      metadata: {
+        bookingId: String(booking.id),
+        paymentId: String(payment.id)
+      }
+    });
 
-    const params = {
-      vnp_Version: "2.1.0",
-      vnp_Command: "pay",
-      vnp_TmnCode: tmnCode,
-      vnp_Amount: amount * 100,
-      vnp_CurrCode: "VND",
-      vnp_TxnRef: txnRef,
-      vnp_OrderInfo: asciiSafeOrderInfo(`Thanh toan booking ${String(booking.id).replace(/-/g, "")}`),
-      vnp_OrderType: "other",
-      vnp_Locale: process.env.VNP_LOCALE || "vn",
-      vnp_ReturnUrl: returnUrl,
-      vnp_IpAddr: ipAddr,
-      vnp_CreateDate: createDate,
-      vnp_ExpireDate: expireDate,
-    };
-
-    const secureHash = signParams(params, hashSecret);
-
-    payment.provider_txn_ref = txnRef;
-    payment.payload = { request: params };
+    payment.provider_txn_ref = session.id;
+    payment.payload = { request: { id: session.id, url: session.url } };
     await payment.save();
 
-    const url = `${vnpUrl}?${require("../utils/vnpay").buildQuery({ ...params, vnp_SecureHash: secureHash })}`;
-    return { payment, payment_url: url };
+    return { payment, payment_url: session.url };
   },
 
-  async handleVnpayReturn({ query }) {
-    const hashSecret = process.env.VNP_HASHSECRET;
-    if (!hashSecret) {
-      const err = new Error("VNP_HASHSECRET missing");
-      err.status = 500;
-      throw err;
-    }
+  async handleStripeWebhook(event) {
+    console.log("[PaymentService] Handling Stripe event:", event.id, "Type:", event.type);
 
-    const ver = verifyReturn(query, hashSecret);
-    if (!ver.ok) {
-      const err = new Error("Invalid checksum");
-      err.status = 400;
-      throw err;
-    }
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const paymentId = session.client_reference_id;
 
-    const txnRef = query.vnp_TxnRef;
-    const payment = await Payment.findOne({
-      where: { provider: "vnpay", provider_txn_ref: txnRef },
-    });
-    if (!payment) {
-      const err = new Error("Payment not found");
-      err.status = 404;
-      throw err;
-    }
+      if (!paymentId) {
+        console.error("[PaymentService] Error: No client_reference_id found in session");
+        return { success: false, reason: "No client_reference_id" };
+      }
 
-    // Verify amount (VNPay returns amount * 100)
-    const vnpAmount = Number(query.vnp_Amount);
-    const expectedAmount = Number(payment.amount) * 100;
-    if (Number.isFinite(vnpAmount) && Number.isFinite(expectedAmount) && vnpAmount !== expectedAmount) {
-      const err = new Error("Amount mismatch");
-      err.status = 400;
-      throw err;
-    }
+      const payment = await Payment.findByPk(paymentId);
+      if (!payment) {
+        console.error("[PaymentService] Error: Payment not found for ID:", paymentId);
+        return { success: false, reason: "Payment not found" };
+      }
 
-    // Idempotent handling
-    if (payment.status === "succeeded") {
-      return { payment, bookingUpdated: false };
-    }
+      console.log(`[PaymentService] Processing payment ${paymentId} for booking ${payment.booking_id}`);
 
-    const responseCode = query.vnp_ResponseCode;
-    const txnStatus = query.vnp_TransactionStatus;
-    const success = responseCode === "00" && (!txnStatus || txnStatus === "00");
+      if (payment.status === "succeeded") {
+        console.log(`[PaymentPlugin] Payment ${paymentId} already marked as succeeded.`);
+        return { success: true, alreadyPaid: true };
+      }
 
-    payment.payload = { ...(payment.payload || {}), return: query };
-    payment.provider_transaction_no = query.vnp_TransactionNo || payment.provider_transaction_no;
-
-    if (success) {
       payment.status = "succeeded";
       payment.paid_at = new Date();
-    } else {
-      payment.status = responseCode === "24" ? "cancelled" : "failed";
-    }
-    await payment.save();
+      payment.provider_transaction_no = session.payment_intent;
+      payment.payload = { ...(payment.payload || {}), webhook: event };
+      await payment.save();
+      console.log(`[PaymentPlugin] Payment ${paymentId} updated to succeeded.`);
 
-    const booking = await Booking.findByPk(payment.booking_id);
-    if (booking) {
-      if (success) {
+      const booking = await Booking.findByPk(payment.booking_id, {
+        include: [
+          { model: User, as: "guest", attributes: ["id", "full_name", "email"] },
+          { 
+            model: Listing, 
+            as: "listing", 
+            attributes: ["id", "title", "host_id"],
+            include: [{ model: User, as: "host", attributes: ["id", "full_name", "email"] }]
+          }
+        ]
+      });
+
+      if (booking) {
+        console.log(`[PaymentPlugin] Updating status for booking ${booking.id} to confirmed.`);
         booking.status = "confirmed";
+        await booking.save();
+        console.log(`[PaymentPlugin] Booking ${booking.id} confirmed.`);
+
+
+        // --- Thông báo ---
+        try {
+          // 1. Thông báo cho Guest
+          if (booking.guest) {
+            await Notification.create({
+              user_id: booking.guest_id,
+              type: "booking_confirmed",
+              title: "Thanh toán thành công!",
+              message: `Đơn đặt phòng "${booking.listing?.title}" của bạn đã được xác nhận thành công. Chúc bạn có một chuyến đi vui vẻ!`,
+            });
+
+            const guestHtml = `
+              <h3>Chào ${booking.guest.full_name},</h3>
+              <p>Yêu cầu đặt phòng của bạn cho <b>"${booking.listing?.title}"</b> đã được thanh toán thành công.</p>
+              <p><b>Mã đơn đặt:</b> ${booking.id}</p>
+              <p><b>Ngày nhận phòng:</b> ${booking.check_in}</p>
+              <p><b>Ngày trả phòng:</b> ${booking.check_out}</p>
+              <br/>
+              <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
+            `;
+            await sendEmail(booking.guest.email, "Xác nhận đặt phòng thành công", guestHtml);
+          }
+
+          // 2. Thông báo cho Host
+          if (booking.listing?.host) {
+            await Notification.create({
+              user_id: booking.listing.host_id,
+              type: "new_booking",
+              title: "Có lượt đặt phòng mới!",
+              message: `Khách hàng ${booking.guest?.full_name || "ẩn danh"} vừa đặt thành công chỗ nghỉ "${booking.listing.title}" của bạn.`,
+            });
+
+            const hostHtml = `
+              <h3>Chào ${booking.listing.host.full_name},</h3>
+              <p>Duyệt tin tốt! Chỗ nghỉ <b>"${booking.listing.title}"</b> của bạn vừa có một lượt đặt phòng mới thành công.</p>
+              <p><b>Khách hàng:</b> ${booking.guest?.full_name || "Airbnb User"}</p>
+              <p><b>Ngày nhận phòng:</b> ${booking.check_in}</p>
+              <p><b>Ngày trả phòng:</b> ${booking.check_out}</p>
+              <br/>
+              <p>Hãy chuẩn bị sẵn sàng để đón tiếp khách nhé!</p>
+              <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
+            `;
+            await sendEmail(booking.listing.host.email, "Thông báo lượt đặt phòng mới", hostHtml);
+          }
+        } catch (msgError) {
+          console.error("[PaymentWebhook] Notification error:", msgError);
+        }
       }
-      await booking.save();
+
+      return { success: true, payment, bookingUpdated: !!booking };
     }
-
-    return { payment, bookingUpdated: true, success, responseCode };
-  },
-
-  async handleVnpayIpn({ query }) {
-    // Same logic as return, but must respond with RspCode/Message for VNPay
-    return module.exports.handleVnpayReturn({ query });
-  },
+    
+    return { success: true, message: "Unhandled event type" };
+  }
 };
+

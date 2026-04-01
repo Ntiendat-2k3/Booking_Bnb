@@ -72,4 +72,32 @@ module.exports = {
     await review.destroy();
     return { ok: true, listing_id: listingId };
   },
+
+  async bulkSetHidden(ids, hidden) {
+    if (!Array.isArray(ids)) throw new Error("Ids must be an array");
+    const results = [];
+    for (const id of ids) {
+      try {
+        await this.setHidden(id, hidden);
+        results.push({ id, status: "success" });
+      } catch (err) {
+        results.push({ id, status: "error", message: err.message });
+      }
+    }
+    return { results };
+  },
+
+  async bulkRemove(ids) {
+    if (!Array.isArray(ids)) throw new Error("Ids must be an array");
+    const results = [];
+    for (const id of ids) {
+      try {
+        await this.remove(id);
+        results.push({ id, status: "success" });
+      } catch (err) {
+        results.push({ id, status: "error", message: err.message });
+      }
+    }
+    return { results };
+  },
 };

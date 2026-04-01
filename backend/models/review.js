@@ -39,12 +39,17 @@ module.exports = (sequelize, DataTypes) => {
       updated_at: { type: DataTypes.DATE, allowNull: true },
 
       created_at: { type: DataTypes.DATE, allowNull: false },
+      deleted_at: { type: DataTypes.DATE, allowNull: true },
     },
     {
       sequelize,
       modelName: "Review",
       tableName: "reviews",
-      timestamps: false,
+      timestamps: true,
+      createdAt: "created_at",
+      updatedAt: "updated_at",
+      deletedAt: "deleted_at",
+      paranoid: true,
     },
   );
 

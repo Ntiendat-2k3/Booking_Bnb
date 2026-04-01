@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import AdminShell from "@/components/AdminShell";
-import { apiFetch } from "@/lib/api";
+import { adminService } from "@/services/adminService";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import Badge from "@/components/ui/Badge";
-import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { Eye, EyeOff, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import RipleLoading from "@/components/loading/RipleLoading";
 import AdminPagination from "@/components/admin/AdminPagination";
+
+import ReviewsTable from "@/components/admin/reviews/ReviewsTable";
+import ReviewDetailModal from "@/components/admin/reviews/ReviewDetailModal";
+import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 const VIS = [
   { key: "all", label: "All" },
@@ -21,29 +21,9 @@ const VIS = [
   { key: "hidden", label: "Hidden" },
 ];
 
-function Stars({ rating }) {
-  const n = Math.max(0, Math.min(5, Number(rating || 0)));
-  return (
-    <div className="text-sm">
-      <span className="ui-fg">{"★★★★★".slice(0, n)}</span>
-      <span className="text-zinc-300">{"★★★★★".slice(0, 5 - n)}</span>
-      <span className="ml-2 text-xs ui-muted">{n}/5</span>
-    </div>
-  );
-}
-
-function fmtDate(v) {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return String(v);
-  return d.toLocaleString();
-}
-
 const PAGE_SIZE = 10;
 
-
 export default function Page() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
 
@@ -51,6 +31,8 @@ export default function Page() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   const [view, setView] = useState(null);
   const [confirm, setConfirm] = useState({
@@ -74,7 +56,8 @@ export default function Page() {
 
   useEffect(() => {
     setPage(1);
-  }, [q]);
+    setSelectedIds([]);
+  }, [q, vis]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pagedItems = useMemo(() => {
@@ -83,63 +66,40 @@ export default function Page() {
   }, [filtered, page]);
 
   async function loadItems() {
-    const res = await apiFetch(`/api/v1/admin/reviews?visibility=${vis}`, {
-      method: "GET",
-    });
-    setItems(res.data?.items || []);
+    try {
+      const res = await adminService.getReviews(vis);
+      setItems(res.data?.items || []);
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   useEffect(() => {
     let alive = true;
-
     async function init() {
       try {
-        await apiFetch("/api/v1/auth/csrf", { method: "GET" });
-
-        try {
-          const me = await apiFetch("/api/v1/auth/profile", { method: "GET" });
-          if (me.data?.role !== "admin") throw new Error("not admin");
-        } catch (e) {
-          if (e?.status !== 401) throw e;
-          await apiFetch("/api/v1/auth/refresh", {
-            method: "POST",
-            body: JSON.stringify({}),
-          });
-          const me2 = await apiFetch("/api/v1/auth/profile", { method: "GET" });
-          if (me2.data?.role !== "admin") throw new Error("not admin");
-        }
-
         await loadItems();
-      } catch {
-        router.replace("/login");
       } finally {
         if (alive) setLoading(false);
       }
     }
-
     init();
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, vis]);
+  }, [vis]);
 
   async function refresh() {
     setLoading(true);
-    try {
-      await loadItems();
-    } finally {
-      setLoading(false);
-    }
+    await loadItems();
+    setLoading(false);
   }
 
   async function hideReview(id) {
     setBusyId(id);
     try {
-      await apiFetch(`/api/v1/admin/reviews/${id}/hide`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
+      await adminService.hideReview(id);
       await loadItems();
     } finally {
       setBusyId(null);
@@ -149,10 +109,7 @@ export default function Page() {
   async function unhideReview(id) {
     setBusyId(id);
     try {
-      await apiFetch(`/api/v1/admin/reviews/${id}/unhide`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
+      await adminService.unhideReview(id);
       await loadItems();
     } finally {
       setBusyId(null);
@@ -162,10 +119,56 @@ export default function Page() {
   async function deleteReview(id) {
     setBusyId(id);
     try {
-      await apiFetch(`/api/v1/admin/reviews/${id}`, { method: "DELETE" });
+      await adminService.deleteReview(id);
       await loadItems();
     } finally {
       setBusyId(null);
+    }
+  }
+
+  async function onBulkHide() {
+    if (!selectedIds.length) return;
+    setSaving(true);
+    try {
+      await adminService.bulkHideReviews(selectedIds);
+      toast.success(`Hidden ${selectedIds.length} reviews`);
+      setSelectedIds([]);
+      await loadItems();
+    } catch (e) {
+      toast.error(e?.message || "Bulk hide failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onBulkUnhide() {
+    if (!selectedIds.length) return;
+    setSaving(true);
+    try {
+      await adminService.bulkUnhideReviews(selectedIds);
+      toast.success(`Unhidden ${selectedIds.length} reviews`);
+      setSelectedIds([]);
+      await loadItems();
+    } catch (e) {
+      toast.error(e?.message || "Bulk unhide failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onBulkDelete() {
+    if (!selectedIds.length) return;
+    if (!confirm("Are you sure you want to delete these reviews?")) return;
+    setSaving(true);
+    try {
+      await adminService.bulkDeleteReviews(selectedIds);
+      toast.success(`Deleted ${selectedIds.length} reviews`);
+      setSelectedIds([]);
+      await loadItems();
+    } catch (e) {
+      toast.error(e?.message || "Bulk delete failed");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -194,190 +197,25 @@ export default function Page() {
                 </option>
               ))}
             </Select>
-            <Button onClick={refresh} variant="secondary">
-              Refresh
-            </Button>
           </div>
         </div>
 
-        <div className="overflow-hidden border shadow-sm rounded-2xl ui-border ui-panel">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-white/5 ui-muted">
-              <tr>
-                <th className="px-4 py-3">Review</th>
-                <th className="px-4 py-3">Listing</th>
-                <th className="px-4 py-3">User</th>
-                <th className="px-4 py-3">Rating</th>
-                <th className="px-4 py-3">Visibility</th>
-                <th className="px-4 py-3">Created</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedItems.map((r) => (
-                <tr key={r.id} className="border-t ui-border hover:bg-white/5">
-                  <td className="px-4 py-3">
-                    <div className="font-mono text-xs ui-muted">#{r.id}</div>
-                    <div className="mt-0.5 text-xs ui-muted font-mono">
-                      booking: {r.booking_id ?? "—"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium ui-fg">
-                      {r.listing?.title || "—"}
-                    </div>
-                    <div className="mt-0.5 text-xs ui-muted font-mono">
-                      LID: {r.listing?.id || "—"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="font-medium ui-fg">
-                      {r.user?.email || "—"}
-                    </div>
-                    <div className="mt-0.5 text-xs ui-muted font-mono">
-                      UID: {r.user?.id || "—"}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Stars rating={r.rating} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={r.is_hidden ? "rose" : "emerald"}>
-                      {r.is_hidden ? "hidden" : "visible"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">{fmtDate(r.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setView(r)}
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </Button>
+        <ReviewsTable
+          pagedItems={pagedItems}
+          filtered={filtered}
+          setView={setView}
+          unhideReview={unhideReview}
+          hideReview={hideReview}
+          setConfirm={setConfirm}
+          busyId={busyId}
+          selectedIds={selectedIds}
+          setSelectedIds={setSelectedIds}
+        />
 
-                      {r.is_hidden ? (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => unhideReview(r.id)}
-                          disabled={busyId === r.id}
-                        >
-                          <Eye className="w-4 h-4" />
-                          Unhide
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => hideReview(r.id)}
-                          disabled={busyId === r.id}
-                        >
-                          <EyeOff className="w-4 h-4" />
-                          Hide
-                        </Button>
-                      )}
-
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() =>
-                          setConfirm({ open: true, kind: "delete", item: r })
-                        }
-                        disabled={busyId === r.id}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!filtered.length ? (
-                <tr>
-                  <td className="px-4 py-10 text-center ui-muted" colSpan={7}>
-                    Không có review.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-
-          <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
+        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
       </div>
 
-      <Modal
-        open={!!view}
-        onClose={() => setView(null)}
-        title="Review detail"
-        description={view ? `#${view.id}` : ""}
-        size="lg"
-        footer={
-          <Button variant="secondary" onClick={() => setView(null)}>
-            Close
-          </Button>
-        }
-      >
-        {view ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="p-4 border rounded-2xl ui-border">
-              <div className="text-sm font-semibold">Meta</div>
-              <div className="mt-2 space-y-1 text-sm ui-fg">
-                <div>
-                  <span className="ui-muted">Rating:</span>{" "}
-                  <Stars rating={view.rating} />
-                </div>
-                <div>
-                  <span className="ui-muted">Visibility:</span>{" "}
-                  <Badge tone={view.is_hidden ? "rose" : "emerald"}>
-                    {view.is_hidden ? "hidden" : "visible"}
-                  </Badge>
-                </div>
-                <div>
-                  <span className="ui-muted">Created:</span>{" "}
-                  {fmtDate(view.created_at)}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border rounded-2xl ui-border">
-              <div className="text-sm font-semibold">User / Listing</div>
-              <div className="mt-2 space-y-1 text-sm ui-fg">
-                <div>
-                  <span className="ui-muted">User:</span>{" "}
-                  {view.user?.email || "—"}{" "}
-                  <span className="font-mono text-xs ui-muted">
-                    ({view.user?.id || "—"})
-                  </span>
-                </div>
-                <div>
-                  <span className="ui-muted">Listing:</span>{" "}
-                  {view.listing?.title || "—"}{" "}
-                  <span className="font-mono text-xs ui-muted">
-                    ({view.listing?.id || "—"})
-                  </span>
-                </div>
-                <div>
-                  <span className="ui-muted">Booking:</span>{" "}
-                  <span className="font-mono text-xs">
-                    {view.booking_id ?? "—"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border rounded-2xl ui-border md:col-span-2">
-              <div className="text-sm font-semibold">Comment</div>
-              <div className="p-4 mt-2 text-sm whitespace-pre-wrap rounded-xl bg-white/5 ui-muted">
-                {view.comment || "—"}
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </Modal>
+      <ReviewDetailModal view={view} setView={setView} />
 
       <ConfirmDialog
         open={confirm.open}
@@ -398,6 +236,36 @@ export default function Page() {
           if (it) await deleteReview(it.id);
         }}
       />
+
+      {/* Floating Bulk Action Toolbar */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] animate-fade-in">
+          <div className="flex items-center gap-5 px-8 py-5 rounded-[40px] border ui-border glass shadow-lg ring-1 ring-white/10">
+            <div className="flex flex-col">
+              <span className="text-sm font-bold ui-fg">{selectedIds.length} Selected</span>
+              <span className="text-[10px] ui-muted uppercase font-bold tracking-widest">Reviews</span>
+            </div>
+            <div className="h-10 w-px bg-white/10" />
+            <div className="flex gap-2">
+              <Button variant="secondary" size="sm" onClick={onBulkHide} disabled={saving}>
+                <EyeOff className="w-4 h-4 mr-2" />
+                Hide
+              </Button>
+              <Button variant="secondary" size="sm" onClick={onBulkUnhide} disabled={saving}>
+                <Eye className="w-4 h-4 mr-2" />
+                Unhide
+              </Button>
+              <Button variant="danger" size="sm" onClick={onBulkDelete} disabled={saving}>
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])} disabled={saving}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminShell>
   );
 }

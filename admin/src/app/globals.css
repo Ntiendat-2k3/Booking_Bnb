@@ -39,6 +39,30 @@ body {
 .brand-bg { background: #ff2d8a !important; }
 .brand-bg-hover:hover { background: #e61e74 !important; }
 
+/* glassmorphism */
+.glass {
+  background: rgba(18, 17, 26, 0.7) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-header {
+  background: rgba(10, 10, 15, 0.8) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
 /* focus ring (works even when Tailwind ring colors don't) */
 .focus-ring:focus,
 .focus-ring:focus-visible {

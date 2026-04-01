@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       booking_id: { type: DataTypes.UUID, allowNull: false },
 
-      provider: { type: DataTypes.ENUM("vnpay", "stripe"), allowNull: false },
+      provider: { type: DataTypes.ENUM("stripe"), allowNull: false },
       status: {
         type: DataTypes.ENUM(
           "pending",

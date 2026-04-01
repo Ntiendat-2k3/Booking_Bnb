@@ -1,7 +1,7 @@
-import SearchFilters from "@/components/SearchFilters";
+import SearchFilters from "@/components/Search/SearchFilters";
 import ListingCard from "@/components/ListingCard";
 import Pagination from "@/components/Pagination";
-import SearchResultsMap from "@/components/SearchResultsMap";
+import SearchResultsMap from "@/components/Search/SearchResultsMap";
 import { serverGetJson } from "@/lib/serverApi";
 
 export default async function SearchPage({ searchParams }) {

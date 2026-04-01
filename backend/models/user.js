@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       });
       User.hasMany(models.Booking, { foreignKey: "guest_id", as: "bookings" });
       User.hasMany(models.Review, { foreignKey: "reviewer_id", as: "reviews" });
+      User.hasMany(models.Notification, { foreignKey: "user_id", as: "notifications" });
 
       User.belongsToMany(models.Listing, {
         through: models.Favorite,
@@ -44,6 +45,8 @@ module.exports = (sequelize, DataTypes) => {
       full_name: { type: DataTypes.STRING(255), allowNull: false },
       phone: { type: DataTypes.STRING(30), allowNull: true },
       avatar_url: { type: DataTypes.TEXT, allowNull: true },
+      about: { type: DataTypes.TEXT, allowNull: true },
+      location: { type: DataTypes.STRING(255), allowNull: true },
 
       role: {
         type: DataTypes.ENUM("guest", "host", "admin"),
@@ -62,6 +65,9 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "local",
       },
       provider_id: { type: DataTypes.STRING(255), allowNull: true },
+      reset_password_token: { type: DataTypes.STRING(255), allowNull: true },
+      reset_password_expires: { type: DataTypes.DATE, allowNull: true },
+      deleted_at: { type: DataTypes.DATE, allowNull: true },
     },
     {
       sequelize,
@@ -69,6 +75,8 @@ module.exports = (sequelize, DataTypes) => {
       tableName: "users",
       createdAt: "created_at",
       updatedAt: "updated_at",
+      deletedAt: "deleted_at",
+      paranoid: true,
     },
   );
 

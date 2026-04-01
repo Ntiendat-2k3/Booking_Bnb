@@ -1,25 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import AdminShell from "@/components/AdminShell";
-import { apiFetch } from "@/lib/api";
+import { adminService } from "@/services/adminService";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
-import Badge from "@/components/ui/Badge";
-import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { Plus, Pencil, EyeOff, Eye } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import RipleLoading from "@/components/loading/RipleLoading";
 import AdminPagination from "@/components/admin/AdminPagination";
 
+import AmenitiesTable from "@/components/admin/amenities/AmenitiesTable";
+import AmenityCreateModal from "@/components/admin/amenities/AmenityCreateModal";
+import AmenityEditModal from "@/components/admin/amenities/AmenityEditModal";
+
 const PAGE_SIZE = 10;
 
-
 export default function Page() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
@@ -72,68 +71,44 @@ export default function Page() {
   }, [filtered, page]);
 
   async function loadItems() {
-    const res = await apiFetch(
-      `/api/v1/admin/amenities?active=${activeFilter}`,
-      { method: "GET" },
-    );
-    setItems(res.data?.items || []);
+    try {
+      const res = await adminService.getAmenities(activeFilter);
+      setItems(res.data?.items || []);
+    } catch (e) {
+      toast.error(e?.message || "Lỗi tải amenities");
+    }
   }
 
   useEffect(() => {
     let alive = true;
-
     async function init() {
       try {
-        await apiFetch("/api/v1/auth/csrf", { method: "GET" });
-
-        try {
-          const me = await apiFetch("/api/v1/auth/profile", { method: "GET" });
-          if (me.data?.role !== "admin") throw new Error("not admin");
-        } catch (e) {
-          if (e?.status !== 401) throw e;
-          await apiFetch("/api/v1/auth/refresh", {
-            method: "POST",
-            body: JSON.stringify({}),
-          });
-          const me2 = await apiFetch("/api/v1/auth/profile", { method: "GET" });
-          if (me2.data?.role !== "admin") throw new Error("not admin");
-        }
-
         await loadItems();
-      } catch {
-        router.replace("/login");
       } finally {
         if (alive) setLoading(false);
       }
     }
-
     init();
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router, activeFilter]);
+  }, [activeFilter]);
 
   async function refresh() {
     setLoading(true);
-    try {
-      await loadItems();
-    } finally {
-      setLoading(false);
-    }
+    await loadItems();
+    setLoading(false);
   }
 
   async function onCreate() {
     if (!createForm.name.trim()) return;
     setSaving(true);
     try {
-      await apiFetch("/api/v1/admin/amenities", {
-        method: "POST",
-        body: JSON.stringify({
-          name: createForm.name.trim(),
-          group: createForm.group.trim() || null,
-          is_active: createForm.is_active === true,
-        }),
+      await adminService.createAmenity({
+        name: createForm.name.trim(),
+        group: createForm.group.trim() || null,
+        is_active: createForm.is_active === true,
       });
       setCreateForm({ name: "", group: "", is_active: true });
       toast.success("Amenity created");
@@ -160,13 +135,10 @@ export default function Page() {
     if (!editing) return;
     setSaving(true);
     try {
-      await apiFetch(`/api/v1/admin/amenities/${editing.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          name: editForm.name.trim(),
-          group: editForm.group.trim() || null,
-          is_active: editForm.is_active === true,
-        }),
+      await adminService.updateAmenity(editing.id, {
+        name: editForm.name.trim(),
+        group: editForm.group.trim() || null,
+        is_active: editForm.is_active === true,
       });
       toast.success("Amenity updated");
       setEditOpen(false);
@@ -183,10 +155,7 @@ export default function Page() {
     const next = !(a.is_active !== false);
     setSaving(true);
     try {
-      await apiFetch(`/api/v1/admin/amenities/${a.id}/active`, {
-        method: "POST",
-        body: JSON.stringify({ is_active: next }),
-      });
+      await adminService.toggleAmenityActive(a.id, next);
       toast.success(next ? "Activated" : "Deactivated");
       await loadItems();
     } catch (e) {
@@ -222,9 +191,6 @@ export default function Page() {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </Select>
-            <Button onClick={refresh} variant="secondary">
-              Refresh
-            </Button>
             <Button onClick={() => setCreateOpen(true)} variant="primary">
               <Plus className="w-4 h-4" />
               New
@@ -232,207 +198,35 @@ export default function Page() {
           </div>
         </div>
 
-        <div className="overflow-hidden border shadow-sm rounded-2xl ui-border ui-panel">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-white/5 ui-muted">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Group</th>
-                <th className="px-4 py-3">Slug</th>
-                <th className="px-4 py-3">Used</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pagedItems.map((a) => (
-                <tr key={a.id} className="border-t ui-border hover:bg-white/5">
-                  <td className="px-4 py-3">
-                    <div className="font-medium ui-fg">{a.name}</div>
-                    <div className="mt-0.5 text-xs font-mono ui-muted">
-                      ID: {a.id}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {a.group || <span className="ui-muted-2">—</span>}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs ui-muted">
-                    {a.slug}
-                  </td>
-                  <td className="px-4 py-3">{a.listing_count ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone={a.is_active !== false ? "emerald" : "zinc"}>
-                      {a.is_active !== false ? "active" : "inactive"}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => openEdit(a)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setConfirm({ open: true, item: a })}
-                        disabled={saving}
-                      >
-                        {a.is_active !== false ? (
-                          <>
-                            <EyeOff className="w-4 h-4" /> Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="w-4 h-4" /> Activate
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+        <AmenitiesTable
+          pagedItems={pagedItems}
+          filtered={filtered}
+          openEdit={openEdit}
+          setConfirm={setConfirm}
+          saving={saving}
+        />
 
-              {!filtered.length ? (
-                <tr>
-                  <td className="px-4 py-10 text-center ui-muted" colSpan={6}>
-                    Không có amenity.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-
-          <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
+        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
       </div>
 
-      <Modal
-        open={createOpen}
-        onClose={() => {
-          if (!saving) toast.success("Amenity created");
-          setCreateOpen(false);
-        }}
-        title="Create amenity"
-        description="Tạo tiện ích mới để host chọn khi tạo listing."
-        size="sm"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setCreateOpen(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={onCreate}
-              disabled={saving || !createForm.name.trim()}
-            >
-              Create
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-3">
-          <div>
-            <div className="mb-1 text-xs font-semibold ui-muted">Name</div>
-            <Input
-              value={createForm.name}
-              onChange={(e) =>
-                setCreateForm((s) => ({ ...s, name: e.target.value }))
-              }
-              placeholder="Wifi, Pool, Kitchen..."
-            />
-          </div>
-          <div>
-            <div className="mb-1 text-xs font-semibold ui-muted">Group</div>
-            <Input
-              value={createForm.group}
-              onChange={(e) =>
-                setCreateForm((s) => ({ ...s, group: e.target.value }))
-              }
-              placeholder="Basic / Safety / Bedroom..."
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm ui-muted">
-            <input
-              type="checkbox"
-              checked={createForm.is_active === true}
-              onChange={(e) =>
-                setCreateForm((s) => ({ ...s, is_active: e.target.checked }))
-              }
-            />
-            Active
-          </label>
-        </div>
-      </Modal>
+      <AmenityCreateModal
+        createOpen={createOpen}
+        setCreateOpen={setCreateOpen}
+        saving={saving}
+        createForm={createForm}
+        setCreateForm={setCreateForm}
+        onCreate={onCreate}
+      />
 
-      <Modal
-        open={editOpen}
-        onClose={() => {
-          if (!saving) toast.success("Amenity updated");
-          setEditOpen(false);
-        }}
-        title="Edit amenity"
-        description={editing ? `ID: ${editing.id}` : ""}
-        size="sm"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setEditOpen(false)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              onClick={onSaveEdit}
-              disabled={saving || !editForm.name.trim()}
-            >
-              Save
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-3">
-          <div>
-            <div className="mb-1 text-xs font-semibold ui-muted">Name</div>
-            <Input
-              value={editForm.name}
-              onChange={(e) =>
-                setEditForm((s) => ({ ...s, name: e.target.value }))
-              }
-              placeholder="Name"
-            />
-          </div>
-          <div>
-            <div className="mb-1 text-xs font-semibold ui-muted">Group</div>
-            <Input
-              value={editForm.group}
-              onChange={(e) =>
-                setEditForm((s) => ({ ...s, group: e.target.value }))
-              }
-              placeholder="Group (optional)"
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm ui-muted">
-            <input
-              type="checkbox"
-              checked={editForm.is_active === true}
-              onChange={(e) =>
-                setEditForm((s) => ({ ...s, is_active: e.target.checked }))
-              }
-            />
-            Active
-          </label>
-        </div>
-      </Modal>
+      <AmenityEditModal
+        editOpen={editOpen}
+        setEditOpen={setEditOpen}
+        saving={saving}
+        editing={editing}
+        editForm={editForm}
+        setEditForm={setEditForm}
+        onSaveEdit={onSaveEdit}
+      />
 
       <ConfirmDialog
         open={confirm.open}

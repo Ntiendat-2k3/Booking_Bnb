@@ -3,6 +3,10 @@
 var app = require('../app');
 var debug = require('debug')('airbnb-backend-zipstyle:server');
 var http = require('http');
+const { startBookingCleanup } = require('../utils/bookingCleanup');
+
+// Start background cleanup (default to 5 mins)
+startBookingCleanup();
 
 var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);

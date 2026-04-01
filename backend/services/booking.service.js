@@ -1,5 +1,6 @@
+const { Booking, Listing, Payment, User, Notification, Sequelize } = require("../models");
+const { sendEmail } = require("../utils/mailer");
 const { Op } = require("sequelize");
-const { Booking, Listing, Payment, Sequelize } = require("../models");
 
 const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES || 15);
 
@@ -198,7 +199,7 @@ module.exports = {
     }
 
     const paid = await Payment.findOne({
-      where: { booking_id: booking.id, provider: "vnpay", status: "succeeded" },
+      where: { booking_id: booking.id, provider: "stripe", status: "succeeded" },
       order: [["created_at", "DESC"]],
     });
     if (!paid) {
@@ -213,7 +214,17 @@ module.exports = {
   },
 
   async cancel({ userId, bookingId }) {
-    const booking = await Booking.findByPk(bookingId);
+    const booking = await Booking.findByPk(bookingId, {
+      include: [
+        { model: User, as: "guest", attributes: ["full_name"] },
+        { 
+          model: Listing, 
+          as: "listing", 
+          attributes: ["id", "title", "host_id"],
+          include: [{ model: User, as: "host", attributes: ["id", "full_name", "email"] }]
+        }
+      ]
+    });
     if (!booking) {
       const err = new Error("Booking not found");
       err.status = 404;
@@ -243,6 +254,33 @@ module.exports = {
 
     booking.status = "cancelled";
     await booking.save();
+
+    // --- Thông báo ---
+    try {
+      if (booking.listing?.host) {
+        await Notification.create({
+          user_id: booking.listing.host_id,
+          type: "booking_cancelled",
+          title: "Một đơn đặt phòng đã bị hủy",
+          message: `Khách hàng ${booking.guest?.full_name || "ẩn danh"} vừa hủy đơn đặt phòng cho chỗ nghỉ "${booking.listing.title}".`,
+        });
+
+        const hostHtml = `
+          <h3>Chào ${booking.listing.host.full_name},</h3>
+          <p>Chúng tôi xin thông báo rằng khách hàng đã hủy đơn đặt phòng cho chỗ nghỉ <b>"${booking.listing.title}"</b> của bạn.</p>
+          <p><b>Khách hàng:</b> ${booking.guest?.full_name || "Airbnb User"}</p>
+          <p><b>Ngày nhận phòng dự kiến:</b> ${booking.check_in}</p>
+          <p>Hiện tại lịch trống đã được mở lại cho các khách hàng khác.</p>
+          <br/>
+          <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
+        `;
+        await sendEmail(booking.listing.host.email, "Thông báo hủy đơn đặt phòng", hostHtml);
+      }
+    } catch (msgError) {
+      console.error("[BookingCancel] Notification error:", msgError);
+    }
+
     return booking;
   },
 };
+

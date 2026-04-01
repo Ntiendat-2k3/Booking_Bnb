@@ -104,15 +104,30 @@ module.exports = {
       throw err;
     }
     if (row.revoked_at) {
-      // Token reuse detected (stolen old refresh token).
+      const revokedAt = new Date(row.revoked_at).getTime();
+      const now = Date.now();
+      const diff = now - revokedAt;
+
+      // Grace period (e.g., 10 seconds) for parallel requests
+      if (diff < 10000) {
+        console.warn(`[AuthService] Refresh token reuse detected within grace period (${diff}ms). Ignoring revocation.`);
+        const err = new Error("Token recently rotated. Please check your latest tokens.");
+        err.status = 401;
+        throw err;
+      }
+
+      // Token reuse detected (stolen or old refresh token).
+      console.error(`[AuthService] Refresh token reuse detected after grace period. Revoking all sessions for user ${row.user_id}`);
       // Revoke ALL active refresh tokens of this user as a safety measure.
       await refreshRepo.revokeAllByUserId(row.user_id);
 
-      const err = new Error("Refresh token revoked");
+      const err = new Error("Refresh token revoked due to reuse");
       err.status = 401;
       throw err;
     }
-    if (row.expires_at < new Date()) {
+
+    if (new Date(row.expires_at).getTime() < Date.now()) {
+      console.warn(`[AuthService] Refresh token expired for user ${row.user_id}`);
       const err = new Error("Refresh token expired");
       err.status = 401;
       throw err;

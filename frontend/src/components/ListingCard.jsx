@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useDispatch, useSelector } from "react-redux";
@@ -16,8 +17,16 @@ export default function ListingCard({ listing }) {
   const dispatch = useDispatch();
 
   const user = useSelector(selectAuthUser);
+  const isInitialized = useSelector((s) => s.auth.isInitialized);
   const favoriteIdsSet = useSelector(selectFavoriteIdsSet);
   const isFav = id ? favoriteIdsSet.has(id) : false;
+  
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const showIsFav = mounted && isFav;
 
   const cover = listing.cover_url || listing.images?.[0]?.url;
   const coverSrc = cover || "https://picsum.photos/seed/airbnb/800/600";
@@ -30,6 +39,7 @@ export default function ListingCard({ listing }) {
     e.preventDefault();
     e.stopPropagation();
 
+    if (!isInitialized) return;
     if (!user) {
       notifyError("Bạn cần đăng nhập để lưu yêu thích");
       router.push("/login");
@@ -61,10 +71,10 @@ export default function ListingCard({ listing }) {
         <button
           type="button"
           onClick={onToggleFav}
-          aria-label={isFav ? "Bỏ yêu thích" : "Thêm yêu thích"}
+          aria-label={showIsFav ? "Bỏ yêu thích" : "Thêm yêu thích"}
           className="absolute right-3 top-3 z-10 rounded-full bg-white/90 p-2 shadow hover:bg-white"
         >
-          {isFav ? <HeartFilled className="h-5 w-5 text-rose-500" /> : <HeartOutline className="h-5 w-5" />}
+          {showIsFav ? <HeartFilled className="h-5 w-5 text-rose-500" /> : <HeartOutline className="h-5 w-5" />}
         </button>
       </div>
 

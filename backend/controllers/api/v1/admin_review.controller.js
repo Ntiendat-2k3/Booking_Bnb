@@ -48,4 +48,37 @@ module.exports = {
       return errorResponse(res, e.message || "Delete failed", e.status || 500);
     }
   },
+
+  bulkHide: async (req, res) => {
+    try {
+      const ids = req.body?.ids || [];
+      const data = await adminReviewService.bulkSetHidden(ids, true);
+      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
+      return successResponse(res, data, "Bulk hide processed", 200);
+    } catch (e) {
+      return errorResponse(res, e.message || "Bulk action failed", e.status || 500);
+    }
+  },
+
+  bulkUnhide: async (req, res) => {
+    try {
+      const ids = req.body?.ids || [];
+      const data = await adminReviewService.bulkSetHidden(ids, false);
+      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
+      return successResponse(res, data, "Bulk unhide processed", 200);
+    } catch (e) {
+      return errorResponse(res, e.message || "Bulk action failed", e.status || 500);
+    }
+  },
+
+  bulkRemove: async (req, res) => {
+    try {
+      const ids = req.body?.ids || [];
+      const data = await adminReviewService.bulkRemove(ids);
+      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
+      return successResponse(res, data, "Bulk remove processed", 200);
+    } catch (e) {
+      return errorResponse(res, e.message || "Bulk action failed", e.status || 500);
+    }
+  },
 };

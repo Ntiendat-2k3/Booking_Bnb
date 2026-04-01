@@ -56,8 +56,17 @@ app.use(
 );
 
 app.use(logger("dev"));
-app.use(express.json());
+// Special: Stripe Webhook needs the raw body for signature verification before other parsers
+app.use("/api/v1/payments/stripe/webhook", express.raw({ type: 'application/json' }));
+
+app.use(express.json({
+  verify: (req, res, buf) => {
+    // Also keeping this for extra safety on existing code
+    req.rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: false }));
+
 app.use(cookieParser());
 
 // Passport (API only => no session)

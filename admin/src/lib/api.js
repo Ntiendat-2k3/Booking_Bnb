@@ -1,6 +1,6 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
-export function apiUrl(path) {
+function apiUrl(path) {
   if (path.startsWith("http")) return path;
   return API_BASE.replace(/\/$/, "") + path;
 }

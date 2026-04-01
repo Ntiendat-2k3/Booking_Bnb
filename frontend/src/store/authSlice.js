@@ -5,6 +5,7 @@ const initialState = {
   status: "idle", // idle|loading|error
   error: null,
   csrfReady: false,
+  isInitialized: false,
 };
 
 const authSlice = createSlice({
@@ -23,6 +24,9 @@ const authSlice = createSlice({
     setCsrfReady: (state, action) => {
       state.csrfReady = action.payload;
     },
+    setInitialized: (state, action) => {
+      state.isInitialized = action.payload;
+    },
     clearAuth: (state) => {
       state.user = null;
       state.status = "idle";
@@ -32,5 +36,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setUser, setStatus, setError, setCsrfReady, clearAuth } = authSlice.actions;
+export const { setUser, setStatus, setError, setCsrfReady, setInitialized, clearAuth } = authSlice.actions;
 export default authSlice.reducer;

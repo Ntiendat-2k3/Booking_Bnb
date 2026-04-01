@@ -7,8 +7,10 @@ import { notFound } from "next/navigation";
 import RoomTabs from "@/components/RoomTabs";
 import Container from "@/components/layout/Container";
 import MapboxStaticMap from "@/components/MapboxStaticMap";
-import BookingCard from "@/components/BookingCard";
-import ReviewsSection from "@/components/ReviewsSection";
+import BookingCard from "@/components/Booking/BookingCard";
+import ReviewsSection from "@/components/Reviews";
+import ImageGallery from "@/components/Room/ImageGallery";
+import ContactHostButton from "@/components/ContactHostButton";
 
 function toNumber(v) {
   const n = Number(v);
@@ -115,10 +117,6 @@ export default async function RoomDetailPage({ params, searchParams }) {
 
   if (!listing) return notFound();
 
-  // Xử lý ảnh
-  const images = listing?.images || [];
-  const cover = images.find((x) => x.is_cover) || images[0];
-
   // Tính toán rating an toàn hơn
   const avgFromReviews =
     reviews.length > 0
@@ -159,36 +157,8 @@ export default async function RoomDetailPage({ params, searchParams }) {
       <RoomTabs />
 
       <Container>
-        {/* Photos Grid */}
         <section id="photos" className="pt-6 scroll-mt-28">
-          <div className="grid grid-cols-1 gap-2 overflow-hidden md:grid-cols-4 rounded-2xl">
-            <div className="md:col-span-2 h-[300px] md:h-[410px] relative">
-              <Image
-                src={cover?.url || "https://picsum.photos/seed/cover/1200/800"}
-                alt={listing.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover transition-all cursor-pointer hover:brightness-90"
-              />
-            </div>
-            <div className="hidden grid-cols-2 gap-2 md:grid md:col-span-2">
-              {/* Hiển thị tối đa 4 ảnh nhỏ bên cạnh */}
-              {images
-                .filter((im) => im.id !== cover?.id)
-                .slice(0, 4)
-                .map((im) => (
-                  <div key={im.id} className="h-[201px] relative">
-                    <Image
-                      src={im.url}
-                      alt={listing.title}
-                      fill
-                      sizes="25vw"
-                      className="object-cover transition-all cursor-pointer hover:brightness-90"
-                    />
-                  </div>
-                ))}
-            </div>
-          </div>
+          <ImageGallery images={listing.images} title={listing.title} />
         </section>
 
         {/* Info & Booking Section */}
@@ -246,6 +216,36 @@ export default async function RoomDetailPage({ params, searchParams }) {
               initialCount={reviewCount}
               autoFocusComposer={String(sp?.review || "") === "1"}
             />
+
+            <section id="host" className="py-8 border-b scroll-mt-28">
+              <h2 className="text-xl font-semibold mb-6">Gặp gỡ chủ nhà</h2>
+              <div className="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row gap-8 items-start">
+                <div className="flex flex-col items-center gap-4 min-w-[200px]">
+                  <Image
+                    src={listing.host?.avatar_url || "https://i.pravatar.cc/150"}
+                    alt={listing.host?.full_name}
+                    width={100}
+                    height={100}
+                    className="w-24 h-24 rounded-full object-cover shadow-md"
+                  />
+                  <div className="text-center">
+                    <h3 className="text-lg font-bold">{listing.host?.full_name}</h3>
+                    <p className="text-sm text-slate-500">{listing.host?.location || "Chưa cập nhật địa điểm"}</p>
+                  </div>
+                  <div className="mt-2">
+                    <ContactHostButton hostId={listing.host?.id} />
+                  </div>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-slate-900 mb-2">Giới thiệu</h4>
+                    <p className="text-slate-600 leading-relaxed italic">
+                      {listing.host?.about || "Chủ nhà chưa cập nhật phần giới thiệu cá nhân."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
 
             <section id="location" className="pt-8 scroll-mt-28">
               <h2 className="text-xl font-semibold">Nơi bạn sẽ đến</h2>

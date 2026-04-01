@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useDispatch } from "react-redux";
 import { refreshSession, fetchProfile, ensureCsrf } from "@/store/authThunks";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const params = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -31,4 +31,12 @@ export default function AuthCallbackPage() {
   }, [dispatch, params, router]);
 
   return <div className="mx-auto max-w-md rounded-lg border p-4">Đang xử lý đăng nhập...</div>;
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<div className="mx-auto max-w-md rounded-lg border p-4">Đang xử lý đăng nhập...</div>}>
+      <AuthCallbackContent />
+    </Suspense>
+  );
 }

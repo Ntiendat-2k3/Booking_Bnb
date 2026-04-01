@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api";
-import { clearAuth, setCsrfReady, setError, setStatus, setUser } from "./authSlice";
+import { clearAuth, setCsrfReady, setError, setStatus, setUser, setInitialized } from "./authSlice";
 import { fetchFavorites } from "./favoritesThunks";
 import { clearFavorites } from "./favoritesSlice";
 
@@ -22,6 +22,8 @@ export const bootstrapAuth = () => async (dispatch) => {
     await dispatch(fetchFavorites());
   } catch {
     // ignore (not logged in)
+  } finally {
+    dispatch(setInitialized(true));
   }
 };
 
@@ -32,7 +34,7 @@ export const registerLocal = (body) => async (dispatch) => {
     await dispatch(ensureCsrf());
     const res = await apiFetch("/api/v1/auth/register", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: body,
     });
 
     dispatch(setUser(res.data.user));
@@ -52,7 +54,7 @@ export const loginLocal = (body) => async (dispatch) => {
     await dispatch(ensureCsrf());
     const res = await apiFetch("/api/v1/auth/login", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: body,
     });
 
     dispatch(setUser(res.data.user));
@@ -68,7 +70,7 @@ export const loginLocal = (body) => async (dispatch) => {
 export const refreshSession = () => async (dispatch) => {
   await dispatch(ensureCsrf());
   // will rotate cookies if refresh cookie exists
-  await apiFetch("/api/v1/auth/refresh", { method: "POST", body: JSON.stringify({}) });
+  await apiFetch("/api/v1/auth/refresh", { method: "POST", body: {} });
 };
 
 export const fetchProfile = () => async (dispatch) => {
@@ -98,7 +100,7 @@ export const fetchProfile = () => async (dispatch) => {
 export const logout = () => async (dispatch) => {
   try {
     await dispatch(ensureCsrf());
-    await apiFetch("/api/v1/auth/logout", { method: "POST", body: JSON.stringify({}) });
+    await apiFetch("/api/v1/auth/logout", { method: "POST", body: {} });
   } catch {}
   dispatch(clearAuth());
   dispatch(clearFavorites());
@@ -108,7 +110,7 @@ export const logout = () => async (dispatch) => {
 export const becomeHost = () => async (dispatch) => {
   try {
     await dispatch(ensureCsrf());
-    const res = await apiFetch("/api/v1/host/apply", { method: "POST", body: JSON.stringify({}) });
+    const res = await apiFetch("/api/v1/host/apply", { method: "POST", body: {} });
     // API returns updated user profile (data)
     dispatch(setUser(res.data));
     return true;

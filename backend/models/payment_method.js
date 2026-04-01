@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
       user_id: { type: DataTypes.UUID, allowNull: false },
 
       provider: {
-        type: DataTypes.ENUM("vnpay", "stripe", "momo", "bank"),
+        type: DataTypes.ENUM("stripe"),
         allowNull: false,
       },
       type: {

@@ -37,6 +37,7 @@ export default function HostListingsPage() {
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
+  const isInitialized = useSelector((s) => s.auth.isInitialized);
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -48,11 +49,9 @@ export default function HostListingsPage() {
   }, [items, tab]);
 
   async function load() {
+    if (!isInitialized || !user) return;
     setLoading(true);
     try {
-      await dispatch(ensureCsrf());
-      await dispatch(fetchProfile());
-
       const res = await apiFetch(`/api/v1/host/listings${tab !== "all" ? `?status=${encodeURIComponent(tab)}` : ""}`, { method: "GET" });
       setItems(res.data?.items || []);
     } catch (e) {
@@ -79,9 +78,19 @@ async function onDelete(id) {
 }
 
   useEffect(() => {
-    load();
+    if (isInitialized) {
+      load();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  }, [tab, isInitialized]);
+
+  if (!isInitialized) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (

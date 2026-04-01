@@ -101,7 +101,7 @@ module.exports = {
       where,
       attributes: attrs,
       include: [
-        { model: User, as: "host", attributes: ["id", "full_name", "avatar_url"] },
+        { model: User, as: "host", attributes: ["id", "full_name", "avatar_url", "about", "location"] },
       ],
       order,
       limit,
@@ -147,7 +147,7 @@ module.exports = {
         ],
       },
       include: [
-        { model: User, as: "host", attributes: ["id", "full_name", "avatar_url"] },
+        { model: User, as: "host", attributes: ["id", "full_name", "avatar_url", "about", "location"] },
         { model: ListingImage, as: "images", attributes: ["id", "url", "sort_order", "is_cover"], separate: true, order: [["sort_order", "ASC"]] },
         { model: Amenity, as: "amenities", through: { attributes: [] }, attributes: ["id", "name", "group"] },
       ],

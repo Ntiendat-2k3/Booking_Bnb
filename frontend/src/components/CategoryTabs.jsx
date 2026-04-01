@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Container from "./layout/Container";
 
 const CATEGORIES = [
@@ -33,6 +33,12 @@ function Chip({ active, children, onClick }) {
 export default function CategoryTabs() {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
+
+  // Only show on home page or search page
+  if (pathname !== "/" && pathname !== "/search") {
+    return null;
+  }
 
   const current = params.get("property_type") || "";
 

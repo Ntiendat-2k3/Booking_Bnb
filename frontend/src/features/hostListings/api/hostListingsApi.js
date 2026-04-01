@@ -6,19 +6,19 @@ export const HostListingsApi = {
   create: (payload) =>
     apiFetch("/api/v1/host/listings", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: payload,
     }),
 
   patch: (id, payload) =>
     apiFetch(`/api/v1/host/listings/${id}`, {
       method: "PATCH",
-      body: JSON.stringify(payload),
+      body: payload,
     }),
 
   setAmenities: (id, amenityIds) =>
     apiFetch(`/api/v1/host/listings/${id}/amenities`, {
       method: "PUT",
-      body: JSON.stringify({ amenity_ids: amenityIds }),
+      body: { amenity_ids: amenityIds },
     }),
 
   submit: (id) => apiFetch(`/api/v1/host/listings/${id}/submit`, { method: "POST" }),
@@ -27,3 +27,4 @@ export const HostListingsApi = {
 
   remove: (id) => apiFetch(`/api/v1/host/listings/${id}`, { method: "DELETE" }),
 };
+

@@ -32,7 +32,7 @@ module.exports = {
     return plain;
   },
 
-  async updateProfile(userId, { full_name, phone }) {
+  async updateProfile(userId, { full_name, phone, about, location }) {
     const user = await User.findByPk(userId);
     if (!user) {
       const err = new Error("User not found");
@@ -40,20 +40,10 @@ module.exports = {
       throw err;
     }
 
-    if (full_name !== undefined) {
-      const name = String(full_name || "").trim();
-      if (!name) {
-        const err = new Error("full_name is required");
-        err.status = 400;
-        throw err;
-      }
-      user.full_name = name;
-    }
-
-    if (phone !== undefined) {
-      const p = String(phone || "").trim();
-      user.phone = p || null;
-    }
+    user.full_name = full_name;
+    user.phone = phone || null;
+    user.about = about || null;
+    user.location = location || null;
 
     await user.save();
     const plain = toPlain(user);
@@ -87,16 +77,6 @@ module.exports = {
       err.status = 400;
       throw err;
     }
-    if (!current_password || !new_password) {
-      const err = new Error("current_password and new_password are required");
-      err.status = 400;
-      throw err;
-    }
-    if (String(new_password).length < 6) {
-      const err = new Error("new_password must be at least 6 characters");
-      err.status = 400;
-      throw err;
-    }
 
     const ok = await bcrypt.compare(String(current_password), String(user.password_hash));
     if (!ok) {
@@ -118,9 +98,7 @@ module.exports = {
   async updateSettings(userId, patch) {
     const row = await ensureSettingRow(userId);
 
-    if (patch.show_profile !== undefined) row.show_profile = !!patch.show_profile;
-    if (patch.show_reviews !== undefined) row.show_reviews = !!patch.show_reviews;
-    if (patch.marketing_emails !== undefined) row.marketing_emails = !!patch.marketing_emails;
+    Object.assign(row, patch);
     row.updated_at = new Date();
     await row.save();
     return toPlain(row);

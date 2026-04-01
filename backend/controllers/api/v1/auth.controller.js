@@ -10,9 +10,13 @@ const {
   csrfCookieOptions,
 } = require("../../../utils/cookies");
 const { generateCsrfToken } = require("../../../utils/csrf");
+const asyncHandler = require("../../../utils/asyncHandler");
+const crypto = require("crypto");
+const bcrypt = require("bcrypt");
+const { User } = require("../../../models/index");
+const { Op } = require("sequelize");
 
 function ensureCsrfCookie(res, req) {
-  // If missing, set a new csrf token cookie (double-submit pattern)
   const existing = req.cookies?.[csrfCookieName()];
   const token = existing || generateCsrfToken();
   if (!existing) {
@@ -22,39 +26,29 @@ function ensureCsrfCookie(res, req) {
 }
 
 function setAuthCookies(res, req, { accessToken, refreshToken }) {
-  // refresh cookie (httpOnly, /api/v1/auth)
   res.cookie(refreshCookieName(), refreshToken, refreshCookieOptions());
-  // access cookie (httpOnly, /)
   res.cookie(accessCookieName(), accessToken, accessCookieOptions());
-  // csrf cookie (NOT httpOnly)
   const csrfToken = ensureCsrfCookie(res, req);
   return csrfToken;
 }
 
 module.exports = {
-  csrf: async (req, res) => {
+  csrf: asyncHandler(async (req, res) => {
     const token = ensureCsrfCookie(res, req);
     return successResponse(res, { csrfToken: token }, "CSRF ready", 200);
-  },
+  }),
 
-  register: async (req, res) => {
-    try {
-      const data = await authService.registerLocal(req.body, {
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-      });
-
-      const csrfToken = setAuthCookies(res, req, {
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
-      });
-
-      // Don't expose refresh token to JS. Access token is in cookie.
-      return successResponse(res, { user: data.user, csrfToken }, "Register successfully", 201);
-    } catch (e) {
-      return errorResponse(res, e.message || "Internal server error", e.status || 500);
-    }
-  },
+  register: asyncHandler(async (req, res) => {
+    const data = await authService.registerLocal(req.body, {
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    const csrfToken = setAuthCookies(res, req, {
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken,
+    });
+    return successResponse(res, { user: data.user, csrfToken }, "Register successfully", 201);
+  }),
 
   login: (req, res, next) => {
     passport.authenticate("local", { session: false }, async (err, user, info) => {
@@ -105,7 +99,6 @@ module.exports = {
           );
         }
 
-        // Redirect về FE, KHÔNG đưa token lên URL
         const url = new URL((process.env.FRONTEND_URL || "http://localhost:3001") + "/auth/callback");
         url.searchParams.set("success", "1");
         return res.redirect(url.toString());
@@ -115,9 +108,9 @@ module.exports = {
     })(req, res, next);
   },
 
-  profile: async (req, res) => {
+  profile: asyncHandler(async (req, res) => {
     return successResponse(res, req.user.user, "User profile fetched", 200);
-  },
+  }),
 
   refresh: async (req, res) => {
     const refreshToken = req.cookies?.[refreshCookieName()];
@@ -138,7 +131,7 @@ module.exports = {
     }
   },
 
-  logout: async (req, res) => {
+  logout: asyncHandler(async (req, res) => {
     const refreshToken = req.cookies?.[refreshCookieName()];
     await authService.logout(refreshToken);
 
@@ -146,5 +139,51 @@ module.exports = {
     res.clearCookie(accessCookieName(), { path: "/" });
 
     return successResponse(res, null, "Logout successfully", 200);
-  },
+  }),
+
+  forgotPassword: asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    if (!email) return errorResponse(res, "Email is required", 400);
+
+    const user = await User.findOne({ where: { email, provider: "local" } });
+    if (!user) return errorResponse(res, "Cannot find user with this email or user logged in via Google.", 404);
+
+    const token = crypto.randomBytes(32).toString("hex");
+    user.reset_password_token = token;
+    user.reset_password_expires = new Date(Date.now() + 3600000); // 1 hour
+    await user.save();
+
+    // Trong môi trường production, bạn sẽ cài đặt package như Nodemailer để gửi mail thực tế.
+    // Tại đây, in link ra terminal để test nhanh.
+    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3001"}/reset-password?token=${token}`;
+    console.log(`\n==============================================`);
+    console.log(`[FORGOT PASSWORD] Yêu cầu khôi phục mật khẩu từ: ${email}`);
+    console.log(`Click vào link sau để reset pass: ${resetUrl}`);
+    console.log(`Token cấp phát: ${token}`);
+    console.log(`==============================================\n`);
+
+    return successResponse(res, { message: "Reset link has been sent to your email (Check terminal log for now)." }, "Email sent", 200);
+  }),
+
+  resetPassword: asyncHandler(async (req, res) => {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return errorResponse(res, "Token and new password are required", 400);
+
+    const user = await User.findOne({
+      where: {
+        reset_password_token: token,
+        reset_password_expires: { [Op.gt]: new Date() },
+      },
+    });
+
+    if (!user) return errorResponse(res, "Token is invalid or has expired.", 400);
+
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    user.password_hash = password_hash;
+    user.reset_password_token = null;
+    user.reset_password_expires = null;
+    await user.save();
+
+    return successResponse(res, null, "Mật khẩu đã được thay đổi thành công.", 200);
+  }),
 };
