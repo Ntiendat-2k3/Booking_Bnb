@@ -15,6 +15,7 @@ const passportGoogle = require("./passports/passport.google");
 const { sequelize } = require("./models/index");
 
 var app = express();
+app.set("trust proxy", 1);
 
 connectRedis().catch(() => {});
 
