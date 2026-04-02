@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
-import { createStripePayment } from "@/services/bookingService";
+import { createStripePayment, updateBooking } from "@/services/bookingService";
 import { apiFetch } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import Container from "@/components/layout/Container";
@@ -19,6 +19,14 @@ export default function CheckoutPage() {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+
+  // Inline editing states
+  const [editingDates, setEditingDates] = useState(false);
+  const [editingGuests, setEditingGuests] = useState(false);
+  const [draftCheckIn, setDraftCheckIn] = useState("");
+  const [draftCheckOut, setDraftCheckOut] = useState("");
+  const [draftGuests, setDraftGuests] = useState(1);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function fetchBooking() {
@@ -42,6 +50,58 @@ export default function CheckoutPage() {
     }
     fetchBooking();
   }, [id, user, isInitialized, router]);
+
+  function startEditDates() {
+    setDraftCheckIn(booking.check_in);
+    setDraftCheckOut(booking.check_out);
+    setEditingDates(true);
+  }
+
+  function startEditGuests() {
+    setDraftGuests(booking.guests_count);
+    setEditingGuests(true);
+  }
+
+  async function saveDates() {
+    if (draftCheckIn === booking.check_in && draftCheckOut === booking.check_out) {
+      setEditingDates(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateBooking(id, {
+        check_in: draftCheckIn,
+        check_out: draftCheckOut,
+      });
+      setBooking(updated);
+      setEditingDates(false);
+      notifySuccess("Đã cập nhật ngày thành công");
+    } catch (err) {
+      notifyError(err?.message || "Không thể cập nhật ngày");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveGuests() {
+    if (Number(draftGuests) === booking.guests_count) {
+      setEditingGuests(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateBooking(id, {
+        guests_count: Number(draftGuests),
+      });
+      setBooking(updated);
+      setEditingGuests(false);
+      notifySuccess("Đã cập nhật số khách thành công");
+    } catch (err) {
+      notifyError(err?.message || "Không thể cập nhật số khách");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handlePayment() {
     setPaying(true);
@@ -70,6 +130,8 @@ export default function CheckoutPage() {
 
   const { listing } = booking;
   const cover = listing?.images?.find((img) => img.is_cover) || listing?.images?.[0];
+  const maxGuests = listing?.max_guests || 16;
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
     <Container>
@@ -89,20 +151,121 @@ export default function CheckoutPage() {
             <section className="space-y-4 pb-10 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-900">Chuyến đi của bạn</h2>
               
+              {/* ===== Ngày ===== */}
               <div className="flex justify-between items-start">
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-slate-800">Ngày</h3>
-                  <p className="text-slate-600">{booking.check_in} – {booking.check_out}</p>
+                  {editingDates ? (
+                    <div className="mt-2 space-y-3">
+                      <div className="flex flex-wrap gap-3">
+                        <div className="flex flex-col">
+                          <label className="text-xs text-slate-500 mb-1">Nhận phòng</label>
+                          <input
+                            type="date"
+                            value={draftCheckIn}
+                            min={todayStr}
+                            max={draftCheckOut}
+                            onChange={(e) => setDraftCheckIn(e.target.value)}
+                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition"
+                          />
+                        </div>
+                        <div className="flex flex-col">
+                          <label className="text-xs text-slate-500 mb-1">Trả phòng</label>
+                          <input
+                            type="date"
+                            value={draftCheckOut}
+                            min={draftCheckIn || todayStr}
+                            onChange={(e) => setDraftCheckOut(e.target.value)}
+                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={saveDates}
+                          disabled={saving}
+                          className="px-4 py-1.5 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-dark transition disabled:opacity-60"
+                        >
+                          {saving ? "Đang lưu..." : "Lưu"}
+                        </button>
+                        <button
+                          onClick={() => setEditingDates(false)}
+                          disabled={saving}
+                          className="px-4 py-1.5 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-100 transition"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-600">{booking.check_in} – {booking.check_out}</p>
+                  )}
                 </div>
-                <button className="text-brand font-semibold hover:underline">Chỉnh sửa</button>
+                {!editingDates && (
+                  <button
+                    onClick={startEditDates}
+                    className="text-brand font-semibold hover:underline shrink-0 ml-4"
+                  >
+                    Chỉnh sửa
+                  </button>
+                )}
               </div>
 
+              {/* ===== Khách ===== */}
               <div className="flex justify-between items-start">
-                <div>
+                <div className="flex-1">
                   <h3 className="font-semibold text-slate-800">Khách</h3>
-                  <p className="text-slate-600">{booking.guests_count} khách</p>
+                  {editingGuests ? (
+                    <div className="mt-2 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setDraftGuests((g) => Math.max(1, g - 1))}
+                          className="w-9 h-9 flex items-center justify-center rounded-full border border-slate-300 text-slate-700 hover:border-slate-500 transition text-lg font-bold"
+                        >
+                          −
+                        </button>
+                        <span className="text-lg font-semibold text-slate-800 min-w-[3ch] text-center">
+                          {draftGuests}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDraftGuests((g) => Math.min(maxGuests, g + 1))}
+                          className="w-9 h-9 flex items-center justify-center rounded-full border border-slate-300 text-slate-700 hover:border-slate-500 transition text-lg font-bold"
+                        >
+                          +
+                        </button>
+                        <span className="text-xs text-slate-400 ml-1">Tối đa {maxGuests} khách</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={saveGuests}
+                          disabled={saving}
+                          className="px-4 py-1.5 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-dark transition disabled:opacity-60"
+                        >
+                          {saving ? "Đang lưu..." : "Lưu"}
+                        </button>
+                        <button
+                          onClick={() => setEditingGuests(false)}
+                          disabled={saving}
+                          className="px-4 py-1.5 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-100 transition"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-600">{booking.guests_count} khách</p>
+                  )}
                 </div>
-                <button className="text-brand font-semibold hover:underline">Chỉnh sửa</button>
+                {!editingGuests && (
+                  <button
+                    onClick={startEditGuests}
+                    className="text-brand font-semibold hover:underline shrink-0 ml-4"
+                  >
+                    Chỉnh sửa
+                  </button>
+                )}
               </div>
             </section>
 

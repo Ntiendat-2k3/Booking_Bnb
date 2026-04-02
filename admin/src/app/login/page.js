@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, setManualCsrfToken } from "@/lib/api";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { toast } from "sonner";
@@ -20,7 +20,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       // ensure CSRF cookie exists (for refresh/logout)
-      await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+      const csrfRes = await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+      if (csrfRes.data?.csrfToken || csrfRes.csrfToken) {
+        setManualCsrfToken(csrfRes.data?.csrfToken || csrfRes.csrfToken);
+      }
 
       await apiFetch("/api/v1/auth/login", {
         method: "POST",

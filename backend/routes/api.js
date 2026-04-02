@@ -197,6 +197,7 @@ const paymentController = require("../controllers/api/v1/payment.controller");
 router.post("/v1/bookings", authMiddleware, csrfMiddleware, bookingController.create);
 router.get("/v1/bookings/me", authMiddleware, bookingController.myBookings);
 router.get("/v1/bookings/:id", authMiddleware, bookingController.detail);
+router.patch("/v1/bookings/:id", authMiddleware, csrfMiddleware, bookingController.update);
 router.post("/v1/bookings/:id/cancel", authMiddleware, csrfMiddleware, bookingController.cancel);
 router.post("/v1/bookings/:id/checkout", authMiddleware, csrfMiddleware, bookingController.checkout);
 

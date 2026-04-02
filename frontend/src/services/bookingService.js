@@ -15,3 +15,11 @@ export async function createStripePayment(bookingId) {
   });
   return res?.data?.payment_url;
 }
+
+export async function updateBooking(bookingId, payload) {
+  const res = await apiFetch(`/api/v1/bookings/${bookingId}`, {
+    method: "PATCH",
+    body: payload,
+  });
+  return res?.data?.booking;
+}

@@ -282,5 +282,115 @@ module.exports = {
 
     return booking;
   },
+
+  async update({ userId, bookingId, check_in, check_out, guests_count }) {
+    const booking = await Booking.findByPk(bookingId, {
+      include: [
+        {
+          model: Listing,
+          as: "listing",
+          attributes: ["id", "price_per_night", "max_guests"],
+        },
+      ],
+    });
+
+    if (!booking) {
+      const err = new Error("Booking not found");
+      err.status = 404;
+      throw err;
+    }
+    if (String(booking.guest_id) !== String(userId)) {
+      const err = new Error("Forbidden");
+      err.status = 403;
+      throw err;
+    }
+    if (booking.status !== "pending_payment") {
+      const err = new Error("Only pending_payment bookings can be edited");
+      err.status = 400;
+      throw err;
+    }
+
+    const newCheckIn = check_in || booking.check_in;
+    const newCheckOut = check_out || booking.check_out;
+
+    // Validate dates
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (String(newCheckIn) < todayStr) {
+      const err = new Error("check_in must be today or later");
+      err.status = 400;
+      throw err;
+    }
+    const nights = daysBetween(newCheckIn, newCheckOut);
+    if (!Number.isFinite(nights) || nights <= 0) {
+      const err = new Error("Invalid date range");
+      err.status = 400;
+      throw err;
+    }
+
+    // Validate guests
+    const guests = Number(guests_count ?? booking.guests_count);
+    if (!Number.isInteger(guests) || guests <= 0) {
+      const err = new Error("Invalid guests_count");
+      err.status = 400;
+      throw err;
+    }
+    if (booking.listing && guests > booking.listing.max_guests) {
+      const err = new Error("Guests exceed max_guests");
+      err.status = 400;
+      throw err;
+    }
+
+    // Check availability (exclude current booking)
+    const HOLD_MINUTES_VAL = Number(process.env.BOOKING_HOLD_MINUTES || 15);
+    const holdCutoff = nowMinusMinutes(HOLD_MINUTES_VAL);
+    const overlapping = await Booking.findOne({
+      where: {
+        id: { [Op.ne]: bookingId },
+        listing_id: booking.listing_id,
+        [Op.or]: [
+          { status: "confirmed" },
+          { status: "pending_payment", created_at: { [Op.gte]: holdCutoff } },
+        ],
+        [Op.and]: [
+          { check_in: { [Op.lt]: newCheckOut } },
+          { check_out: { [Op.gt]: newCheckIn } },
+        ],
+      },
+    });
+    if (overlapping) {
+      const err = new Error("Dates are not available");
+      err.status = 409;
+      throw err;
+    }
+
+    // Recalculate total
+    const pricePerNight = BigInt(booking.price_per_night_snapshot);
+    const total = pricePerNight * BigInt(nights);
+
+    booking.check_in = newCheckIn;
+    booking.check_out = newCheckOut;
+    booking.guests_count = guests;
+    booking.total_amount = total.toString();
+    await booking.save();
+
+    // Return updated booking with listing for the frontend
+    const updated = await Booking.findByPk(bookingId, {
+      include: [
+        {
+          model: Listing,
+          as: "listing",
+          attributes: ["id", "title", "price_per_night", "max_guests"],
+          include: [
+            {
+              association: "images",
+              attributes: ["id", "url", "is_cover", "sort_order"],
+            },
+          ],
+        },
+      ],
+    });
+
+    return updated.toJSON();
+  },
 };
 

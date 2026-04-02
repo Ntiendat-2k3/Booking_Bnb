@@ -54,4 +54,18 @@ module.exports = {
     const booking = await bookingService.checkout({ userId, bookingId });
     return successResponse(res, { booking }, "Checkout success");
   }),
+
+  update: asyncHandler(async (req, res) => {
+    const userId = req.user.user.id;
+    const bookingId = req.params.id;
+    const { check_in, check_out, guests_count } = req.body || {};
+    const booking = await bookingService.update({
+      userId,
+      bookingId,
+      check_in,
+      check_out,
+      guests_count,
+    });
+    return successResponse(res, { booking }, "Booking updated");
+  }),
 };

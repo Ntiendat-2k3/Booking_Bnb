@@ -1,5 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
+let manualCsrfToken = null;
+
+export const setManualCsrfToken = (token) => {
+  manualCsrfToken = token;
+};
+
 function apiUrl(path) {
   if (path.startsWith("http")) return path;
   return API_BASE.replace(/\/$/, "") + path;
@@ -19,7 +25,9 @@ export async function apiFetch(path, opts = {}) {
   const unsafe = !["GET", "HEAD", "OPTIONS"].includes(method);
 
   if (unsafe && !headers.has("X-CSRF-Token")) {
-    const csrf = getCookie(process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token");
+    const csrf =
+      manualCsrfToken ||
+      getCookie(process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token");
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
 
