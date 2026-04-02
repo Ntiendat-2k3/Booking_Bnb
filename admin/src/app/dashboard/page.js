@@ -41,6 +41,20 @@ const MOCK_CHART_DATA = [
   { name: "Jul", value: 3490 },
 ];
 
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-xl border ui-border glass p-3 text-xs shadow-xl">
+        <p className="font-bold ui-fg mb-1">{label}</p>
+        <p className="text-[#ff2d8a] font-semibold">
+          {(payload[0].value || 0).toLocaleString()} ₫
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -202,14 +216,7 @@ export default function DashboardPage() {
                     dy={10}
                   />
                   <YAxis hide />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#12111a",
-                      border: "1px solid #2a2740",
-                      borderRadius: "12px",
-                      fontSize: "12px",
-                    }}
-                  />
+                  <Tooltip content={<CustomTooltip />} />
                   <Area
                     type="monotone"
                     dataKey="value"
