@@ -1,11 +1,14 @@
-import { apiFetch } from "@/lib/api";
+import { apiFetch, setManualCsrfToken } from "@/lib/api";
 import { clearAuth, setCsrfReady, setError, setStatus, setUser, setInitialized } from "./authSlice";
 import { fetchFavorites } from "./favoritesThunks";
 import { clearFavorites } from "./favoritesSlice";
 
 export const ensureCsrf = () => async (dispatch) => {
   try {
-    await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+    const res = await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+    if (res.data?.csrfToken || res.csrfToken) {
+      setManualCsrfToken(res.data?.csrfToken || res.csrfToken);
+    }
     dispatch(setCsrfReady(true));
   } catch {
     // even if fails, app can still load public pages

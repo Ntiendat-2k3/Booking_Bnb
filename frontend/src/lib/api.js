@@ -16,15 +16,21 @@ const api = axios.create({
   timeout: 15000,
 });
 
+let manualCsrfToken = null;
+
+export const setManualCsrfToken = (token) => {
+  manualCsrfToken = token;
+};
+
 // Request interceptor for CSRF
 api.interceptors.request.use((config) => {
   const method = (config.method || "get").toLowerCase();
   const unsafe = !["get", "head", "options"].includes(method);
 
   if (unsafe && !config.headers["X-CSRF-Token"]) {
-    const csrf = getCookie(
-      process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token"
-    );
+    const csrf =
+      manualCsrfToken ||
+      getCookie(process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token");
     if (csrf) {
       config.headers["X-CSRF-Token"] = csrf;
     }
