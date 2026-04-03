@@ -9,20 +9,25 @@ async function getSection({ city, limit = 8, sort = "rating_desc" }) {
     sort,
   });
 
-  // ISR: cache for 60 seconds instead of always-fresh
-  const res = await serverGetJson("/api/v1/listings?" + q.toString(), {
-    next: { revalidate: 60 },
-  });
-  const items = res.data?.items || [];
+  try {
+    // ISR: cache for 60 seconds instead of always-fresh
+    const res = await serverGetJson("/api/v1/listings?" + q.toString(), {
+      next: { revalidate: 60 },
+    });
+    const items = res.data?.items || [];
 
-  if (!city || items.length) return items;
+    if (!city || items.length) return items;
 
-  const fallbackQ = new URLSearchParams({ limit: String(limit), sort });
-  const fallback = await serverGetJson(
-    "/api/v1/listings?" + fallbackQ.toString(),
-    { next: { revalidate: 60 } },
-  );
-  return fallback.data?.items || [];
+    const fallbackQ = new URLSearchParams({ limit: String(limit), sort });
+    const fallback = await serverGetJson(
+      "/api/v1/listings?" + fallbackQ.toString(),
+      { next: { revalidate: 60 } },
+    );
+    return fallback.data?.items || [];
+  } catch (error) {
+    console.error("Failed to fetch section during prerendering:", error.message);
+    return []; // fallback so build doesn't crash
+  }
 }
 
 export default async function HomePage() {

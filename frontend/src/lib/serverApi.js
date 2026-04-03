@@ -24,12 +24,21 @@ export async function serverGetJson(path, init = {}) {
   const hasNextRevalidate = init?.next?.revalidate !== undefined;
   const hasExplicitCache = Object.prototype.hasOwnProperty.call(init, "cache");
 
+  // Add a 15s timeout to avoid Vercel 60s build hang if backend is sleeping
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
   const fetchInit =
     hasNextRevalidate || hasExplicitCache
-      ? { ...init }
-      : { cache: "no-store", ...init };
+      ? { ...init, signal: controller.signal }
+      : { cache: "no-store", ...init, signal: controller.signal };
 
-  const res = await fetch(serverApiUrl(path), fetchInit);
+  let res;
+  try {
+    res = await fetch(serverApiUrl(path), fetchInit);
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const data = await res.json();
   if (!res.ok) {
