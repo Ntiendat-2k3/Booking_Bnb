@@ -1,9 +1,5 @@
 const nodemailer = require("nodemailer");
 
-/**
- * Build SMTP transporter from env vars.
- * Falls back to a no-op transport that logs to console when SMTP is not configured.
- */
 function createTransporter() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 465);
@@ -11,7 +7,9 @@ function createTransporter() {
   const pass = process.env.SMTP_PASS;
 
   if (!host || !user || !pass) {
-    console.warn("[Mailer] SMTP_HOST/SMTP_USER/SMTP_PASS not set — emails will only be logged to console.");
+    console.warn(
+      "[Mailer] SMTP_HOST/SMTP_USER/SMTP_PASS not set — emails will only be logged to console.",
+    );
     return null;
   }
 
@@ -34,13 +32,29 @@ const transporter = createTransporter();
  * @param {string} html - HTML body
  */
 const sendEmail = async (to, subject, html) => {
-  if (!transporter) {
-    console.log(`[Mailer] (no SMTP) To: ${to} | Subject: ${subject}`);
-    return null;
-  }
-
   try {
-    const from = process.env.SMTP_FROM || `"Booking BnB" <${process.env.SMTP_USER}>`;
+    if (process.env.GAS_MAIL_URL) {
+      const resp = await fetch(process.env.GAS_MAIL_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to, subject, html }),
+      });
+      const data = await resp.json();
+      if (data.status === "success") {
+        console.log("[Mailer] Email sent successfully via Google Apps Script");
+        return { messageId: "GAS-" + Date.now() };
+      } else {
+        throw new Error(data.message || "Unknown error from GAS");
+      }
+    }
+
+    if (!transporter) {
+      console.log(`[Mailer] (no SMTP) To: ${to} | Subject: ${subject}`);
+      return null;
+    }
+
+    const from =
+      process.env.SMTP_FROM || `"Booking BnB" <${process.env.SMTP_USER}>`;
     const info = await transporter.sendMail({ from, to, subject, html });
     console.log("[Mailer] Email sent successfully: %s", info.messageId);
     return info;
