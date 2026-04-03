@@ -93,7 +93,12 @@ api.interceptors.response.use(
 
       try {
         // Ensure CSRF cookie is present before refreshing
-        await api({ url: "/api/v1/auth/csrf", method: "get" });
+        const csrfRes = await api({ url: "/api/v1/auth/csrf", method: "get" });
+        // In cross-domain setups, document.cookie may not expose the CSRF cookie.
+        // Save the token from the response body so the request interceptor can use it.
+        if (csrfRes?.data?.csrfToken) {
+          manualCsrfToken = csrfRes.data.csrfToken;
+        }
 
         // Refresh the session (rotates tokens via httpOnly cookies)
         await api({ url: "/api/v1/auth/refresh", method: "post", data: {} });

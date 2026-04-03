@@ -30,7 +30,12 @@ export default function AdminShell({ children }) {
     let alive = true;
     async function init() {
       try {
-        await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+        const csrfRes = await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+        // Save token from response body — cross-domain cookies may not be readable
+        if (csrfRes?.data?.csrfToken) {
+          const { setManualCsrfToken } = await import("@/lib/api");
+          setManualCsrfToken(csrfRes.data.csrfToken);
+        }
         try {
           const me = await apiFetch("/api/v1/auth/profile", { method: "GET" });
           if (me.data?.role !== "admin") throw new Error("not admin");

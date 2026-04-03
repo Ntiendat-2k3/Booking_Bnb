@@ -70,7 +70,11 @@ export default function DashboardPage() {
     let alive = true;
     async function boot() {
       try {
-        await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+        const csrfRes = await apiFetch("/api/v1/auth/csrf", { method: "GET" });
+        if (csrfRes?.data?.csrfToken) {
+          const { setManualCsrfToken } = await import("@/lib/api");
+          setManualCsrfToken(csrfRes.data.csrfToken);
+        }
         const profile = await apiFetch("/api/v1/auth/profile", {
           method: "GET",
         });

@@ -75,6 +75,9 @@ app.use(passport.initialize());
 passport.use("local", passportLocal);
 passport.use("google", passportGoogle);
 
+// Root path (Render health-check hits GET / and HEAD /)
+app.get("/", (_req, res) => res.json({ status: "ok" }));
+
 // Health + API
 app.get("/health", async (_req, res) => {
   try {
