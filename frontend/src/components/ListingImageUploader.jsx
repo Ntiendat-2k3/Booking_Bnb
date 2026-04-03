@@ -18,7 +18,9 @@ export default function ListingImageUploader({ listingId }) {
       return;
     }
     try {
-      const res = await apiFetch(`/api/v1/host/listings/${id}`, { method: "GET" });
+      const res = await apiFetch(`/api/v1/host/listings/${id}`, {
+        method: "GET",
+      });
       const images = res.data?.listing?.images || [];
       setItems(images);
     } catch {
@@ -32,13 +34,15 @@ export default function ListingImageUploader({ listingId }) {
   }, [listingId]);
 
   async function attachImage(payload) {
-    const attached = await apiFetch(`/api/v1/host/listings/${listingId}/images`, {
-      method: "POST",
-      body: payload,
-    });
+    const attached = await apiFetch(
+      `/api/v1/host/listings/${listingId}/images`,
+      {
+        method: "POST",
+        body: payload,
+      },
+    );
     return attached.data.image;
   }
-
 
   async function onPick(e) {
     const files = Array.from(e.target.files || []);
@@ -62,7 +66,10 @@ export default function ListingImageUploader({ listingId }) {
         fd.append("image", file);
 
         // 1) upload to cloudinary
-        const up = await apiUpload(`/api/v1/uploads/listing-image?listing_id=${encodeURIComponent(listingId)}`, fd);
+        const up = await apiUpload(
+          `/api/v1/uploads/listing-image?listing_id=${encodeURIComponent(listingId)}`,
+          fd,
+        );
         const u = up.data;
 
         // 2) attach to listing in DB
@@ -98,10 +105,13 @@ export default function ListingImageUploader({ listingId }) {
     if (!listingId) return;
     setBusy(true);
     try {
-      await apiFetch(`/api/v1/host/listings/${listingId}/images/${image.id}/cover`, {
-        method: "PATCH",
-        body: {},
-      });
+      await apiFetch(
+        `/api/v1/host/listings/${listingId}/images/${image.id}/cover`,
+        {
+          method: "PATCH",
+          body: {},
+        },
+      );
       await loadImages(listingId);
       notifySuccess("Đã đặt làm ảnh cover");
     } catch (e) {
@@ -129,15 +139,16 @@ export default function ListingImageUploader({ listingId }) {
 
   const sorted = items
     .slice()
-    .sort((a, b) => (b.is_cover === true) - (a.is_cover === true) || (a.sort_order || 0) - (b.sort_order || 0));
+    .sort(
+      (a, b) =>
+        (b.is_cover === true) - (a.is_cover === true) ||
+        (a.sort_order || 0) - (b.sort_order || 0),
+    );
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border bg-white p-4">
         <div className="text-sm font-semibold">Ảnh phòng</div>
-        <p className="mt-1 text-sm text-slate-600">
-          Chỉ hỗ trợ upload ảnh lên <b>Cloudinary</b> để dễ quản lý.
-        </p>
 
         <div className="mt-3">
           <input
@@ -150,13 +161,18 @@ export default function ListingImageUploader({ listingId }) {
           />
         </div>
 
-        {busy ? <div className="mt-2 text-sm text-slate-600">Đang xử lý...</div> : null}
+        {busy ? (
+          <div className="mt-2 text-sm text-slate-600">Đang xử lý...</div>
+        ) : null}
       </div>
 
       {sorted.length ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((im) => (
-            <div key={im.id} className="overflow-hidden rounded-2xl border bg-white">
+            <div
+              key={im.id}
+              className="overflow-hidden rounded-2xl border bg-white"
+            >
               <div className="relative h-44 w-full">
                 <Image
                   src={im.url}
@@ -170,7 +186,9 @@ export default function ListingImageUploader({ listingId }) {
               <div className="space-y-2 p-3">
                 <div className="truncate text-xs text-slate-600">
                   {im.is_cover ? (
-                    <span className="mr-2 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">Cover</span>
+                    <span className="mr-2 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">
+                      Cover
+                    </span>
                   ) : null}
                   {im.public_id || "cloudinary"}
                 </div>
