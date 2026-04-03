@@ -220,7 +220,7 @@ export default function ListingImageUploader({ listingId }) {
         </div>
       ) : (
         <div className="rounded-2xl border bg-white p-4 text-sm text-slate-600">
-          Chưa có ảnh. Hãy upload ít nhất 1 ảnh (ảnh đầu tiên sẽ là cover).
+          Chưa có ảnh. Hãy upload ít nhất 1 ảnh.
         </div>
       )}
     </div>

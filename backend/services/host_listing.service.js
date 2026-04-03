@@ -1,4 +1,12 @@
-const { Listing, User, ListingImage, Amenity, ListingAmenity, sequelize, Sequelize } = require("../models");
+const {
+  Listing,
+  User,
+  ListingImage,
+  Amenity,
+  ListingAmenity,
+  sequelize,
+  Sequelize,
+} = require("../models");
 const { destroy } = require("./cloudinary.service");
 const { Op } = Sequelize;
 const { isUuid, pick } = require("../utils/validators");
@@ -25,17 +33,24 @@ function sanitizeListingData(raw = {}) {
   if ("lng" in data) data.lng = normalizeNumber(data.lng);
 
   // Required numbers (keep null to trigger required validation)
-  if ("price_per_night" in data) data.price_per_night = normalizeNumber(data.price_per_night, { int: true });
-  if ("max_guests" in data) data.max_guests = normalizeNumber(data.max_guests, { int: true });
+  if ("price_per_night" in data)
+    data.price_per_night = normalizeNumber(data.price_per_night, { int: true });
+  if ("max_guests" in data)
+    data.max_guests = normalizeNumber(data.max_guests, { int: true });
 
   // Defaults (avoid "" -> numeric error)
-  if ("bedrooms" in data) data.bedrooms = normalizeNumber(data.bedrooms, { int: true, defaultValue: 0 }) ?? 0;
-  if ("beds" in data) data.beds = normalizeNumber(data.beds, { int: true, defaultValue: 0 }) ?? 0;
-  if ("bathrooms" in data) data.bathrooms = normalizeNumber(data.bathrooms, { defaultValue: 0 }) ?? 0;
+  if ("bedrooms" in data)
+    data.bedrooms =
+      normalizeNumber(data.bedrooms, { int: true, defaultValue: 0 }) ?? 0;
+  if ("beds" in data)
+    data.beds = normalizeNumber(data.beds, { int: true, defaultValue: 0 }) ?? 0;
+  if ("bathrooms" in data)
+    data.bathrooms = normalizeNumber(data.bathrooms, { defaultValue: 0 }) ?? 0;
 
   // Strings: normalize empty string to null for optional fields
   for (const k of ["address", "description", "property_type", "room_type"]) {
-    if (k in data && typeof data[k] === "string" && data[k].trim() === "") data[k] = null;
+    if (k in data && typeof data[k] === "string" && data[k].trim() === "")
+      data[k] = null;
   }
 
   return data;
@@ -59,7 +74,6 @@ const UPDATABLE_FIELDS = [
 ];
 
 module.exports = {
-
   async listForUser(user, { status } = {}) {
     const where = { deleted_at: null };
     if (user.role !== "admin") where.host_id = user.id;
@@ -85,7 +99,13 @@ module.exports = {
     const items = await Listing.findAll({
       where,
       attributes: attrs,
-      include: [{ model: User, as: "host", attributes: ["id", "full_name", "avatar_url"] }],
+      include: [
+        {
+          model: User,
+          as: "host",
+          attributes: ["id", "full_name", "avatar_url"],
+        },
+      ],
       order: [["created_at", "DESC"]],
       limit: 200,
     });
@@ -103,9 +123,24 @@ module.exports = {
     const listing = await Listing.findOne({
       where: { id, deleted_at: null },
       include: [
-        { model: User, as: "host", attributes: ["id", "full_name", "avatar_url"] },
-        { model: ListingImage, as: "images", attributes: ["id", "url", "sort_order", "is_cover", "public_id"], separate: true, order: [["sort_order", "ASC"]] },
-        { model: Amenity, as: "amenities", through: { attributes: [] }, attributes: ["id", "name", "group"] },
+        {
+          model: User,
+          as: "host",
+          attributes: ["id", "full_name", "avatar_url"],
+        },
+        {
+          model: ListingImage,
+          as: "images",
+          attributes: ["id", "url", "sort_order", "is_cover", "public_id"],
+          separate: true,
+          order: [["sort_order", "ASC"]],
+        },
+        {
+          model: Amenity,
+          as: "amenities",
+          through: { attributes: [] },
+          attributes: ["id", "name", "group"],
+        },
       ],
     });
 
@@ -173,7 +208,9 @@ module.exports = {
     if (user.role !== "admin") {
       const allowed = new Set(["draft", "rejected", "paused"]);
       if (!allowed.has(listing.status)) {
-        const err = new Error("Listing is not editable in this status");
+        const err = new Error(
+          "Thông tin đăng tải không thể chỉnh sửa ở trạng thái này",
+        );
         err.status = 400;
         throw err;
       }
@@ -191,7 +228,9 @@ module.exports = {
     if (user.role !== "admin") {
       const allowed = new Set(["draft", "rejected", "paused"]);
       if (!allowed.has(listing.status)) {
-        const err = new Error("Listing is not editable in this status");
+        const err = new Error(
+          "Thông tin đăng tải không thể chỉnh sửa ở trạng thái này",
+        );
         err.status = 400;
         throw err;
       }
@@ -228,9 +267,13 @@ module.exports = {
       throw err;
     }
 
-    const amenityCount = await ListingAmenity.count({ where: { listing_id: id } });
+    const amenityCount = await ListingAmenity.count({
+      where: { listing_id: id },
+    });
     if (amenityCount < 1) {
-      const err = new Error("Bạn cần chọn ít nhất 1 tiện nghi trước khi gửi duyệt");
+      const err = new Error(
+        "Bạn cần chọn ít nhất 1 tiện nghi trước khi gửi duyệt",
+      );
       err.status = 400;
       throw err;
     }
@@ -261,46 +304,47 @@ module.exports = {
     return { listing };
   },
 
+  async deleteListing(user, id) {
+    const { listing } = await this.getByIdForUser(user, id);
 
-async deleteListing(user, id) {
-  const { listing } = await this.getByIdForUser(user, id);
-
-  // Host can delete draft/rejected/paused/pending; admin can delete any
-  if (user.role !== "admin") {
-    const allowed = new Set(["draft", "rejected", "paused", "pending"]);
-    if (!allowed.has(listing.status)) {
-      const err = new Error("Listing cannot be deleted in this status");
-      err.status = 400;
-      throw err;
-    }
-  }
-
-  return sequelize.transaction(async (t) => {
-    // Load images to delete on Cloudinary
-    const images = await ListingImage.findAll({
-      where: { listing_id: id },
-      attributes: ["id", "public_id"],
-      transaction: t,
-    });
-
-    // Delete Cloudinary assets (best-effort)
-    for (const img of images) {
-      if (img.public_id) {
-        try {
-          await destroy(img.public_id);
-        } catch {
-          // ignore cloudinary errors
-        }
+    // Host can delete draft/rejected/paused/pending; admin can delete any
+    if (user.role !== "admin") {
+      const allowed = new Set(["draft", "rejected", "paused", "pending"]);
+      if (!allowed.has(listing.status)) {
+        const err = new Error("Listing cannot be deleted in this status");
+        err.status = 400;
+        throw err;
       }
     }
 
-    await ListingImage.destroy({ where: { listing_id: id }, transaction: t });
-    await ListingAmenity.destroy({ where: { listing_id: id }, transaction: t });
+    return sequelize.transaction(async (t) => {
+      // Load images to delete on Cloudinary
+      const images = await ListingImage.findAll({
+        where: { listing_id: id },
+        attributes: ["id", "public_id"],
+        transaction: t,
+      });
 
-    await listing.update({ deleted_at: new Date() }, { transaction: t });
+      // Delete Cloudinary assets (best-effort)
+      for (const img of images) {
+        if (img.public_id) {
+          try {
+            await destroy(img.public_id);
+          } catch {
+            // ignore cloudinary errors
+          }
+        }
+      }
 
-    return { ok: true };
-  });
-},
+      await ListingImage.destroy({ where: { listing_id: id }, transaction: t });
+      await ListingAmenity.destroy({
+        where: { listing_id: id },
+        transaction: t,
+      });
 
+      await listing.update({ deleted_at: new Date() }, { transaction: t });
+
+      return { ok: true };
+    });
+  },
 };
