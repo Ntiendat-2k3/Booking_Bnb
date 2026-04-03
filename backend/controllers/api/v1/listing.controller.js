@@ -1,22 +1,8 @@
 const listingService = require("../../../services/listing.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
 const asyncHandler = require("../../../utils/asyncHandler");
+const { isUuid, toInt, toFloat } = require("../../../utils/validators");
 
-function isUuid(v) {
-  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-
-function toInt(v) {
-  if (v === undefined || v === null || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-function toFloat(v) {
-  if (v === undefined || v === null || v === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
 
 module.exports = {
   list: asyncHandler(async (req, res) => {

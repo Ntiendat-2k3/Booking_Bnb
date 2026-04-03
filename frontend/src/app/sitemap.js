@@ -4,9 +4,17 @@ export default async function sitemap() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
   const base = siteUrl.replace(/\/$/, "");
 
-  const staticRoutes = ["", "/search"].map((p) => ({
-    url: `${base}${p}`,
+  const staticRoutes = [
+    { path: "", priority: 1.0, changeFrequency: "daily" },
+    { path: "/search", priority: 0.9, changeFrequency: "daily" },
+    { path: "/login", priority: 0.3, changeFrequency: "yearly" },
+    { path: "/register", priority: 0.3, changeFrequency: "yearly" },
+    { path: "/host", priority: 0.7, changeFrequency: "monthly" },
+  ].map((r) => ({
+    url: `${base}${r.path}`,
     lastModified: new Date(),
+    priority: r.priority,
+    changeFrequency: r.changeFrequency,
   }));
 
   try {
@@ -22,6 +30,8 @@ export default async function sitemap() {
       .map((it) => ({
         url: `${base}/rooms/${it.id}`,
         lastModified: new Date(it.updated_at || it.created_at || Date.now()),
+        priority: 0.8,
+        changeFrequency: "weekly",
       }));
 
     return [...staticRoutes, ...listingRoutes];

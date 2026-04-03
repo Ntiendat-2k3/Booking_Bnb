@@ -1,37 +1,49 @@
 const nodemailer = require("nodemailer");
 
-// Cấu hình Transporter bằng Gmail từ bản mẫu của khách hàng
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Sử dụng SSL cho cổng 465
-  auth: {
-    user: "nguyentiendatg2003@gmail.com",
-    pass: "wbwa soib ekvw rxkr", // Mật khẩu ứng dụng của host
-  },
-});
+/**
+ * Build SMTP transporter from env vars.
+ * Falls back to a no-op transport that logs to console when SMTP is not configured.
+ */
+function createTransporter() {
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 465);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) {
+    console.warn("[Mailer] SMTP_HOST/SMTP_USER/SMTP_PASS not set — emails will only be logged to console.");
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+}
+
+const transporter = createTransporter();
 
 /**
- * Hàm gửi email dùng chung cho toàn hệ thống
- * @param {string} to - Email người nhận
- * @param {string} subject - Tiêu đề email
- * @param {string} html - Nội dung email định dạng HTML
+ * Send an email. Gracefully falls back to console logging when SMTP is not configured.
+ * @param {string} to - Recipient email
+ * @param {string} subject - Email subject
+ * @param {string} html - HTML body
  */
 const sendEmail = async (to, subject, html) => {
-  try {
-    const mailOptions = {
-      from: '"Hệ thống Booking BnB" <nguyentiendatg2003@gmail.com>',
-      to,
-      subject,
-      html,
-    };
+  if (!transporter) {
+    console.log(`[Mailer] (no SMTP) To: ${to} | Subject: ${subject}`);
+    return null;
+  }
 
-    const info = await transporter.sendMail(mailOptions);
+  try {
+    const from = process.env.SMTP_FROM || `"Booking BnB" <${process.env.SMTP_USER}>`;
+    const info = await transporter.sendMail({ from, to, subject, html });
     console.log("[Mailer] Email sent successfully: %s", info.messageId);
     return info;
   } catch (error) {
     console.error("[Mailer] Error sending email:", error);
-    // Không quan trọng đến mức làm gián đoạn luồng chính, nhưng nên log lại
     return null;
   }
 };

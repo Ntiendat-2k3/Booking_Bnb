@@ -153,7 +153,7 @@ export default function HostOnboardingPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [busy, setBusy] = useState(false);
-  const [direction, setDirection] = useState(1); // 1=forward, -1=back
+
 
   useEffect(() => {
     if (isInitialized && (user?.role === "host" || user?.role === "admin")) {
@@ -189,12 +189,10 @@ export default function HostOnboardingPage() {
 
   function goNext() {
     if (!canProceed()) return;
-    setDirection(1);
     setStep((s) => Math.min(s + 1, STEPS.length));
   }
 
   function goBack() {
-    setDirection(-1);
     setStep((s) => Math.max(s - 1, 0));
   }
 

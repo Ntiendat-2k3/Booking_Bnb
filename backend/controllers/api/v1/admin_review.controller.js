@@ -1,6 +1,6 @@
 const { successResponse, errorResponse } = require("../../../utils/response");
 const adminReviewService = require("../../../services/admin_review.service");
-const { invalidate } = require("../../../core/cache");
+const { invalidateReviews, invalidateListings } = require("../../../core/cache");
 
 module.exports = {
   list: async (req, res) => {
@@ -16,9 +16,8 @@ module.exports = {
   hide: async (req, res) => {
     try {
       const data = await adminReviewService.setHidden(req.params.id, true);
-
       const listingId = data?.review?.listing_id;
-      invalidate(["GET:/api/v1/listings*", listingId ? `GET:/api/v1/listings/${listingId}*` : null].filter(Boolean)).catch(() => {});
+      invalidateReviews(listingId);
       return successResponse(res, data, "Hidden", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update failed", e.status || 500);
@@ -28,9 +27,8 @@ module.exports = {
   unhide: async (req, res) => {
     try {
       const data = await adminReviewService.setHidden(req.params.id, false);
-
       const listingId = data?.review?.listing_id;
-      invalidate(["GET:/api/v1/listings*", listingId ? `GET:/api/v1/listings/${listingId}*` : null].filter(Boolean)).catch(() => {});
+      invalidateReviews(listingId);
       return successResponse(res, data, "Visible", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update failed", e.status || 500);
@@ -40,9 +38,8 @@ module.exports = {
   remove: async (req, res) => {
     try {
       const data = await adminReviewService.remove(req.params.id);
-
       const listingId = data?.listing_id;
-      invalidate(["GET:/api/v1/listings*", listingId ? `GET:/api/v1/listings/${listingId}*` : null].filter(Boolean)).catch(() => {});
+      invalidateReviews(listingId);
       return successResponse(res, data, "Deleted", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Delete failed", e.status || 500);
@@ -53,7 +50,7 @@ module.exports = {
     try {
       const ids = req.body?.ids || [];
       const data = await adminReviewService.bulkSetHidden(ids, true);
-      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
+      invalidateListings();
       return successResponse(res, data, "Bulk hide processed", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Bulk action failed", e.status || 500);
@@ -64,7 +61,7 @@ module.exports = {
     try {
       const ids = req.body?.ids || [];
       const data = await adminReviewService.bulkSetHidden(ids, false);
-      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
+      invalidateListings();
       return successResponse(res, data, "Bulk unhide processed", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Bulk action failed", e.status || 500);
@@ -75,7 +72,7 @@ module.exports = {
     try {
       const ids = req.body?.ids || [];
       const data = await adminReviewService.bulkRemove(ids);
-      invalidate(["GET:/api/v1/listings*"]).catch(() => {});
+      invalidateListings();
       return successResponse(res, data, "Bulk remove processed", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Bulk action failed", e.status || 500);

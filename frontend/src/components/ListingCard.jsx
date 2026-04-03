@@ -11,7 +11,7 @@ import { HeartFilled, HeartOutline, StarIcon } from "./icons";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { selectAuthUser, selectFavoriteIdsSet } from "@/store/selectors";
 
-export default function ListingCard({ listing }) {
+export default function ListingCard({ listing, priority = false }) {
   const id = listing?.id || listing?.listing_id || listing?.uuid || null;
   const router = useRouter();
   const dispatch = useDispatch();
@@ -29,7 +29,7 @@ export default function ListingCard({ listing }) {
   const showIsFav = mounted && isFav;
 
   const cover = listing.cover_url || listing.images?.[0]?.url;
-  const coverSrc = cover || "https://picsum.photos/seed/airbnb/800/600";
+  const coverSrc = cover || "/placeholder-room.svg";
   const rating = Number(listing.avg_rating || 0);
   const ratingText = rating > 0 ? rating.toFixed(2) : "Mới";
   const distanceKm = listing.distance_km != null ? Number(listing.distance_km) : null;
@@ -65,7 +65,7 @@ export default function ListingCard({ listing }) {
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="object-cover"
-          priority={false}
+          priority={priority}
         />
 
         <button

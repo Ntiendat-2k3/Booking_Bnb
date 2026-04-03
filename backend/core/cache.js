@@ -119,8 +119,30 @@ function cache(ttlSeconds = 60, opts = {}) {
   };
 }
 
+// ── Convenience helpers (DRY the 20+ invalidate calls) ──
+
+/** Invalidate listing list + optional single listing detail cache. */
+function invalidateListings(listingId) {
+  const patterns = ["GET:/api/v1/listings*"];
+  if (listingId) patterns.push(`GET:/api/v1/listings/${listingId}*`);
+  return invalidate(patterns).catch(() => {});
+}
+
+/** Invalidate amenities + listing caches (amenities affect listing display). */
+function invalidateAmenities() {
+  return invalidate(["GET:/api/v1/amenities*", "GET:/api/v1/listings*"]).catch(() => {});
+}
+
+/** Invalidate listing caches affected by review changes. */
+function invalidateReviews(listingId) {
+  return invalidateListings(listingId);
+}
+
 module.exports = {
   cache,
   invalidate,
   buildCacheKey,
+  invalidateListings,
+  invalidateAmenities,
+  invalidateReviews,
 };

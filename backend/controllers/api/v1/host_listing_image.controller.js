@@ -2,11 +2,9 @@ const { successResponse, errorResponse } = require("../../../utils/response");
 const { Listing, ListingImage } = require("../../../models");
 const { Op } = require("sequelize");
 const { destroy } = require("../../../services/cloudinary.service");
-const { invalidate } = require("../../../core/cache");
+const { invalidateListings } = require("../../../core/cache");
+const { isUuid } = require("../../../utils/validators");
 
-function isUuid(v) {
-  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
 
 function canEditListing(role, status) {
   if (role === "admin") return true;
@@ -84,7 +82,7 @@ module.exports = {
       }
 
       // Invalidate public listing caches (cover image & detail images)
-      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
+      invalidateListings(listingId);
 
       return successResponse(res, { image: img }, "Attached", 201);
     } catch (e) {
@@ -112,7 +110,7 @@ module.exports = {
       await ListingImage.update({ is_cover: false }, { where: { listing_id: listingId } }).catch(() => {});
       await img.update({ is_cover: true });
 
-      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
+      invalidateListings(listingId);
 
       return successResponse(res, { image: img }, "Cover updated", 200);
     } catch (e) {
@@ -151,7 +149,7 @@ module.exports = {
         await ensureCoverExists(listingId);
       }
 
-      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
+      invalidateListings(listingId);
 
       return successResponse(res, { ok: true }, "Deleted", 200);
     } catch (e) {

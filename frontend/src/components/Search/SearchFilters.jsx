@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { notifyError, notifyInfo } from "@/lib/notify";
+import { SORT_OPTIONS } from "@/lib/constants";
 
 export default function SearchFilters() {
   const router = useRouter();
@@ -113,11 +114,11 @@ export default function SearchFilters() {
 
         <div className="md:col-span-6 flex flex-wrap items-center gap-2 pt-1">
           <select value={form.sort} onChange={(e) => setField("sort", e.target.value)} className="rounded-xl border px-3 py-2 text-sm">
-            <option value="rating_desc">Đánh giá cao</option>
-            {form.lat && form.lng ? <option value="distance_asc">Gần nhất</option> : null}
-            <option value="price_asc">Giá tăng dần</option>
-            <option value="price_desc">Giá giảm dần</option>
-            <option value="newest">Mới nhất</option>
+            {SORT_OPTIONS
+              .filter((o) => !o.requiresLocation || (form.lat && form.lng))
+              .map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
           </select>
 
           <button

@@ -180,6 +180,61 @@ module.exports = {
     });
   },
 
+  async detail({ userId, bookingId }) {
+    const { literal } = Sequelize;
+    const booking = await Booking.findOne({
+      where: { id: bookingId, guest_id: userId },
+      include: [
+        {
+          association: "listing",
+          attributes: {
+            include: [
+              [
+                literal(`(
+                  SELECT li.url
+                  FROM listing_images li
+                  WHERE li.listing_id = "listing".id
+                  ORDER BY li.is_cover DESC, li.sort_order ASC
+                  LIMIT 1
+                )`),
+                "cover_url",
+              ],
+            ],
+            exclude: ["deleted_at"],
+          },
+        },
+        {
+          association: "payments",
+          attributes: [
+            "id", "provider", "status", "amount", "currency",
+            "provider_txn_ref", "provider_transaction_no", "paid_at", "created_at",
+          ],
+          separate: true,
+          order: [["created_at", "DESC"]],
+        },
+        {
+          association: "review",
+          attributes: ["id", "rating", "comment", "created_at"],
+          required: false,
+        },
+      ],
+    });
+
+    if (!booking) {
+      const err = new Error("Booking not found");
+      err.status = 404;
+      throw err;
+    }
+
+    const plain = booking.toJSON();
+    const today = new Date().toISOString().slice(0, 10);
+    plain.can_review =
+      !plain.review &&
+      (plain.status === "completed" ||
+        (plain.status === "confirmed" && String(plain.check_out) <= today));
+    return plain;
+  },
+
   async checkout({ userId, bookingId }) {
     const booking = await Booking.findByPk(bookingId);
     if (!booking) {

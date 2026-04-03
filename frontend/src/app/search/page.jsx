@@ -3,27 +3,18 @@ import ListingCard from "@/components/ListingCard";
 import Pagination from "@/components/Pagination";
 import SearchResultsMap from "@/components/Search/SearchResultsMap";
 import { serverGetJson } from "@/lib/serverApi";
+import { buildSearchMetadata } from "@/lib/seo";
+import { SEARCH_PARAM_KEYS } from "@/lib/constants";
+
+export async function generateMetadata({ searchParams }) {
+  const sp = await searchParams;
+  return buildSearchMetadata(sp);
+}
 
 export default async function SearchPage({ searchParams }) {
   const sp = await searchParams;
   const q = new URLSearchParams();
-  const keys = [
-    "city",
-    "min_price",
-    "max_price",
-    "guests",
-    "bedrooms",
-    "sort",
-    "page",
-    "limit",
-    "property_type",
-    "room_type",
-    // Nearby search ("Near me")
-    "lat",
-    "lng",
-    "radius_km",
-  ];
-  keys.forEach((k) => {
+  SEARCH_PARAM_KEYS.forEach((k) => {
     const v = sp?.[k];
     if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
   });

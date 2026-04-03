@@ -15,6 +15,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const { User } = require("../../../models/index");
 const { Op } = require("sequelize");
+const { sendEmail } = require("../../../utils/mailer");
 
 function ensureCsrfCookie(res, req) {
   const existing = req.cookies?.[csrfCookieName()];
@@ -153,16 +154,20 @@ module.exports = {
     user.reset_password_expires = new Date(Date.now() + 3600000); // 1 hour
     await user.save();
 
-    // Trong môi trường production, bạn sẽ cài đặt package như Nodemailer để gửi mail thực tế.
-    // Tại đây, in link ra terminal để test nhanh.
     const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3001"}/reset-password?token=${token}`;
-    console.log(`\n==============================================`);
-    console.log(`[FORGOT PASSWORD] Yêu cầu khôi phục mật khẩu từ: ${email}`);
-    console.log(`Click vào link sau để reset pass: ${resetUrl}`);
-    console.log(`Token cấp phát: ${token}`);
-    console.log(`==============================================\n`);
 
-    return successResponse(res, { message: "Reset link has been sent to your email (Check terminal log for now)." }, "Email sent", 200);
+    const html = `
+      <h3>Xin chào,</h3>
+      <p>Bạn đã yêu cầu khôi phục mật khẩu. Vui lòng nhấn vào đường dẫn bên dưới để đặt lại mật khẩu:</p>
+      <p><a href="${resetUrl}">${resetUrl}</a></p>
+      <p>Link này có hiệu lực trong 1 giờ.</p>
+      <p>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
+      <br/>
+      <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
+    `;
+    await sendEmail(email, "Khôi phục mật khẩu - Booking BnB", html);
+
+    return successResponse(res, { message: "Reset link has been sent to your email." }, "Email sent", 200);
   }),
 
   resetPassword: asyncHandler(async (req, res) => {

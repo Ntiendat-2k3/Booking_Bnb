@@ -1,14 +1,9 @@
 const { Listing, User, Notification, Sequelize } = require("../models");
 const { sendEmail } = require("../utils/mailer");
-const { Op } = Sequelize;
-const { literal } = Sequelize;
-
-function isUuid(v) {
-  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
+const { Op, literal } = Sequelize;
+const { isUuid } = require("../utils/validators");
 
 module.exports = {
-  isUuid,
 
   async list({ status } = {}) {
     const where = { deleted_at: null };

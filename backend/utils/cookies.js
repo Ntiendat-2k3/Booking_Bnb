@@ -74,6 +74,7 @@ function csrfCookieOptions() {
 }
 
 module.exports = {
+  parseExpiryToMs,
   refreshCookieName,
   accessCookieName,
   csrfCookieName,

@@ -1,11 +1,8 @@
 const reviewService = require("../../../services/review.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
-const { invalidate } = require("../../../core/cache");
+const { invalidateReviews } = require("../../../core/cache");
+const { toInt } = require("../../../utils/validators");
 
-function toInt(v, fallback) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : fallback;
-}
 
 module.exports = {
   async listByListing(req, res) {
@@ -44,7 +41,7 @@ module.exports = {
       });
 
       // A new review can affect listing detail, review list, and rating-based sorts
-      invalidate(["GET:/api/v1/listings*", `GET:/api/v1/listings/${listingId}*`]).catch(() => {});
+      invalidateReviews(listingId);
       return successResponse(res, review, "Created", 201);
     } catch (e) {
       return errorResponse(res, e.message || "Create review failed", e.status || 500);
@@ -63,7 +60,7 @@ module.exports = {
       });
 
       const listingId = review?.listing_id;
-      invalidate(["GET:/api/v1/listings*", listingId ? `GET:/api/v1/listings/${listingId}*` : null].filter(Boolean)).catch(() => {});
+      invalidateReviews(listingId);
       return successResponse(res, review, "Updated", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Update review failed", e.status || 500);
@@ -77,7 +74,7 @@ module.exports = {
       const result = await reviewService.remove({ userId, reviewId });
 
       const listingId = result?.listing_id;
-      invalidate(["GET:/api/v1/listings*", listingId ? `GET:/api/v1/listings/${listingId}*` : null].filter(Boolean)).catch(() => {});
+      invalidateReviews(listingId);
       return successResponse(res, { ok: true }, "Deleted", 200);
     } catch (e) {
       return errorResponse(res, e.message || "Delete review failed", e.status || 500);

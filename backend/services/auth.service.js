@@ -4,19 +4,10 @@ const UserRepository = require("../repositories/user.repository");
 const RefreshTokenRepository = require("../repositories/refresh-token.repository");
 const { createAccessToken, createRefreshToken, decodeToken } = require("../utils/jwt");
 const { sha256 } = require("../utils/crypto");
+const { parseExpiryToMs } = require("../utils/cookies");
 
 const userRepo = new UserRepository();
 const refreshRepo = new RefreshTokenRepository();
-
-function parseExpiryToMs(expStr, fallbackMs) {
-  if (!expStr) return fallbackMs;
-  const m = String(expStr).trim().match(/^([0-9]+)\s*([smhd])$/i);
-  if (!m) return fallbackMs;
-  const n = Number(m[1]);
-  const unit = m[2].toLowerCase();
-  const mult = unit === "s" ? 1000 : unit === "m" ? 60_000 : unit === "h" ? 3_600_000 : 86_400_000;
-  return n * mult;
-}
 
 function refreshExpiresAt() {
   const exp = process.env.JWT_REFRESH_TOKEN_EXPIRES || "30d";

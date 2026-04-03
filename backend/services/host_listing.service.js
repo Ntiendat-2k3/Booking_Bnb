@@ -1,16 +1,7 @@
 const { Listing, User, ListingImage, Amenity, ListingAmenity, sequelize, Sequelize } = require("../models");
 const { destroy } = require("./cloudinary.service");
 const { Op } = Sequelize;
-
-function isUuid(v) {
-  return typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-
-function pick(body, keys) {
-  const out = {};
-  for (const k of keys) if (body[k] !== undefined) out[k] = body[k];
-  return out;
-}
+const { isUuid, pick } = require("../utils/validators");
 
 function normalizeNumber(v, { int = false, defaultValue } = {}) {
   if (v === undefined) return undefined;
@@ -68,7 +59,6 @@ const UPDATABLE_FIELDS = [
 ];
 
 module.exports = {
-  isUuid,
 
   async listForUser(user, { status } = {}) {
     const where = { deleted_at: null };

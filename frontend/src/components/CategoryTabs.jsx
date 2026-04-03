@@ -2,16 +2,8 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Container from "./layout/Container";
+import { CATEGORIES } from "@/lib/constants";
 
-const CATEGORIES = [
-  { key: "Căn hộ", label: "Căn hộ" },
-  { key: "Nhà", label: "Nhà" },
-  { key: "Khách sạn", label: "Khách sạn" },
-  { key: "Villa", label: "Villa" },
-  { key: "Hanok", label: "Hanok" },
-  { key: "Nhà khách", label: "Nhà khách" },
-  { key: "Phòng", label: "Phòng" },
-];
 
 function Chip({ active, children, onClick }) {
   return (

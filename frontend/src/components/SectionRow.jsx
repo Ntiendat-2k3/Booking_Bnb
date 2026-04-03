@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef } from "react";
+import Link from "next/link";
 import ListingCard from "./ListingCard";
 
 export default function SectionRow({ title, items, city }) {
@@ -23,12 +24,12 @@ export default function SectionRow({ title, items, city }) {
       <div className="flex items-end justify-between">
         <h2 className="text-xl font-semibold">{title}</h2>
         <div className="flex items-center gap-2">
-          <a
+          <Link
             href={viewMoreHref}
             className="text-sm font-medium text-gray-700 hover:underline"
           >
             Xem thêm
-          </a>
+          </Link>
           <button
             type="button"
             onClick={() => scrollBy(-900)}
@@ -48,18 +49,17 @@ export default function SectionRow({ title, items, city }) {
         </div>
       </div>
 
-      {/* Carousel: horizontal scroll on all sizes; buttons (sm+) just help navigate */}
       <div
         ref={scrollerRef}
         className="flex gap-6 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: "none" }}
       >
-        {items.map((it) => (
+        {items.map((it, idx) => (
           <div
             key={it?.id || it?.listing_id || it?.uuid}
             className="shrink-0 snap-start w-[260px] sm:w-[280px]"
           >
-            <ListingCard listing={it} />
+            <ListingCard listing={it} priority={idx < 4} />
           </div>
         ))}
       </div>

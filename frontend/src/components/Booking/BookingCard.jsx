@@ -130,10 +130,8 @@ export default function BookingSidebar({ listing }) {
             </div>
           </div>
         </div>{" "}
-        {/* ĐÓNG THẺ GRID */}
-      </div>{" "}
-      {/* ĐÓNG THẺ BORDER BAO NGOÀI */}
-      {/* HIỂN THỊ CHI PHÍ TẠM TÍNH */}
+      </div>
+
       {nights > 0 && (
         <div className="mt-4 rounded-2xl border p-3 text-sm">
           <div className="flex items-center justify-between">
