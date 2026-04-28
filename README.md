@@ -1,26 +1,64 @@
-# Booking-bnb (Airbnb Clone)
+# 🏡 Booking-bnb — Airbnb Clone
+
+<div align="center">
 
 ![Booking-bnb](https://img.shields.io/badge/Booking--bnb-Airbnb_Clone-FF5A5F?style=for-the-badge&logo=airbnb&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-18-000000?style=for-the-badge&logo=next.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/Express.js-Backend-404D59?style=for-the-badge)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-316192?style=for-the-badge&logo=postgresql&logoColor=white)
 
-Dự án hệ thống đặt phòng khách sạn / homestay trực tuyến tương tự Airbnb. Dự án được thiết kế với kiến trúc phân tán (Microservices/Monolith linh hoạt), bao gồm trang dành cho người dùng cuối (Frontend), trang quản trị (Admin Dashboard) và hệ thống API Backend mạnh mẽ.
+</div>
 
 ---
 
-## 🌟 Tổng quan hệ thống
+## Tech Stack
+
+<div align="center">
+
+| Layer        | Technologies                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Frontend** | ![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=flat-square&logo=next.js&logoColor=white) ![React](https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black) ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white) ![Redux](https://img.shields.io/badge/Redux_Toolkit-764ABC?style=flat-square&logo=redux&logoColor=white) |
+| **Admin**    | ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=next.js&logoColor=white) ![Recharts](https://img.shields.io/badge/Recharts-FF6384?style=flat-square)                                                                                                                                                                                                                                                         |
+| **Backend**  | ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=node.js&logoColor=white) ![Express.js](https://img.shields.io/badge/Express.js-404D59?style=flat-square) ![Sequelize](https://img.shields.io/badge/Sequelize-52B0E7?style=flat-square&logo=sequelize&logoColor=white)                                                                                                                                        |
+| **Database** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat-square&logo=postgresql&logoColor=white) ![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white)                                                                                                                                                                                                                           |
+| **Auth**     | ![JWT](https://img.shields.io/badge/JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white) ![Passport.js](https://img.shields.io/badge/Passport.js-34E27A?style=flat-square&logo=passport&logoColor=white) ![Google OAuth](https://img.shields.io/badge/Google_OAuth-4285F4?style=flat-square&logo=google&logoColor=white)                                                                                                       |
+| **Payment**  | ![Stripe](https://img.shields.io/badge/Stripe-635BFF?style=flat-square&logo=stripe&logoColor=white) ![VNPay](https://img.shields.io/badge/VNPay-0066CC?style=flat-square)                                                                                                                                                                                                                                                                  |
+| **Cloud**    | ![Cloudinary](https://img.shields.io/badge/Cloudinary-3448C5?style=flat-square&logo=cloudinary&logoColor=white) ![Mapbox](https://img.shields.io/badge/Mapbox-000000?style=flat-square&logo=mapbox&logoColor=white)                                                                                                                                                                                                                        |
+
+</div>
+
+---
+
+## Case Study
+
+### Vấn đề (Problem)
+
+Các nền tảng cho thuê phòng ngắn hạn như Airbnb đòi hỏi sự đồng bộ phức tạp giữa nhiều vai trò: khách hàng đặt phòng, chủ nhà quản lý danh sách, và quản trị viên kiểm soát toàn hệ thống. Mục tiêu của dự án là xây dựng một **hệ thống đặt phòng hoàn chỉnh** — từ tìm kiếm, thanh toán đến quản trị — phục vụ cả 3 nhóm người dùng này trong một kiến trúc thống nhất.
+
+### Thách thức (Challenge)
+
+Thách thức lớn nhất là thiết kế luồng **thanh toán đa cổng** (Stripe cho thẻ quốc tế và VNPay cho nội địa) đảm bảo tính nhất quán khi có sự cố network hoặc callback chậm từ cổng thanh toán. Song song đó, việc quản lý **lịch trống phòng** theo thời gian thực khi nhiều người dùng đặt cùng lúc tiềm ẩn nguy cơ race condition trên dữ liệu. Ngoài ra, hệ thống cần xử lý tìm kiếm nhanh với nhiều bộ lọc chồng nhau (địa điểm, ngày, giá, tiện ích) mà không làm tăng tải database.
+
+### Giải pháp (Solution)
+
+Backend được xây dựng theo **Repository + Service Pattern** để tách biệt rõ business logic khỏi tầng database, giúp dễ dàng mở rộng và kiểm thử từng lớp độc lập. **Redis** được tích hợp làm cache layer cho các truy vấn tìm kiếm phòng nặng, giảm đáng kể số lần truy cập PostgreSQL. Luồng thanh toán được xử lý bằng **Webhook** từ Stripe và callback từ VNPay, đảm bảo trạng thái booking được cập nhật chính xác kể cả khi client mất kết nối giữa chừng. Toàn bộ đầu vào người dùng được validate bằng **Joi** và upload ảnh được uỷ quyền trực tiếp lên **Cloudinary** để tránh lưu file tạm trên server.
+
+---
+
+## Tổng quan hệ thống
 
 Hệ thống được chia thành 3 phần chính hoạt động độc lập và giao tiếp qua API:
-`Admin Page <==> API (Node.js/PostgreSQL) <==> User Page`
 
-1. **Frontend (User/Host Page)**: Giao diện trực quan, responsive được xây dựng bằng Next.js (App Router), cung cấp trải nghiệm mượt mà cho khách hàng đặt phòng và chủ nhà quản lý cho thuê.
-2. **Admin (Dashboard)**: Trang quản trị tập trung dành cho Admin, theo dõi doanh thu, người dùng, đặt phòng và các tiện ích hệ thống.
-3. **Backend (API)**: Cung cấp RESTful API hiệu suất cao, xử lý toàn bộ business logic, tích hợp thanh toán (Stripe, VNPay) và quản lý cơ sở dữ liệu với PostgreSQL & Redis.
+```
+Admin Page <=> API (Node.js/PostgreSQL) <=> User Page
+```
+
+| Thành phần   | Mô tả                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| **Frontend** | Giao diện trực quan, responsive (Next.js App Router) — trải nghiệm đặt phòng cho Guest và Host |
+| **Admin**    | Trang quản trị tập trung — theo dõi doanh thu, người dùng, booking và giao dịch                |
+| **Backend**  | RESTful API hiệu suất cao — xử lý toàn bộ business logic, tích hợp thanh toán & bảo mật        |
 
 ---
 
-## 🚀 Chi tiết Chức năng (Features)
+## Chi tiết Chức năng (Features)
 
 ### 1. Dành cho Khách hàng (Guest)
 
@@ -43,44 +81,16 @@ Hệ thống được chia thành 3 phần chính hoạt động độc lập v�
 ### 3. Dành cho Quản trị viên (Admin Dashboard)
 
 - **Dashboard Thống kê**: Biểu đồ trực quan (Recharts) theo dõi tổng doanh thu, số lượng người dùng mới, lượng booking theo thời gian thực.
-- **Quản lý Người dùng (Users)**: Xem danh sách, phân quyền (User/Host/Admin), khóa tài khoản vi phạm.
-- **Quản lý Phòng (Listings)**: Kiểm duyệt danh sách phòng được đăng tải, ẩn/xóa các phòng không đạt chuẩn.
-- **Quản lý Đặt phòng (Bookings)**: Theo dõi toàn bộ luồng booking trên hệ thống, xử lý khiếu nại hoặc hủy phòng.
-- **Quản lý Giao dịch (Payments)**: Đối soát các giao dịch qua Stripe và VNPay.
-- **Quản lý Đánh giá (Reviews)**: Xóa hoặc ẩn các đánh giá spam, không phù hợp.
-- **Quản lý Tiện ích (Amenities)**: Thêm, sửa, xóa các danh mục tiện ích để Host có thể lựa chọn khi đăng phòng.
+- **Quản lý Người dùng**: Xem danh sách, phân quyền (User/Host/Admin), khóa tài khoản vi phạm.
+- **Quản lý Phòng**: Kiểm duyệt danh sách phòng được đăng tải, ẩn/xóa các phòng không đạt chuẩn.
+- **Quản lý Đặt phòng**: Theo dõi toàn bộ luồng booking trên hệ thống, xử lý khiếu nại hoặc hủy phòng.
+- **Quản lý Giao dịch**: Đối soát các giao dịch qua Stripe và VNPay.
+- **Quản lý Đánh giá**: Xóa hoặc ẩn các đánh giá spam, không phù hợp.
+- **Quản lý Tiện ích**: Thêm, sửa, xóa các danh mục tiện ích để Host có thể lựa chọn khi đăng phòng.
 
 ---
 
-## 🛠 Công nghệ sử dụng
-
-### User/Host Page (`/frontend`)
-
-- **Framework**: Next.js 14+ (App Router, React 18)
-- **Styling**: Tailwind CSS
-- **State Management**: Redux Toolkit, React Hooks
-- **Libraries**: Mapbox-GL (Bản đồ), Date-fns (Xử lý thời gian), Axios, Sonner (Toast notifications)
-
-### Admin Page (`/admin`)
-
-- **Framework**: Next.js
-- **Styling**: Tailwind CSS
-- **Libraries**: Recharts (Biểu đồ), React-Paginate, Axios
-
-### Backend API (`/backend`)
-
-- **Core**: Node.js, Express.js
-- **Database**: PostgreSQL với ORM Sequelize
-- **Caching**: Redis (Tối ưu truy vấn tìm kiếm & session)
-- **Authentication**: JWT, Passport.js (Local & Google OAuth)
-- **Security**: Helmet, Cors, Express-Rate-Limit, Bcrypt
-- **File Upload**: Multer, Cloudinary (Lưu trữ ảnh cloud)
-- **Mailing**: Nodemailer (Gửi email xác thực, hóa đơn)
-- **Payment**: Stripe
-
----
-
-## ⚙️ Kiến trúc Backend & Tiêu chuẩn Kỹ thuật
+## Kiến trúc Backend & Tiêu chuẩn Kỹ thuật
 
 Backend được xây dựng với cấu trúc chặt chẽ, dễ dàng mở rộng và bảo trì:
 
@@ -90,7 +100,7 @@ Backend được xây dựng với cấu trúc chặt chẽ, dễ dàng mở r�
 - **Strict Validation**: Kiểm tra đầu vào chặt chẽ bằng thư viện **Joi** trước khi xử lý.
 - **Caching Strategy**: Áp dụng Redis để tối ưu hiệu suất cho các truy vấn nặng (VD: Danh sách phòng, Thông tin hệ thống).
 
-### 🛡️ Tiêu chuẩn bảo mật (Security)
+### Tiêu chuẩn bảo mật (Security)
 
 - **Ngăn chặn SQL Injection**: Sử dụng Data Binding và Query Builder của Sequelize.
 - **Ngăn chặn XSS & CSRF**: Encode HTML entities, giới hạn request từ các domain lạ (CORS strict).
@@ -99,7 +109,7 @@ Backend được xây dựng với cấu trúc chặt chẽ, dễ dàng mở r�
 
 ---
 
-## 📂 Cấu trúc thư mục
+## Cấu trúc thư mục
 
 ```text
 Booking-bnb/
@@ -123,7 +133,7 @@ Booking-bnb/
 
 ---
 
-## 🏃 Hướng dẫn cài đặt & chạy dự án
+## Hướng dẫn cài đặt & chạy dự án
 
 ### Yêu cầu môi trường
 
@@ -177,7 +187,7 @@ npm run dev
 
 ---
 
-## 🌍 Deploy & Hạ tầng (Dự kiến)
+## Deploy & Hạ tầng (Dự kiến)
 
 - **Hệ điều hành**: Linux (Ubuntu/Debian)
 - **Web Server**: Nginx làm Reverse Proxy
