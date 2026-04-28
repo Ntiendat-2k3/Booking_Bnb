@@ -8,7 +8,7 @@
 
 ---
 
-## Tech Stack
+## Công nghệ sử dụng
 
 <div align="center">
 
