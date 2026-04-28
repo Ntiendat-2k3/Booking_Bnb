@@ -8,7 +8,7 @@
 
 ---
 
-## Công nghệ sử dụng
+## Công nghệ sử dụng (Tech Stack)
 
 <div align="center">
 
