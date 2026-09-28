@@ -1,33 +1,38 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { CheckCircle, CreditCard, Star } from "@phosphor-icons/react";
 import { formatVND } from "@/lib/format";
+import { useLocale } from "@/i18n/LocaleProvider";
+import Badge from "@/components/atoms/Badge";
+import Button from "@/components/atoms/Button";
 
 function badge(status) {
-  const base = "rounded-full px-2 py-0.5 text-xs font-semibold";
   switch (status) {
     case "confirmed":
-      return `${base} bg-emerald-50 text-emerald-700`;
+      return "success";
     case "pending_payment":
-      return `${base} bg-amber-50 text-amber-700`;
+      return "warning";
     case "cancelled":
-      return `${base} bg-slate-100 text-slate-700`;
+      return "neutral";
     case "completed":
-      return `${base} bg-sky-50 text-sky-700`;
+      return "brand";
     default:
-      return `${base} bg-slate-100 text-slate-700`;
+      return "neutral";
   }
 }
 
-function statusLabel(status) {
+function statusLabel(status, t) {
   switch (status) {
     case "pending_payment":
-      return "Chờ thanh toán";
+      return t("trips.statusPending");
     case "confirmed":
-      return "Đã xác nhận";
+      return t("trips.statusConfirmed");
     case "completed":
-      return "Đã checkout";
+      return t("trips.statusCompleted");
     case "cancelled":
-      return "Đã hủy";
+      return t("trips.statusCancelled");
     default:
       return status;
   }
@@ -40,107 +45,131 @@ export default function TripCard({
   onRepay,
   onCancel,
 }) {
+  const { locale, t } = useLocale();
   const listing = booking.listing;
   const cover = listing?.cover_url;
   const lastPayment = (booking.payments || [])[0];
   const isPaid = lastPayment?.status === "succeeded";
 
   return (
-    <div className="p-4 bg-white border rounded-2xl">
+    <article className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative w-full h-28 sm:w-44">
+        <div className="relative h-40 w-full overflow-hidden rounded-xl sm:h-32 sm:w-48">
           <Image
             src={cover || "https://picsum.photos/seed/trip/600/400"}
-            alt={listing?.title || "Trip"}
+            alt={listing?.title || t("trips.stayFallback")}
             fill
-            sizes="(max-width: 640px) 100vw, 176px"
-            className="object-cover rounded-xl"
+            sizes="(max-width: 640px) 100vw, 192px"
+            className="object-cover"
           />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="text-lg font-semibold truncate">
-              {listing?.title || "Phòng"}
-            </div>
-            <span className={badge(booking.status)}>
-              {statusLabel(booking.status)}
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-lg font-semibold text-ink">
+              {listing?.title || t("trips.stayFallback")}
+            </h2>
+            <Badge tone={badge(booking.status)}>
+              {statusLabel(booking.status, t)}
+            </Badge>
+          </div>
+          <div className="mt-1 text-sm text-muted-ink">
+            {t("trips.dateGuests", {
+              checkIn: booking.check_in,
+              checkOut: booking.check_out,
+              guests: booking.guests_count,
+            })}
+          </div>
+          <div className="mt-1 text-sm text-ink">
+            {t("trips.total")}:{" "}
+            <span className="font-semibold">
+              {formatVND(
+                booking.total_amount,
+                locale === "en" ? "en-US" : "vi-VN",
+              )}
             </span>
           </div>
-          <div className="mt-1 text-sm text-slate-600">
-            {booking.check_in} → {booking.check_out} • {booking.guests_count} khách
-          </div>
-          <div className="mt-1 text-sm text-slate-700">
-            Tổng: <span className="font-semibold">{formatVND(booking.total_amount)}</span>
-          </div>
           {lastPayment && (
-            <div className="mt-1 text-xs text-slate-500">
-              Payment: {lastPayment.provider} • {lastPayment.status}
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-ink">
+              <CreditCard aria-hidden size={14} />
+              {t("trips.payment", {
+                provider: lastPayment.provider,
+                status: lastPayment.status,
+              })}
             </div>
           )}
 
           {booking.review && (
-            <div className="mt-2 text-xs text-slate-600">
-              Bạn đã đánh giá: <span className="font-semibold">{booking.review.rating}★</span>
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-ink">
+              <Star aria-hidden size={14} weight="fill" className="text-brand" />
+              {t("trips.reviewed", { rating: booking.review.rating })}
             </div>
           )}
         </div>
 
-        <div className="flex flex-wrap shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           <Link
             href={`/rooms/${listing?.id}`}
-            className="px-3 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50"
+            className="inline-flex min-h-10 items-center rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface"
           >
-            Xem phòng
+            {t("trips.viewStay")}
           </Link>
 
           {!booking.can_review && booking.review && (
             <Link
               href={`/rooms/${listing?.id}#reviews`}
-              className="px-3 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50"
+              className="inline-flex min-h-10 items-center rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface"
             >
-              Xem đánh giá
+              {t("trips.viewReview")}
             </Link>
           )}
 
           {booking.can_review && (
             <Link
               href={`/rooms/${listing?.id}?review=1#reviews`}
-              className="px-3 py-2 text-sm font-semibold text-white rounded-xl bg-brand hover:bg-brand-dark"
+              className="inline-flex min-h-10 items-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
             >
-              Đánh giá
+              {t("trips.review")}
             </Link>
           )}
 
           {booking.status === "confirmed" && isPaid && (
-            <button
+            <Button
               onClick={() => onCheckout(booking.id)}
               disabled={busy.checkoutId === booking.id}
-              className={`rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60`}
+              size="sm"
             >
-              {busy.checkoutId === booking.id ? "Đang checkout..." : "Checkout"}
-            </button>
+              <CheckCircle aria-hidden size={17} />
+              {busy.checkoutId === booking.id
+                ? t("trips.checkingOut")
+                : t("trips.checkout")}
+            </Button>
           )}
 
           {booking.status === "pending_payment" && (
             <>
-              <button
+              <Button
                 onClick={() => onRepay(booking.id)}
                 disabled={busy.repayId === booking.id}
-                className="px-3 py-2 text-sm font-semibold text-white rounded-xl bg-brand hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+                size="sm"
               >
-                {busy.repayId === booking.id ? "Đang tạo..." : "Thanh toán"}
-              </button>
-              <button
+                {busy.repayId === booking.id
+                  ? t("trips.creatingPayment")
+                  : t("trips.pay")}
+              </Button>
+              <Button
                 onClick={() => onCancel(booking.id)}
                 disabled={busy.cancelId === booking.id}
-                className="px-3 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                variant="secondary"
+                size="sm"
               >
-                {busy.cancelId === booking.id ? "Đang hủy..." : "Hủy"}
-              </button>
+                {busy.cancelId === booking.id
+                  ? t("trips.cancelling")
+                  : t("common.cancel")}
+              </Button>
             </>
           )}
         </div>
       </div>
-    </div>
+    </article>
   );
 }

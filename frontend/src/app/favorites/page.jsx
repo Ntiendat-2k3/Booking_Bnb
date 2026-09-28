@@ -1,68 +1,40 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
+import { Heart } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
 import ListingCard from "@/components/ListingCard";
 import ListingCardSkeleton from "@/components/ListingCardSkeleton";
+import EmptyState from "@/components/molecules/EmptyState";
+import Button from "@/components/atoms/Button";
+import { useTranslations } from "@/i18n/LocaleProvider";
 import Link from "next/link";
 
 export default function FavoritesPage() {
+  const t = useTranslations();
   const router = useRouter();
-  const user = useSelector((s) => s.auth.user);
+  const { user, isInitialized } = useSelector((s) => s.auth);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const userId = user?.id;
   useEffect(() => {
-    async function load() {
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-      try {
-        const res = await apiFetch("/api/v1/favorites", { method: "GET" });
-        setItems(res.data || []);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [user, router]);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold text-slate-900">Danh sách yêu thích</h1>
-        <p className="text-slate-500">Những địa điểm bạn đã lưu lại cho chuyến đi sắp tới.</p>
-      </div>
-
-      {loading ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <ListingCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : items.length ? (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {items.map((it) => (
-            <ListingCard key={it.id} listing={it} />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center p-16 bg-white border border-slate-100 rounded-3xl shadow-sm text-center">
-          <div className="w-20 h-20 bg-rose-50 text-brand rounded-full flex items-center justify-center mb-6">
-            <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" /></svg>
-          </div>
-          <h3 className="text-2xl font-bold text-slate-900">Tạo danh sách yêu thích đầu tiên của bạn</h3>
-          <p className="mt-3 text-slate-500 max-w-md mx-auto">
-            Khi bạn tìm thấy nơi bạn muốn đến, hãy nhấn vào biểu tượng trái tim để lưu lại phòng nghỉ đó.
-          </p>
-          <Link href="/" className="mt-8 px-8 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all">
-            Bắt đầu khám phá
-          </Link>
-        </div>
-      )}
-    </div>
-  );
+    if (!isInitialized) return;
+    if (!userId) { router.replace("/login"); return; }
+    let active = true;
+    apiFetch("/api/v1/favorites", { method: "GET" })
+      .then((res) => { if (active) { setItems(res.data || []); setError(false); } })
+      .catch(() => { if (active) setError(true); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [userId, isInitialized, router, attempt]);
+  return <div className="space-y-6">
+    <div><h1 className="text-3xl font-bold tracking-tight text-ink">{t("favorites.title")}</h1><p className="mt-2 text-muted-ink">{t("favorites.description")}</p></div>
+    {loading || !isInitialized ? <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <ListingCardSkeleton key={index} />)}</div> :
+      error ? <EmptyState title={t("favorites.loadFailed")} action={<Button onClick={() => { setLoading(true); setAttempt((value) => value + 1); }}>{t("common.retry")}</Button>} /> :
+      items.length ? <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{items.map((listing) => <ListingCard key={listing.id} listing={listing} />)}</div> :
+      <EmptyState icon={<Heart aria-hidden size={30} />} title={t("favorites.emptyTitle")} description={t("favorites.emptyDescription")} action={<Link href="/" className="inline-flex min-h-11 items-center rounded-xl bg-brand px-5 py-3 font-semibold text-white hover:bg-brand-dark">{t("favorites.explore")}</Link>} />}
+  </div>;
 }

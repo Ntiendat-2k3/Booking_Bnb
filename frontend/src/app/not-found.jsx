@@ -1,34 +1,18 @@
 import Link from "next/link";
-import Container from "@/components/layout/Container";
+import { getServerTranslator } from "@/i18n/server";
 
-export const metadata = {
-  title: "404 | Booking BnB",
-  description: "Trang bạn tìm kiếm không tồn tại hoặc đã bị xoá.",
-};
-
-export default function NotFound() {
-  return (
-    <Container className="py-16">
-      <div className="max-w-2xl p-6 mx-auto bg-white border rounded-2xl">
-        <h1 className="text-2xl font-bold text-slate-900">Không tìm thấy trang</h1>
-        <p className="mt-2 text-slate-600">
-          Link có thể đã sai hoặc nội dung đã bị gỡ.
-        </p>
-        <div className="flex gap-3 mt-6">
-          <Link
-            href="/"
-            className="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-brand hover:opacity-90"
-          >
-            Về trang chủ
-          </Link>
-          <Link
-            href="/search"
-            className="px-4 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50"
-          >
-            Tới tìm kiếm
-          </Link>
-        </div>
-      </div>
-    </Container>
-  );
+export async function generateMetadata() {
+  const { t } = await getServerTranslator();
+  return { title: t("notFound.title"), description: t("notFound.description") };
+}
+export default async function NotFound() {
+  const { t } = await getServerTranslator();
+  return <div className="mx-auto max-w-2xl rounded-2xl border border-line bg-surface p-6 sm:p-10">
+    <h1 className="text-2xl font-bold text-ink">{t("notFound.title")}</h1>
+    <p className="mt-3 leading-7 text-muted-ink">{t("notFound.hint")}</p>
+    <div className="mt-6 flex flex-wrap gap-3">
+      <Link href="/" className="inline-flex min-h-11 items-center rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white hover:bg-brand-dark">{t("common.backHome")}</Link>
+      <Link href="/search" className="inline-flex min-h-11 items-center rounded-xl border border-line px-5 py-3 text-sm font-semibold hover:bg-muted-surface">{t("common.goSearch")}</Link>
+    </div>
+  </div>;
 }

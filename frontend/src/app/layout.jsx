@@ -1,80 +1,99 @@
 import { Suspense } from "react";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Providers from "@/components/Providers";
-import Navbar from "@/components/Navbar";
+import Navbar from "@/components/organisms/Navbar";
 import CategoryTabs from "@/components/CategoryTabs";
 import BootstrapClient from "./bootstrap-client";
 import Container from "@/components/layout/Container";
 import { Toaster } from "sonner";
-import Footer from "@/components/Footer";
-import {
-  SITE_NAME,
-  SITE_DESCRIPTION,
-  SITE_LOCALE,
-  SITE_LANG,
-} from "@/lib/constants";
+import Footer from "@/components/organisms/Footer";
+import { getServerTranslator } from "@/i18n/server";
 
-const inter = Inter({
-  subsets: ["latin", "vietnamese"],
+const beVietnamPro = localFont({
+  src: [
+    {
+      path: "../../public/fonts/be-vietnam-pro/BeVietnamPro-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/be-vietnam-pro/BeVietnamPro-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/be-vietnam-pro/BeVietnamPro-SemiBold.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/be-vietnam-pro/BeVietnamPro-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-be-vietnam-pro",
 });
 
-export const metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001",
-  ),
-  title: {
-    default: SITE_NAME,
-    template: `%s | ${SITE_NAME}`,
-  },
-  icons: {
-    icon: "/favicon.png",
-    apple: "/apple-icon.png",
-  },
-  description: SITE_DESCRIPTION,
-  alternates: {
-    canonical: "/",
-    languages: {
-      "vi-VN": "/",
+export async function generateMetadata() {
+  const { locale, t } = await getServerTranslator();
+  const siteName = t("seo.siteName");
+  const description = t("seo.defaultDescription");
+
+  return {
+    metadataBase: new URL(
+      process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001",
+    ),
+    title: {
+      default: t("seo.defaultTitle"),
+      template: `%s | ${siteName}`,
     },
-  },
-  openGraph: {
-    title: SITE_NAME,
-    description: SITE_DESCRIPTION,
-    type: "website",
-    locale: SITE_LOCALE,
-    siteName: SITE_NAME,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_NAME,
-    description: SITE_DESCRIPTION,
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+    icons: {
+      icon: "/favicon.png",
+      apple: "/apple-icon.png",
+    },
+    description,
+    alternates: { canonical: "/" },
+    openGraph: {
+      title: siteName,
+      description,
+      type: "website",
+      locale: locale === "en" ? "en_US" : "vi_VN",
+      siteName,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: siteName,
+      description,
+    },
+    robots: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
-  },
-  verification: {
-    // Add your Google Search Console verification here when ready
-    // google: "your-verification-code",
-  },
-};
+  };
+}
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const { locale, messages } = await getServerTranslator();
+
   return (
-    <html lang={SITE_LANG} className={inter.variable}>
-      <body className="font-sans">
-        <Providers>
+    <html
+      lang={locale === "en" ? "en" : "vi"}
+      data-scroll-behavior="smooth"
+      className={beVietnamPro.variable}
+    >
+      <body className="bg-canvas font-sans text-ink antialiased">
+        <Providers locale={locale} messages={messages}>
           <Toaster richColors position="top-right" />
           <BootstrapClient />
           <Suspense fallback={null}>
@@ -83,7 +102,7 @@ export default function RootLayout({ children }) {
           <Suspense fallback={null}>
             <CategoryTabs />
           </Suspense>
-          <main className="py-6 min-h-[calc(100vh-140px)]">
+          <main className="min-h-[calc(100dvh-140px)] py-6">
             <Container>{children}</Container>
           </main>
           <Footer />

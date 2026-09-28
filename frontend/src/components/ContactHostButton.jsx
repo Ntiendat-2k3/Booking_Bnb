@@ -1,20 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ChatCircleDots, CheckCircle, X } from "@phosphor-icons/react";
 import { useSelector } from "react-redux";
-import { ChatIcon } from "@/components/icons";
 import { apiFetch } from "@/lib/api";
+import { notifyError } from "@/lib/notify";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import Button from "@/components/atoms/Button";
+import InputField from "@/components/atoms/InputField";
 
 export default function ContactHostButton({ hostId }) {
+  const t = useTranslations();
+  const dialogRef = useRef(null);
+  const timerRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const currentUser = useSelector((s) => s.auth.user);
 
-  // Mặc định nạp sẵn email nếu Login
   const [email, setEmail] = useState(currentUser ? currentUser.email : "");
   const [phone, setPhone] = useState(currentUser ? currentUser.phone || "" : "");
   const [content, setContent] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const dialog = dialogRef.current;
+    const trigger = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => { clearTimeout(timerRef.current); dialog?.close(); document.body.style.overflow = overflow; trigger?.focus(); };
+  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,14 +43,14 @@ export default function ContactHostButton({ hostId }) {
         body: { email, phone, content },
       });
       setSuccess(true);
-      setTimeout(() => {
-         setIsOpen(false);
-         setSuccess(false);
-         setContent("");
+      timerRef.current = setTimeout(() => {
+        setIsOpen(false);
+        setSuccess(false);
+        setContent("");
       }, 3000);
     } catch (error) {
       console.error(error);
-      alert("Đã xảy ra lỗi khi gửi yêu cầu. Xin hãy thử lại.");
+      notifyError(t("contact.failed"));
     } finally {
       setLoading(false);
     }
@@ -44,91 +60,93 @@ export default function ContactHostButton({ hostId }) {
     <>
       <button
         type="button"
-        onClick={() => setIsOpen(true)}
-        className="inline-flex items-center gap-2 rounded-full border border-slate-900 bg-white md:px-5 px-4 py-2 text-[13px] md:text-sm font-semibold text-slate-900 hover:bg-slate-50 hover:shadow-sm transition-all"
+        onClick={() => { if (!email) setEmail(currentUser?.email || ""); if (!phone) setPhone(currentUser?.phone || ""); setSuccess(false); setIsOpen(true); }}
+        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface"
       >
-        <ChatIcon className="w-4 h-4" />
-        Liên hệ chủ nhà
+        <ChatCircleDots aria-hidden size={18} />
+        {t("contact.host")}
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-xl">
+        <dialog ref={dialogRef} onCancel={() => setIsOpen(false)}
+          className="fixed inset-0 z-[100] m-0 flex h-dvh w-screen max-w-none items-center justify-center bg-transparent p-4 backdrop:bg-black/55"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="contact-host-title"
+        >
+          <div className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-[20px] bg-surface p-6 shadow-float">
             {success ? (
-              <div className="text-center py-6">
-                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+              <div className="py-6 text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-positive/10 text-positive">
+                  <CheckCircle aria-hidden size={34} weight="fill" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Đã gửi liên hệ</h3>
-                <p className="text-sm text-slate-500">
-                  Cảm ơn bạn. Yêu cầu liên hệ đã được gửi đến chủ nhà bằng email. Họ sẽ sớm phản hồi bạn.
+                <h3 id="contact-host-title" className="mb-2 text-xl font-bold text-ink">
+                  {t("contact.successTitle")}
+                </h3>
+                <p className="text-sm leading-6 text-muted-ink">
+                  {t("contact.successDescription")}
                 </p>
               </div>
             ) : (
               <>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold text-slate-900">Liên hệ</h3>
-                  <button 
+                <div className="mb-6 flex items-center justify-between">
+                  <h3 id="contact-host-title" className="text-xl font-bold text-ink">
+                    {t("contact.title")}
+                  </h3>
+                  <button
+                    type="button"
                     onClick={() => setIsOpen(false)}
-                    className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-600 transition"
+                    className="grid h-11 w-11 place-items-center rounded-full bg-muted-surface text-muted-ink transition hover:text-ink"
+                    aria-label={t("common.close")}
                   >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X aria-hidden size={20} />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  <InputField
+                    label={t("contact.email")} disabled={loading}
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={t("contact.emailPlaceholder")}
+                  />
+                  <InputField
+                    label={t("contact.phone")} disabled={loading}
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder={t("contact.phonePlaceholder")}
+                  />
                   <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Email <span className="text-red-500">*</span></label>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Email nhận phản hồi"
-                      className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Số điện thoại (tùy chọn)</label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="Zalo / Điện thoại"
-                      className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Tin nhắn <span className="text-red-500">*</span></label>
+                    <label htmlFor="contact-message" className="mb-2 block text-sm font-semibold text-ink">
+                      {t("contact.message")}
+                    </label>
                     <textarea
+                      id="contact-message" disabled={loading}
                       required
                       rows={4}
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
-                      placeholder="Xin chào, tôi muốn hỏi về..."
-                      className="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand resize-none"
-                    ></textarea>
+                      placeholder={t("contact.messagePlaceholder")}
+                      className="w-full resize-none rounded-xl border border-line bg-surface px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-muted-ink/70 focus:border-ink focus:ring-4 focus:ring-ink/10"
+                    />
                   </div>
-                  <button
+                  <Button
                     type="submit"
                     disabled={loading || !email || !content}
-                    className="w-full py-3.5 bg-brand text-white font-bold rounded-xl hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    loading={loading}
+                    className="w-full"
+                    size="lg"
                   >
-                    {loading ? (
-                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                    ) : (
-                      "Gửi tin nhắn"
-                    )}
-                  </button>
+                    {t("contact.send")}
+                  </Button>
                 </form>
               </>
             )}
           </div>
-        </div>
+        </dialog>
       )}
     </>
   );

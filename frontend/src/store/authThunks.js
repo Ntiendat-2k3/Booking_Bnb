@@ -11,20 +11,20 @@ export const ensureCsrf = () => async (dispatch) => {
     }
     dispatch(setCsrfReady(true));
   } catch {
-    // even if fails, app can still load public pages
+    // Trang công khai vẫn hoạt động khi chưa lấy được CSRF.
     dispatch(setCsrfReady(false));
   }
 };
 
 export const bootstrapAuth = () => async (dispatch) => {
   await dispatch(ensureCsrf());
-  // Try restore session using cookies
+  // Khôi phục phiên từ cookie trước khi tải dữ liệu riêng tư.
   try {
     await dispatch(refreshSession());
     await dispatch(fetchProfile());
     await dispatch(fetchFavorites());
   } catch {
-    // ignore (not logged in)
+    // Chưa có phiên đăng nhập.
   } finally {
     dispatch(setInitialized(true));
   }
@@ -44,7 +44,7 @@ export const registerLocal = (body) => async (dispatch) => {
     dispatch(setStatus("idle"));
     return true;
   } catch (e) {
-    dispatch(setError(e?.message || "Register failed"));
+    dispatch(setError(e?.message || "auth.registerFailed"));
     dispatch(setStatus("error"));
     return false;
   }
@@ -64,7 +64,7 @@ export const loginLocal = (body) => async (dispatch) => {
     dispatch(setStatus("idle"));
     return true;
   } catch (e) {
-    dispatch(setError(e?.message || "Login failed"));
+    dispatch(setError(e?.message || "auth.loginFailed"));
     dispatch(setStatus("error"));
     return false;
   }
@@ -72,7 +72,7 @@ export const loginLocal = (body) => async (dispatch) => {
 
 export const refreshSession = () => async (dispatch) => {
   await dispatch(ensureCsrf());
-  // will rotate cookies if refresh cookie exists
+  // Máy chủ làm mới cookie nếu phiên còn hợp lệ.
   await apiFetch("/api/v1/auth/refresh", { method: "POST", body: {} });
 };
 
@@ -84,7 +84,7 @@ export const fetchProfile = () => async (dispatch) => {
     dispatch(setStatus("idle"));
   } catch (e) {
     if (e?.status === 401) {
-      // try refresh once
+      // Thử khôi phục phiên trước khi báo lỗi hồ sơ.
       try {
         await dispatch(refreshSession());
         const res2 = await apiFetch("/api/v1/auth/profile", { method: "GET" });
@@ -92,10 +92,10 @@ export const fetchProfile = () => async (dispatch) => {
         dispatch(setStatus("idle"));
         return;
       } catch {
-        // fallthrough
+        // Tiếp tục xử lý lỗi hồ sơ.
       }
     }
-    dispatch(setError(e?.message || "Fetch profile failed"));
+    dispatch(setError(e?.message || "auth.profileFailed"));
     dispatch(setStatus("error"));
   }
 };
@@ -114,11 +114,11 @@ export const becomeHost = () => async (dispatch) => {
   try {
     await dispatch(ensureCsrf());
     const res = await apiFetch("/api/v1/host/apply", { method: "POST", body: {} });
-    // API returns updated user profile (data)
+    // Máy chủ trả về hồ sơ đã cập nhật vai trò.
     dispatch(setUser(res.data));
     return true;
   } catch (e) {
-    dispatch(setError(e?.message || "Upgrade host failed"));
+    dispatch(setError(e?.message || "auth.hostFailed"));
     return false;
   }
 };

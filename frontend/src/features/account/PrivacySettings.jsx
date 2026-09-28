@@ -1,109 +1,42 @@
 "use client";
-
 import { useEffect, useState } from "react";
+import { Shield } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
 import { notifyError, notifySuccess } from "@/lib/notify";
-
-import { Shield, Eye, MessageSquare, Mail } from "lucide-react";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import Button from "@/components/atoms/Button";
 
 export default function PrivacySettings({ user }) {
+  const t = useTranslations();
   const [settings, setSettings] = useState(null);
-
+  const [failed, setFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const userId = user?.id;
   useEffect(() => {
-    if (!user) return;
-    async function fetchSettings() {
-      try {
-        const st = await apiFetch("/api/v1/users/me/settings", {
-          method: "GET",
-        });
-        setSettings(st.data);
-      } catch (e) {
-        console.error("Lỗi tải cài đặt", e);
-      }
-    }
-    fetchSettings();
-  }, [user]);
-
+    if (!userId) return;
+    let active = true;
+    apiFetch("/api/v1/users/me/settings", { method: "GET" })
+      .then((res) => { if (active) { setSettings(res.data); setFailed(false); } })
+      .catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [userId, attempt]);
   async function saveSettings(patch) {
+    setSaving(true);
     try {
-      const res = await apiFetch("/api/v1/users/me/settings", {
-        method: "PATCH",
-        body: { ...settings, ...patch },
-      });
-      setSettings(res.data);
-      notifySuccess("Đã cập nhật tùy chọn quyền riêng tư");
-    } catch (e) {
-      notifyError(e?.message || "Không thể cập nhật cài đặt");
-    }
+      const res = await apiFetch("/api/v1/users/me/settings", { method: "PATCH", body: { ...settings, ...patch } });
+      setSettings(res.data); notifySuccess(t("privacy.updated"));
+    } catch (error) { notifyError(error?.message || t("privacy.updateFailed")); }
+    finally { setSaving(false); }
   }
-
-  if (!settings) return (
-    <div className="p-12 text-center animate-pulse text-slate-400">Đang tải cài đặt...</div>
-  );
-
-  const Toggles = [
-    {
-      id: "show_profile",
-      label: "Hiển thị hồ sơ công khai",
-      desc: "Cho phép người khác thấy tên và ảnh đại diện của bạn khi xem các đánh giá.",
-      icon: Eye
-    },
-    {
-      id: "show_reviews",
-      label: "Hiển thị các đánh giá của tôi",
-      desc: "Công khai các đánh giá bạn đã viết cho các phòng đã ở.",
-      icon: MessageSquare
-    },
-    {
-      id: "marketing_emails",
-      label: "Nhận email quảng cáo",
-      desc: "Gửi cho tôi các ưu đãi đặc biệt và tin tức mới nhất từ Booking-bnb.",
-      icon: Mail
-    }
-  ];
-
-  return (
-    <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-      <div className="p-8 border-b border-slate-50">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <Shield size={24} className="text-brand" />
-          Quyền riêng tư & Thông báo
-        </h2>
-        <p className="text-sm text-slate-500">Kiểm soát thông tin hiển thị và cách chúng tôi liên lạc với bạn.</p>
-      </div>
-
-      <div className="p-8 space-y-8">
-        {Toggles.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.id} className="flex items-start justify-between gap-4">
-              <div className="flex gap-4">
-                <div className="mt-1 p-2 bg-slate-50 rounded-xl text-slate-400">
-                  <Icon size={20} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">{item.label}</h3>
-                  <p className="text-sm text-slate-500 mt-0.5">{item.desc}</p>
-                </div>
-              </div>
-
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings[item.id] !== false}
-                  onChange={(e) => {
-                    const v = e.target.checked;
-                    setSettings((s) => ({ ...s, [item.id]: v }));
-                    saveSettings({ [item.id]: v });
-                  }}
-                />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
-              </label>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  );
+  if (failed) return <div role="alert" className="p-6"><p>{t("privacy.loadFailed")}</p><Button className="mt-4" onClick={() => { setFailed(false); setAttempt((value) => value + 1); }}>{t("common.retry")}</Button></div>;
+  if (!settings) return <p role="status" className="p-6 text-muted-ink">{t("privacy.loading")}</p>;
+  const items = [{ id: "show_profile", label: "privacy.showProfile", description: "privacy.profileDescription" }, { id: "show_reviews", label: "privacy.showReviews", description: "privacy.reviewsDescription" }, { id: "marketing_emails", label: "privacy.marketing", description: "privacy.marketingDescription" }];
+  return <section className="rounded-2xl border border-line bg-surface p-5 sm:p-8">
+    <h2 className="flex items-center gap-2 text-xl font-bold"><Shield aria-hidden size={24} className="text-brand" />{t("privacy.title")}</h2><p className="mt-2 text-sm text-muted-ink">{t("privacy.description")}</p>
+    <div className="mt-6 space-y-6">{items.map((item) => <label key={item.id} className="flex min-h-11 cursor-pointer items-start justify-between gap-4">
+      <span className="min-w-0"><span className="block font-semibold">{t(item.label)}</span><span className="mt-1 block text-sm leading-6 text-muted-ink">{t(item.description)}</span></span>
+      <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-brand" aria-label={t(item.label)} checked={settings[item.id] !== false} disabled={saving} onChange={(e) => saveSettings({ [item.id]: e.target.checked })} />
+    </label>)}</div>
+  </section>;
 }

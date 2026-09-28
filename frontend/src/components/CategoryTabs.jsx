@@ -1,22 +1,42 @@
 "use client";
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import {
+  Bed,
+  BuildingApartment,
+  Buildings,
+  DoorOpen,
+  House,
+  HouseLine,
+  Warehouse,
+} from "@phosphor-icons/react";
+import { useTranslations } from "@/i18n/LocaleProvider";
 import Container from "./layout/Container";
 import { CATEGORIES } from "@/lib/constants";
 
+const CATEGORY_ICONS = {
+  Bed,
+  BuildingApartment,
+  Buildings,
+  DoorOpen,
+  House,
+  HouseLine,
+  Warehouse,
+};
 
-function Chip({ active, children, onClick }) {
+function Chip({ active, children, icon: Icon, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={
-        "shrink-0 rounded-full border px-4 py-2 text-sm transition focus:outline-none focus:ring-2 focus:ring-brand/30 " +
+        "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 " +
         (active
-          ? "border-slate-900 bg-slate-900 text-white"
-          : "border-slate-200 bg-white hover:bg-slate-50")
+          ? "border-brand text-ink"
+          : "border-transparent text-muted-ink hover:border-line hover:text-ink")
       }
     >
+      {Icon ? <Icon aria-hidden size={20} weight={active ? "fill" : "regular"} /> : null}
       {children}
     </button>
   );
@@ -26,8 +46,8 @@ export default function CategoryTabs() {
   const router = useRouter();
   const params = useSearchParams();
   const pathname = usePathname();
+  const t = useTranslations();
 
-  // Only show on home page or search page
   if (pathname !== "/" && pathname !== "/search") {
     return null;
   }
@@ -35,7 +55,6 @@ export default function CategoryTabs() {
   const current = params.get("property_type") || "";
 
   function go(value) {
-    // categories drive search page
     const q = new URLSearchParams(params.toString());
     if (value) q.set("property_type", value);
     else q.delete("property_type");
@@ -44,16 +63,26 @@ export default function CategoryTabs() {
   }
 
   return (
-    <div className="border-b bg-white">
+    <div className="border-b border-line bg-surface">
       <Container>
-        <div className="flex gap-2 overflow-x-auto py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <Chip active={!current} onClick={() => go("")}>Tất cả</Chip>
+        <nav
+          aria-label={t("search.allCategories")}
+          className="flex gap-4 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <Chip active={!current} onClick={() => go("")}>
+            {t("search.allCategories")}
+          </Chip>
           {CATEGORIES.map((c) => (
-            <Chip key={c.key} active={current === c.key} onClick={() => go(c.key)}>
-              {c.label}
+            <Chip
+              key={c.key}
+              active={current === c.key}
+              icon={CATEGORY_ICONS[c.icon]}
+              onClick={() => go(c.key)}
+            >
+              {t(c.labelKey)}
             </Chip>
           ))}
-        </div>
+        </nav>
       </Container>
     </div>
   );

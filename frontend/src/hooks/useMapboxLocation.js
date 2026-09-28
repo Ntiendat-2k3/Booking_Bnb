@@ -1,138 +1,68 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
 
 export function pickFromContext(feature, type) {
-  const ctx = feature?.context || [];
-  const found = ctx.find((c) => (c.id || "").startsWith(type + "."));
-  return found?.text || "";
+  return feature?.context?.find((item) => item.id?.startsWith(type + "."))?.text || "";
 }
-
-export function asNum(v) {
-  const n = typeof v === "string" ? Number(v) : v;
-  return Number.isFinite(n) ? n : null;
+export function asNum(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
-
-export async function geocodeForward(q, token, signal) {
-  const url =
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json` +
-    `?access_token=${encodeURIComponent(token)}` +
-    `&autocomplete=true&limit=6&language=vi`;
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error("Mapbox geocoding failed");
-  return res.json();
+export async function geocodeForward(query, token, signal, language = "vi") {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${encodeURIComponent(token)}&autocomplete=true&limit=6&language=${language}`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error("Mapbox geocoding failed");
+  return response.json();
 }
-
-export async function geocodeReverse(lng, lat, token, signal) {
-  const url =
-    `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
-    `?access_token=${encodeURIComponent(token)}` +
-    `&limit=1&language=vi`;
-  const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error("Mapbox reverse geocoding failed");
-  return res.json();
+export async function geocodeReverse(lng, lat, token, signal, language = "vi") {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${encodeURIComponent(token)}&limit=1&language=${language}`;
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error("Mapbox reverse geocoding failed");
+  return response.json();
 }
-
-export function useMapboxAutocomplete({ token, initialQuery, onSelect }) {
-  const [query, setQuery] = useState(initialQuery || "");
-  const [suggestions, setSuggestions] = useState([]);
+/** Giữ địa chỉ đang nhập, hủy truy vấn cũ và chỉ hiển thị gợi ý khớp với nội dung hiện tại. */
+export function useMapboxAutocomplete({ token, initialQuery = "", onSelect }) {
+  const { locale } = useLocale();
+  const [draft, setDraft] = useState({ source: initialQuery, value: initialQuery });
+  const query = draft.source === initialQuery ? draft.value : initialQuery;
+  const setQuery = (value) => setDraft({ source: initialQuery, value });
+  const [result, setResult] = useState({ query: "", features: [], error: false });
   const [openSug, setOpenSug] = useState(false);
-  const [loadingSug, setLoadingSug] = useState(false);
-
   const wrapperRef = useRef(null);
   const suppressRef = useRef(false);
-
-  // Sync internal query
+  const normalized = query.trim();
+  const eligible = Boolean(token && openSug && normalized.length >= 3);
   useEffect(() => {
-    setQuery(initialQuery || "");
-  }, [initialQuery]);
-
-  // Click outside to close
-  useEffect(() => {
-    function onDocMouseDown(e) {
-      if (!wrapperRef.current) return;
-      if (!wrapperRef.current.contains(e.target)) {
-        setOpenSug(false);
-      }
+    function onDocMouseDown(event) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setOpenSug(false);
     }
     document.addEventListener("mousedown", onDocMouseDown);
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
-
-  // Fetch suggestions
   useEffect(() => {
-    if (!token) return;
-
-    if (suppressRef.current) {
-      setSuggestions([]);
-      setOpenSug(false);
-      return;
-    }
-
-    if (!openSug) {
-      setSuggestions([]);
-      return;
-    }
-
-    const q = (query || "").trim();
-    if (q.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-
-    setLoadingSug(true);
-    const ac = new AbortController();
-
-    const t = setTimeout(async () => {
+    if (!token || !openSug || normalized.length < 3) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
       try {
-        const data = await geocodeForward(q, token, ac.signal);
-        setSuggestions(data?.features || []);
+        const data = await geocodeForward(normalized, token, controller.signal, locale === "en" ? "en" : "vi");
+        if (!controller.signal.aborted) setResult({ query: normalized, features: data?.features || [], error: false });
       } catch {
-        setSuggestions([]);
-      } finally {
-        setLoadingSug(false);
+        if (!controller.signal.aborted) setResult({ query: normalized, features: [], error: true });
       }
     }, 300);
-
-    return () => {
-      ac.abort();
-      clearTimeout(t);
-    };
-  }, [query, token, openSug]);
-
-  const selectFeature = (f) => {
-    const center = f?.center; // [lng, lat]
-    const newAddr = f?.place_name || query;
-
-    suppressRef.current = true;
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [normalized, token, openSug, locale]);
+  const selectFeature = (feature) => {
     setOpenSug(false);
-    setSuggestions([]);
-    setQuery(newAddr);
-
-    const next = { address: newAddr };
-    const nextCity = pickFromContext(f, "place");
-    const nextCountry = pickFromContext(f, "country");
-    if (nextCity) next.city = nextCity;
-    if (nextCountry) next.country = nextCountry;
-
-    if (Array.isArray(center) && center.length >= 2) {
-      next.lng = String(center[0]);
-      next.lat = String(center[1]);
-    }
-
+    setQuery(feature?.place_name || query);
+    const next = { address: feature?.place_name || query };
+    const city = pickFromContext(feature, "place");
+    const country = pickFromContext(feature, "country");
+    if (city) next.city = city;
+    if (country) next.country = country;
+    if (feature?.center?.length >= 2) { next.lng = String(feature.center[0]); next.lat = String(feature.center[1]); }
     onSelect?.(next);
-    setTimeout(() => {
-      suppressRef.current = false;
-    }, 600);
   };
-
-  return {
-    query,
-    setQuery,
-    suggestions,
-    openSug,
-    setOpenSug,
-    loadingSug,
-    wrapperRef,
-    suppressRef,
-    selectFeature
-  };
+  return { query, setQuery, suggestions: eligible && result.query === normalized ? result.features : [], openSug, setOpenSug, loadingSug: eligible && result.query !== normalized, suggestionError: eligible && result.query === normalized && result.error, wrapperRef, suppressRef, selectFeature };
 }

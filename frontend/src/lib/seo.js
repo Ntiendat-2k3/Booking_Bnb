@@ -1,9 +1,9 @@
 /**
- * SEO helpers for generating structured data and metadata.
- * Reusable across pages — call these helpers instead of copy-pasting metadata objects.
+ * Tạo metadata theo ngôn ngữ hiện tại và dữ liệu có cấu trúc cho chỗ ở.
  */
 
-import { SITE_NAME, SITE_DESCRIPTION, SITE_LOCALE } from "./constants";
+import { CATEGORIES } from "./constants";
+import { createTranslator } from "@/i18n/config";
 
 const siteUrl = () =>
   (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001").replace(
@@ -11,7 +11,7 @@ const siteUrl = () =>
     "",
   );
 
-// ─── JSON-LD: LodgingBusiness for a listing ──────────────────────
+// Dữ liệu chỗ ở theo hợp đồng schema.org.
 export function buildListingJsonLd(listing, reviews = []) {
   if (!listing) return null;
 
@@ -45,7 +45,7 @@ export function buildListingJsonLd(listing, reviews = []) {
     numberOfRooms: listing.bedrooms || undefined,
   };
 
-  // Add offers
+  // Chỉ khai báo giá khi dữ liệu chỗ ở có giá.
   if (listing.price_per_night) {
     jsonLd.makesOffer = {
       "@type": "Offer",
@@ -56,7 +56,7 @@ export function buildListingJsonLd(listing, reviews = []) {
     };
   }
 
-  // Add aggregate rating
+  // Không khai báo đánh giá tổng hợp khi chưa có đánh giá.
   if (rating > 0 && reviewCount > 0) {
     jsonLd.aggregateRating = {
       "@type": "AggregateRating",
@@ -70,17 +70,16 @@ export function buildListingJsonLd(listing, reviews = []) {
   return jsonLd;
 }
 
-// ─── Metadata helper for listing pages ───────────────────────────
-export function buildListingMetadata(listing) {
-  if (!listing) return { title: "Không tìm thấy phòng" };
+export function buildListingMetadata(listing, { locale = "vn", t = createTranslator(locale) } = {}) {
+  if (!listing) return { title: t("room.notFoundTitle") };
 
   const images = listing.images || [];
   const cover = images.find((x) => x.is_cover) || images[0];
 
-  const title = `${listing.title} | ${SITE_NAME}`;
+  const title = listing.title;
   const description =
     (listing.description || "").slice(0, 160) ||
-    `Chỗ ở tại ${listing.city}, ${listing.country}. ${listing.max_guests} khách • ${listing.bedrooms} phòng ngủ.`;
+    t("seo.listingFallback", { city: listing.city, country: listing.country, guests: listing.max_guests, bedrooms: listing.bedrooms });
 
   return {
     title,
@@ -90,7 +89,7 @@ export function buildListingMetadata(listing) {
       title,
       description,
       type: "website",
-      locale: SITE_LOCALE,
+      locale: locale === "en" ? "en_US" : "vi_VN",
       images: cover?.url
         ? [{ url: cover.url, width: 1200, height: 630, alt: listing.title }]
         : [],
@@ -104,34 +103,35 @@ export function buildListingMetadata(listing) {
   };
 }
 
-// ─── Metadata helper for search page ─────────────────────────────
-export function buildSearchMetadata(searchParams = {}) {
+export function buildSearchMetadata(searchParams = {}, { locale = "vn", t = createTranslator(locale) } = {}) {
   const city = searchParams.city;
-  const propertyType = searchParams.property_type;
+  const category = CATEGORIES.find(item => item.key === searchParams.property_type);
+  const propertyType = category ? t(category.labelKey) : searchParams.property_type;
+  const site = t("seo.siteName");
 
-  let title = "Tìm kiếm chỗ ở";
-  let description = SITE_DESCRIPTION;
+  let title = t("seo.searchTitle");
+  let description = t("seo.defaultDescription");
 
   if (city && propertyType) {
-    title = `${propertyType} tại ${city}`;
-    description = `Tìm ${propertyType.toLowerCase()} tại ${city}. So sánh giá, đánh giá và đặt phòng nhanh trên ${SITE_NAME}.`;
+    title = t("seo.typeCityTitle", { type: propertyType, city });
+    description = t("seo.cityDescription", { city, site });
   } else if (city) {
-    title = `Chỗ ở tại ${city}`;
-    description = `Khám phá các chỗ ở tốt nhất tại ${city}. So sánh giá, xem đánh giá và đặt phòng trên ${SITE_NAME}.`;
+    title = t("seo.cityTitle", { city });
+    description = t("seo.cityDescription", { city, site });
   } else if (propertyType) {
-    title = `${propertyType} — ${SITE_NAME}`;
-    description = `Tìm ${propertyType.toLowerCase()} phù hợp với bạn. Đặt phòng nhanh chóng trên ${SITE_NAME}.`;
+    title = propertyType;
+    description = t("seo.typeDescription", { type: propertyType, site });
   }
 
   return {
-    title: `${title} | ${SITE_NAME}`,
+    title,
     description,
     robots: { index: true, follow: true },
     openGraph: {
       title,
       description,
       type: "website",
-      locale: SITE_LOCALE,
+      locale: locale === "en" ? "en_US" : "vi_VN",
     },
   };
 }

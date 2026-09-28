@@ -1,27 +1,34 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocale } from "@/i18n/LocaleProvider";
 import MapPopupCard from "./MapPopupCard";
 
-const DEFAULT_CENTER = { lng: 106.700987, lat: 10.776889 }; // HCMC
+const DEFAULT_CENTER = { lng: 106.700987, lat: 10.776889 };
 
 function toNum(v) {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
   const n = typeof v === "string" ? Number(v) : v;
   return Number.isFinite(n) ? n : null;
 }
 
-function formatVndPill(v) {
+function formatVndPill(v, locale) {
   try {
     const n = Number(v || 0);
-    const s = new Intl.NumberFormat("vi-VN").format(n);
-    return `đ${s}`;
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "VND",
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(n);
   } catch {
-    return `đ${v}`;
+    return `${v} ₫`;
   }
 }
 
 export default function SearchResultsMap({ items = [], userLat, userLng }) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const { locale, t } = useLocale();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -30,6 +37,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
 
   const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [failed, setFailed] = useState(false);
 
   const user = useMemo(
     () => ({ lat: toNum(userLat), lng: toNum(userLng) }),
@@ -41,7 +49,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
       .map((it) => {
         const lat = toNum(it?.lat);
         const lng = toNum(it?.lng);
-        if (lat == null || lng == null) return null;
+        if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
         return { ...it, lat, lng };
       })
       .filter(Boolean);
@@ -54,7 +62,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
     return DEFAULT_CENTER;
   }, [user.lat, user.lng, points]);
 
-  // init map
+  // Khởi tạo bản đồ đúng một lần cho mỗi token.
   useEffect(() => {
     if (!token) return;
     if (!containerRef.current) return;
@@ -64,6 +72,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
 
     (async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
+      if (cancelled || !containerRef.current) return;
       mapboxgl.accessToken = token;
 
       const map = new mapboxgl.Map({
@@ -74,12 +83,13 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
       });
 
       map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      map.on("error", () => { if (!cancelled) setFailed(true); });
       map.on("click", () => setSelected(null));
 
       if (cancelled) return;
       mapRef.current = map;
       setReady(true);
-    })();
+    })().catch(() => { if (!cancelled) setFailed(true); });
 
     return () => {
       cancelled = true;
@@ -92,7 +102,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // keep selected marker styling in sync
+  // Đồng bộ trạng thái trực quan của ghim đang được chọn.
   useEffect(() => {
     const selectedId = selected?.id || selected?.listing_id || selected?.uuid;
     markerElsRef.current.forEach((el, id) => {
@@ -105,7 +115,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
     });
   }, [selected]);
 
-  // add / update user marker
+  // Thêm hoặc cập nhật vị trí hiện tại của người dùng.
   useEffect(() => {
     if (!ready || !mapRef.current) return;
     const map = mapRef.current;
@@ -119,6 +129,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
 
     (async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
+      if (mapRef.current !== map) return;
       const el = document.createElement("div");
       el.className =
         "w-3 h-3 bg-blue-600 rounded-full shadow ring-4 ring-blue-200";
@@ -131,12 +142,11 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
     })();
   }, [ready, user.lat, user.lng]);
 
-  // add markers for listings
+  // Tạo lại các ghim khi danh sách kết quả thay đổi.
   useEffect(() => {
     if (!ready || !mapRef.current) return;
     const map = mapRef.current;
 
-    // cleanup old markers
     try {
       markersRef.current.forEach((m) => m.remove());
     } catch {}
@@ -147,6 +157,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
 
     (async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
+      if (mapRef.current !== map) return;
 
       const bounds = new mapboxgl.LngLatBounds();
       points.forEach((it) => bounds.extend([it.lng, it.lat]));
@@ -156,8 +167,12 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
         const pill = document.createElement("button");
         pill.type = "button";
         pill.className =
-          "px-3 py-1 text-sm font-semibold bg-white border rounded-full shadow-sm text-slate-900 hover:shadow";
-        pill.textContent = formatVndPill(it?.price_per_night);
+          "min-h-11 px-3 py-1 text-sm font-semibold bg-white border rounded-full shadow-sm text-slate-900 hover:shadow";
+        pill.setAttribute("aria-label", `${it.title}: ${formatVndPill(it.price_per_night, locale === "en" ? "en-US" : "vi-VN")}`);
+        pill.textContent = formatVndPill(
+          it?.price_per_night,
+          locale === "en" ? "en-US" : "vi-VN",
+        );
 
         pill.addEventListener("click", (e) => {
           e.preventDefault();
@@ -175,18 +190,16 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
         markersRef.current.push(m);
       });
 
-      // Fit bounds for a nice initial view (but keep it gentle)
       try {
         map.fitBounds(bounds, { padding: 40, duration: 0, maxZoom: 13 });
       } catch {}
     })();
-  }, [ready, points]);
+  }, [locale, points, ready]);
 
   if (!token) {
     return (
-      <div className="flex h-[520px] items-center justify-center p-6 text-center text-sm text-slate-600">
-        Thiếu <span className="font-semibold">NEXT_PUBLIC_MAPBOX_TOKEN</span>.
-        Thêm token vào biến môi trường để bật bản đồ.
+      <div className="flex h-[520px] items-center justify-center p-6 text-center text-sm leading-6 text-muted-ink">
+        {t("search.mapMissingToken")}
       </div>
     );
   }
@@ -194,6 +207,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
   return (
     <div className="relative h-[520px] w-full">
       <div ref={containerRef} className="w-full h-full" />
+      {failed ? <p role="alert" className="absolute inset-x-3 top-3 rounded-xl bg-surface p-3 text-sm">{t("address.mapError")}</p> : null}
       <MapPopupCard listing={selected} onClose={() => setSelected(null)} />
     </div>
   );

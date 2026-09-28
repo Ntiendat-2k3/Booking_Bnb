@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  CreditCard,
+  Minus,
+  Plus,
+  ShieldCheck,
+  Star,
+} from "@phosphor-icons/react";
 import { useParams, useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
@@ -8,9 +16,13 @@ import { createStripePayment, updateBooking } from "@/services/bookingService";
 import { apiFetch } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import Container from "@/components/layout/Container";
+import Button from "@/components/atoms/Button";
+import { useLocale } from "@/i18n/LocaleProvider";
 import Image from "next/image";
+import { format } from "date-fns";
 
 export default function CheckoutPage() {
+  const { locale, t } = useLocale();
   const { id } = useParams();
   const router = useRouter();
   const user = useSelector((s) => s.auth.user);
@@ -20,7 +32,6 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
 
-  // Inline editing states
   const [editingDates, setEditingDates] = useState(false);
   const [editingGuests, setEditingGuests] = useState(false);
   const [draftCheckIn, setDraftCheckIn] = useState("");
@@ -32,24 +43,23 @@ export default function CheckoutPage() {
     async function fetchBooking() {
       if (!isInitialized) return;
       if (!user) {
-        notifyInfo("Bạn cần đăng nhập để xem trang này.");
+        notifyInfo(t("checkout.loginRequired"));
         router.push("/login");
         return;
       }
 
       try {
-        setLoading(true);
         const res = await apiFetch(`/api/v1/bookings/${id}`);
         setBooking(res.data.booking);
       } catch (err) {
-        notifyError("Không tìm thấy thông tin đặt phòng");
+        notifyError(t("checkout.bookingNotFound"));
         router.push("/trips");
       } finally {
         setLoading(false);
       }
     }
     fetchBooking();
-  }, [id, user, isInitialized, router]);
+  }, [id, user, isInitialized, router, t]);
 
   function startEditDates() {
     setDraftCheckIn(booking.check_in);
@@ -63,6 +73,11 @@ export default function CheckoutPage() {
   }
 
   async function saveDates() {
+    if (saving) return;
+    if (!draftCheckIn || !draftCheckOut || draftCheckIn < format(new Date(), "yyyy-MM-dd") || draftCheckOut <= draftCheckIn) {
+      notifyInfo(t("booking.invalidDates"));
+      return;
+    }
     if (draftCheckIn === booking.check_in && draftCheckOut === booking.check_out) {
       setEditingDates(false);
       return;
@@ -75,15 +90,16 @@ export default function CheckoutPage() {
       });
       setBooking(updated);
       setEditingDates(false);
-      notifySuccess("Đã cập nhật ngày thành công");
+      notifySuccess(t("checkout.datesUpdated"));
     } catch (err) {
-      notifyError(err?.message || "Không thể cập nhật ngày");
+      notifyError(err?.message || t("checkout.datesUpdateFailed"));
     } finally {
       setSaving(false);
     }
   }
 
   async function saveGuests() {
+    if (saving || !Number.isInteger(Number(draftGuests)) || Number(draftGuests) < 1 || Number(draftGuests) > (booking.listing?.max_guests || 16)) return;
     if (Number(draftGuests) === booking.guests_count) {
       setEditingGuests(false);
       return;
@@ -95,23 +111,24 @@ export default function CheckoutPage() {
       });
       setBooking(updated);
       setEditingGuests(false);
-      notifySuccess("Đã cập nhật số khách thành công");
+      notifySuccess(t("checkout.guestsUpdated"));
     } catch (err) {
-      notifyError(err?.message || "Không thể cập nhật số khách");
+      notifyError(err?.message || t("checkout.guestsUpdateFailed"));
     } finally {
       setSaving(false);
     }
   }
 
   async function handlePayment() {
+    if (paying || saving || editingDates || editingGuests) return;
     setPaying(true);
     try {
       const url = await createStripePayment(id);
-      if (!url) throw new Error("Không tạo được URL thanh toán");
-      notifySuccess("Đang chuyển tới trang thanh toán bảo mật...");
+      if (!url) throw new Error(t("checkout.paymentUrlFailed"));
+      notifySuccess(t("checkout.paymentRedirect"));
       window.location.href = url;
     } catch (e) {
-      notifyError(e?.message || "Lỗi tạo thanh toán");
+      notifyError(e?.message || t("checkout.paymentFailed"));
       setPaying(false);
     }
   }
@@ -120,7 +137,7 @@ export default function CheckoutPage() {
     return (
       <Container>
         <div className="py-20 flex justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
         </div>
       </Container>
     );
@@ -131,212 +148,259 @@ export default function CheckoutPage() {
   const { listing } = booking;
   const cover = listing?.images?.find((img) => img.is_cover) || listing?.images?.[0];
   const maxGuests = listing?.max_guests || 16;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = format(new Date(), "yyyy-MM-dd");
 
   return (
     <Container>
       <div className="py-10 lg:py-16">
-        <h1 className="text-3xl font-bold text-slate-900 mb-8 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
+        <h1 className="mb-8 flex items-center gap-3 text-3xl font-bold tracking-[-0.035em] text-ink">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="-ml-2 grid h-11 w-11 place-items-center rounded-full transition hover:bg-muted-surface"
+            aria-label={t("common.back")}
+          >
+            <ArrowLeft aria-hidden size={24} weight="bold" />
           </button>
-          Xác nhận và thanh toán
+          {t("checkout.title")}
         </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-12 lg:gap-20">
-          {/* Left Column */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:gap-12">
           <div className="space-y-10">
-            <section className="space-y-4 pb-10 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">Chuyến đi của bạn</h2>
-              
-              {/* ===== Ngày ===== */}
-              <div className="flex justify-between items-start">
+            <section className="space-y-5 border-b border-line pb-10">
+              <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
+                {t("checkout.trip")}
+              </h2>
+
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-800">Ngày</h3>
+                  <h3 className="font-semibold text-ink">{t("checkout.dates")}</h3>
                   {editingDates ? (
                     <div className="mt-2 space-y-3">
                       <div className="flex flex-wrap gap-3">
                         <div className="flex flex-col">
-                          <label className="text-xs text-slate-500 mb-1">Nhận phòng</label>
-                          <input
+                          <label htmlFor="field-[id]-page-177" className="mb-1 text-xs font-medium text-muted-ink">
+                            {t("checkout.checkIn")}
+                          </label>
+                          <input id="field-[id]-page-177"
                             type="date"
                             value={draftCheckIn}
                             min={todayStr}
                             max={draftCheckOut}
                             onChange={(e) => setDraftCheckIn(e.target.value)}
-                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition"
+                            className="min-h-11 rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-ink focus:ring-4 focus:ring-ink/10"
                           />
                         </div>
                         <div className="flex flex-col">
-                          <label className="text-xs text-slate-500 mb-1">Trả phòng</label>
-                          <input
+                          <label htmlFor="field-[id]-page-190" className="mb-1 text-xs font-medium text-muted-ink">
+                            {t("checkout.checkOut")}
+                          </label>
+                          <input id="field-[id]-page-190"
                             type="date"
                             value={draftCheckOut}
                             min={draftCheckIn || todayStr}
                             onChange={(e) => setDraftCheckOut(e.target.value)}
-                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition"
+                            className="min-h-11 rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-ink focus:ring-4 focus:ring-ink/10"
                           />
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           onClick={saveDates}
                           disabled={saving}
-                          className="px-4 py-1.5 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-dark transition disabled:opacity-60"
+                          size="sm"
                         >
-                          {saving ? "Đang lưu..." : "Lưu"}
-                        </button>
-                        <button
+                          {saving ? t("checkout.saving") : t("common.save")}
+                        </Button>
+                        <Button
                           onClick={() => setEditingDates(false)}
                           disabled={saving}
-                          className="px-4 py-1.5 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-100 transition"
+                          variant="ghost"
+                          size="sm"
                         >
-                          Hủy
-                        </button>
+                          {t("common.cancel")}
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-slate-600">{booking.check_in} – {booking.check_out}</p>
+                    <p className="text-muted-ink">
+                      {booking.check_in} → {booking.check_out}
+                    </p>
                   )}
                 </div>
                 {!editingDates && (
                   <button
                     onClick={startEditDates}
-                    className="text-brand font-semibold hover:underline shrink-0 ml-4"
+                    className="ml-4 min-h-11 shrink-0 text-sm font-semibold text-brand hover:underline"
                   >
-                    Chỉnh sửa
+                    {t("common.edit")}
                   </button>
                 )}
               </div>
 
-              {/* ===== Khách ===== */}
-              <div className="flex justify-between items-start">
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-slate-800">Khách</h3>
+                  <h3 className="font-semibold text-ink">{t("checkout.guests")}</h3>
                   {editingGuests ? (
                     <div className="mt-2 space-y-3">
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
                           onClick={() => setDraftGuests((g) => Math.max(1, g - 1))}
-                          className="w-9 h-9 flex items-center justify-center rounded-full border border-slate-300 text-slate-700 hover:border-slate-500 transition text-lg font-bold"
+                          className="grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-ink transition hover:bg-muted-surface"
+                          aria-label={t("common.previous")}
                         >
-                          −
+                          <Minus aria-hidden size={18} weight="bold" />
                         </button>
-                        <span className="text-lg font-semibold text-slate-800 min-w-[3ch] text-center">
+                        <span className="min-w-[3ch] text-center text-lg font-semibold text-ink">
                           {draftGuests}
                         </span>
                         <button
                           type="button"
                           onClick={() => setDraftGuests((g) => Math.min(maxGuests, g + 1))}
-                          className="w-9 h-9 flex items-center justify-center rounded-full border border-slate-300 text-slate-700 hover:border-slate-500 transition text-lg font-bold"
+                          className="grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-ink transition hover:bg-muted-surface"
+                          aria-label={t("common.next")}
                         >
-                          +
+                          <Plus aria-hidden size={18} weight="bold" />
                         </button>
-                        <span className="text-xs text-slate-400 ml-1">Tối đa {maxGuests} khách</span>
+                        <span className="ml-1 text-xs text-muted-ink">
+                          {t("checkout.maxGuests", { count: maxGuests })}
+                        </span>
                       </div>
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           onClick={saveGuests}
                           disabled={saving}
-                          className="px-4 py-1.5 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-dark transition disabled:opacity-60"
+                          size="sm"
                         >
-                          {saving ? "Đang lưu..." : "Lưu"}
-                        </button>
-                        <button
+                          {saving ? t("checkout.saving") : t("common.save")}
+                        </Button>
+                        <Button
                           onClick={() => setEditingGuests(false)}
                           disabled={saving}
-                          className="px-4 py-1.5 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-100 transition"
+                          variant="ghost"
+                          size="sm"
                         >
-                          Hủy
-                        </button>
+                          {t("common.cancel")}
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-slate-600">{booking.guests_count} khách</p>
+                    <p className="text-muted-ink">
+                      {t("checkout.guestCount", {
+                        count: booking.guests_count,
+                      })}
+                    </p>
                   )}
                 </div>
                 {!editingGuests && (
                   <button
                     onClick={startEditGuests}
-                    className="text-brand font-semibold hover:underline shrink-0 ml-4"
+                    className="ml-4 min-h-11 shrink-0 text-sm font-semibold text-brand hover:underline"
                   >
-                    Chỉnh sửa
+                    {t("common.edit")}
                   </button>
                 )}
               </div>
             </section>
 
-            <section className="space-y-4 pb-10 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900">Thanh toán bằng</h2>
-              <div className="p-4 border border-slate-300 rounded-xl flex items-center justify-between">
+            <section className="space-y-4 border-b border-line pb-10">
+              <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
+                {t("checkout.paymentMethod")}
+              </h2>
+              <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-4">
                 <div className="flex items-center gap-3">
-                  <svg className="w-8 h-8 text-indigo-600" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M13.976 9.15c-2.172-.806-3.356-1.143-3.356-2.077 0-.741.761-1.36 2.053-1.36 1.705 0 3.098.667 4.14 1.488l1.373-3.037A8.995 8.995 0 0012.636 2.5C7.303 2.5 4.318 5.485 4.318 9.206c0 4.136 3.993 5.424 6.945 6.354 2.378.749 3.253 1.258 3.253 2.188 0 .863-.822 1.503-2.316 1.503-1.84 0-3.662-.878-4.81-1.815l-1.401 3.203a9.227 9.227 0 005.679 1.86c5.539 0 8.795-2.73 8.795-6.666 0-3.83-3.32-5.18-6.487-6.683z" />
-                  </svg>
-                  <span className="font-semibold">Thẻ Tín dụng / Thẻ Ghi nợ qua Stripe</span>
+                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-muted-surface text-ink">
+                    <CreditCard aria-hidden size={24} />
+                  </span>
+                  <span className="font-semibold text-ink">
+                    {t("checkout.stripeCard")}
+                  </span>
                 </div>
               </div>
             </section>
 
             <section className="space-y-4">
-              <h2 className="text-xl font-bold text-slate-900">Chính sách hủy</h2>
-              <p className="text-slate-600">
-                <span className="font-semibold text-slate-800">Hủy miễn phí trong vòng 48 giờ.</span> Sau đó, hủy trước ngày nhận phòng sẽ được hoàn lại 50% tiền phòng, không bao gồm phí dịch vụ.
+              <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
+                {t("checkout.cancellation")}
+              </h2>
+              <p className="leading-7 text-muted-ink">
+                <span className="font-semibold text-ink">
+                  {t("checkout.cancellationLead")}
+                </span>{" "}
+                {t("checkout.cancellationBody")}
               </p>
-              <p className="text-xs text-slate-500 mt-4">
-                Bằng việc chọn nút bên dưới, tôi đồng ý với Nội quy nhà của Chủ nhà, Chính sách cơ bản của Booking BnB cho Khách, Chính sách đặt lại phòng và hoàn tiền, đồng thời đồng ý rằng Booking BnB có thể tính phí vào phương thức thanh toán của tôi nếu tôi phải chịu trách nhiệm về thiệt hại.
+              <p className="mt-4 text-xs leading-5 text-muted-ink">
+                {t("checkout.agreement")}
               </p>
             </section>
 
-            <button
+            <Button
               onClick={handlePayment}
-              disabled={paying}
-              className="w-full lg:w-max py-4 px-8 text-lg bg-brand text-white font-bold rounded-xl transition-all hover:bg-brand-dark disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={paying || saving || editingDates || editingGuests}
+              loading={paying}
+              className="w-full lg:w-max"
+              size="lg"
             >
-              {paying ? "Đang xử lý thiết lập..." : "Xác nhận và thanh toán"}
-            </button>
+              {paying
+                ? t("checkout.paymentProcessing")
+                : t("checkout.confirmPayment")}
+            </Button>
           </div>
 
-          {/* Right Column - Order Summary Box */}
           <div className="relative">
-            <div className="sticky top-28 border border-slate-200 bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50">
-              <div className="flex gap-4 pb-6 border-b border-slate-200">
-                <div className="relative h-[106px] w-[124px] rounded-xl overflow-hidden shrink-0">
-                  <Image 
-                    src={cover?.url || "https://picsum.photos/seed/room/800/600"} 
-                    alt={listing?.title || "Phòng"}
+            <div className="sticky top-28 rounded-2xl border border-line bg-surface p-6 shadow-soft">
+              <div className="flex gap-4 border-b border-line pb-6">
+                <div className="relative h-[106px] w-[124px] shrink-0 overflow-hidden rounded-xl">
+                  <Image
+                    src={cover?.url || "https://picsum.photos/seed/room/800/600"}
+                    alt={listing?.title || t("listing.fallbackTitle")}
                     fill
                     className="object-cover"
                   />
                 </div>
                 <div className="flex flex-col justify-start">
-                  <div className="text-xs text-slate-500 font-semibold uppercase mb-1">{listing?.category || "Chỗ ở"}</div>
-                  <div className="text-sm text-slate-900 font-medium line-clamp-2">{listing?.title}</div>
-                  <div className="mt-auto text-xs text-slate-600 flex items-center gap-1">
-                    <svg className="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    <span>Mới</span>
+                  <div className="mb-1 text-xs font-semibold uppercase text-muted-ink">
+                    {listing?.category || t("listing.fallbackTitle")}
+                  </div>
+                  <div className="line-clamp-2 text-sm font-medium text-ink">
+                    {listing?.title}
+                  </div>
+                  <div className="mt-auto flex items-center gap-1 text-xs text-muted-ink">
+                    <Star aria-hidden size={14} weight="fill" className="text-brand" />
+                    <span>{t("common.new")}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="py-6 border-b border-slate-200">
-                <h3 className="text-xl font-bold text-slate-900 mb-4">Chi tiết giá</h3>
-                
-                <div className="flex justify-between items-center text-slate-600 mb-3">
-                  <span>{formatVND(booking.total_amount)}</span>
+              <div className="border-b border-line py-6">
+                <h2 className="mb-4 text-xl font-bold text-ink">
+                  {t("checkout.priceDetails")}
+                </h2>
+
+                <div className="mb-3 flex items-center justify-between text-muted-ink">
+                  <span>
+                    {formatVND(
+                      booking.total_amount,
+                      locale === "en" ? "en-US" : "vi-VN",
+                    )}
+                  </span>
                 </div>
-                {/* Note: if you have night counts, we can display price * nights here */}
               </div>
 
-              <div className="pt-6 flex justify-between items-center font-bold text-lg text-slate-900">
-                <span>Tổng (VND)</span>
-                <span>{formatVND(booking.total_amount)}</span>
+              <div className="flex items-center justify-between pt-6 text-lg font-bold text-ink">
+                <span>{t("checkout.total")}</span>
+                <span>
+                  {formatVND(
+                    booking.total_amount,
+                    locale === "en" ? "en-US" : "vi-VN",
+                  )}
+                </span>
               </div>
+              <p className="mt-4 flex items-center gap-2 text-xs text-muted-ink">
+                <ShieldCheck aria-hidden size={16} />
+                {t("payments.providers.stripe")}
+              </p>
             </div>
           </div>
         </div>

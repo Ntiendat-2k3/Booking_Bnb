@@ -2,33 +2,44 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { SearchIcon } from "@/components/icons";
+import {
+  CalendarBlank,
+  MagnifyingGlass,
+  MapPin,
+  Users,
+} from "@phosphor-icons/react";
+import { useTranslations } from "@/i18n/LocaleProvider";
 
-export default function SearchPills() {
+const POPULAR_CITIES = [
+  { value: "Hà Nội", labelKey: "destinations.hanoi" },
+  { value: "Hồ Chí Minh", labelKey: "destinations.hcm" },
+  { value: "Đà Nẵng", labelKey: "destinations.danang" },
+  { value: "Đà Lạt", labelKey: "destinations.dalat" },
+  { value: "Vũng Tàu", labelKey: "destinations.vungtau" },
+  { value: "Nha Trang", labelKey: "destinations.nhatrang" },
+  { value: "Sapa", labelKey: "destinations.sapa" },
+  { value: "Hội An", labelKey: "destinations.hoian" },
+  { value: "Phú Quốc", labelKey: "destinations.phuquoc" },
+  { value: "Ninh Bình", labelKey: "destinations.ninhbinh" },
+  { value: "Vịnh Hạ Long", labelKey: "destinations.halong" },
+  { value: "Quy Nhơn", labelKey: "destinations.quynhon" },
+  { value: "Cần Thơ", labelKey: "destinations.cantho" },
+  { value: "Huế", labelKey: "destinations.hue" },
+];
+
+export default function SearchPills({ variant = "compact" }) {
   const router = useRouter();
+  const t = useTranslations();
   const [city, setCity] = useState("");
   const [dates, setDates] = useState("");
   const [guests, setGuests] = useState("");
   const [showAutocomplete, setShowAutocomplete] = useState(false);
 
-  // Danh sách các thành phố phổ biến ở Việt Nam
-  const POPULAR_CITIES = useMemo(() => [
-    "Hà Nội", "Hồ Chí Minh", "Đà Nẵng", "Đà Lạt", "Vũng Tàu", 
-    "Nha Trang", "Sapa", "Hội An", "Phú Quốc", "Ninh Bình", 
-    "Vịnh Hạ Long", "Quy Nhơn", "Cần Thơ", "Huế"
-  ], []);
-
   const filteredCities = useMemo(() => {
     if (!city) return POPULAR_CITIES;
     const lower = city.toLowerCase();
-    return POPULAR_CITIES.filter((c) => c.toLowerCase().includes(lower));
-  }, [city, POPULAR_CITIES]);
-
-  const placeholder = useMemo(() => ({
-    city: "Địa điểm bất kỳ",
-    dates: "Thời gian bất kỳ",
-    guests: "Thêm khách",
-  }), []);
+    return POPULAR_CITIES.filter((c) => c.value.toLowerCase().includes(lower) || t(c.labelKey).toLowerCase().includes(lower));
+  }, [city, t]);
 
   function onSearch() {
     const params = new URLSearchParams();
@@ -38,79 +49,96 @@ export default function SearchPills() {
   }
 
   return (
-    <div className="hidden md:flex items-center rounded-full border bg-white shadow-sm hover:shadow transition relative z-40">
-      <div className="relative px-5 py-2 flex-1">
-        <label className="text-xs font-bold text-slate-800 block -mb-0.5">Địa điểm</label>
+    <div
+      className={
+        "relative z-30 grid w-full items-center border border-line bg-surface shadow-soft " +
+        (variant === "hero"
+          ? "gap-1 rounded-2xl p-2 md:grid-cols-[1.4fr_1fr_0.8fr_auto] md:rounded-full"
+          : "max-w-2xl grid-cols-[1.25fr_1fr_0.8fr_auto] rounded-full")
+      }
+    >
+      <div className="relative min-w-0 px-4 py-2" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setShowAutocomplete(false); }}>
+        <label htmlFor={`search-city-${variant}`} className={variant === "compact" ? "sr-only" : "flex items-center gap-1.5 text-xs font-bold text-ink"}>
+          <MapPin aria-hidden size={15} />
+          {t("search.destination")}
+        </label>
         <input
+          id={`search-city-${variant}`}
           value={city}
           onChange={(e) => {
             setCity(e.target.value);
             setShowAutocomplete(true);
           }}
           onFocus={() => setShowAutocomplete(true)}
-          onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
-          placeholder={placeholder.city}
-          className="w-36 bg-transparent outline-none placeholder:text-slate-500 text-sm overflow-ellipsis"
+          placeholder={t("search.destinationPlaceholder")}
+          autoComplete="off"
+          className={`${variant === "hero" ? "mt-1" : ""} w-full min-w-0 bg-transparent text-sm text-ink outline-none placeholder:text-muted-ink/70`}
         />
-        {/* Autocomplete Dropdown */}
         {showAutocomplete && (
-          <div className="absolute top-16 left-0 w-80 max-h-80 overflow-y-auto bg-white border border-slate-200 shadow-xl rounded-2xl z-50 py-4 px-2">
-            <div className="px-4 text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">
-              {filteredCities.length > 0 ? "Gợi ý địa điểm" : "Không tìm thấy"}
+          <div className="absolute left-0 top-[calc(100%+12px)] z-50 max-h-80 w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-line bg-surface p-2 shadow-float">
+            <div className="px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-ink">
+              {filteredCities.length > 0
+                ? t("search.suggestions")
+                : t("search.noSuggestion")}
             </div>
             {filteredCities.map((c) => (
-              <div
-                key={c}
-                onMouseDown={(e) => {
-                  e.preventDefault(); // Ngăn input bị mất focus (tránh gọi onBlur trước)
-                  setCity(c);
+              <button
+                type="button"
+                key={c.value}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCity(c.value);
                   setShowAutocomplete(false);
                 }}
-                className="px-4 py-3 flex items-center gap-4 hover:bg-slate-100 rounded-xl cursor-pointer transition"
+                className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-ink transition hover:bg-muted-surface"
               >
-                <div className="bg-slate-100 p-2 rounded-lg text-slate-500">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <span className="font-medium text-slate-700">{c}</span>
-              </div>
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted-surface text-muted-ink">
+                  <MapPin aria-hidden size={18} />
+                </span>
+                <span>{t(c.labelKey)}</span>
+              </button>
             ))}
           </div>
         )}
       </div>
 
-      <div className="h-8 w-px bg-slate-200" />
-      
-      <div className="px-5 py-2 flex-1">
-        <label className="text-xs font-bold text-slate-800 block -mb-0.5">Nhận phòng</label>
+      <div className="min-w-0 border-t border-line px-4 py-2 md:border-l md:border-t-0">
+        <label htmlFor={`search-date-${variant}`} className={variant === "compact" ? "sr-only" : "flex items-center gap-1.5 text-xs font-bold text-ink"}>
+          <CalendarBlank aria-hidden size={15} />
+          {t("search.checkIn")}
+        </label>
         <input
+          id={`search-date-${variant}`}
+          type="date"
           value={dates}
           onChange={(e) => setDates(e.target.value)}
-          placeholder={placeholder.dates}
-          className="w-32 bg-transparent outline-none placeholder:text-slate-500 text-sm"
+          className={`${variant === "hero" ? "mt-1" : ""} w-full min-w-0 bg-transparent text-sm text-ink outline-none`}
         />
       </div>
 
-      <div className="h-8 w-px bg-slate-200" />
-
-      <div className="px-5 py-2 flex-1 relative">
-         <label className="text-xs font-bold text-slate-800 block -mb-0.5">Khách</label>
+      <div className="min-w-0 border-t border-line px-4 py-2 md:border-l md:border-t-0">
+        <label htmlFor={`search-guests-${variant}`} className={variant === "compact" ? "sr-only" : "flex items-center gap-1.5 text-xs font-bold text-ink"}>
+          <Users aria-hidden size={15} />
+          {t("search.guests")}
+        </label>
         <input
+          id={`search-guests-${variant}`}
+          type="number"
+          min="1"
           value={guests}
           onChange={(e) => setGuests(e.target.value)}
-          placeholder={placeholder.guests}
-          className="w-24 bg-transparent outline-none placeholder:text-slate-500 text-sm"
+          placeholder={t("search.guestsPlaceholder")}
+          className={`${variant === "hero" ? "mt-1" : ""} w-full min-w-0 bg-transparent text-sm text-ink outline-none placeholder:text-muted-ink/70`}
         />
       </div>
       <button
         type="button"
         onClick={onSearch}
-        className="m-2 flex items-center justify-center rounded-full bg-brand p-2 text-white hover:bg-brand-dark"
-        aria-label="Tìm kiếm"
+        className="m-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand px-5 font-semibold text-white transition hover:bg-brand-dark focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/30 md:rounded-full"
+        aria-label={t("common.search")}
       >
-        <SearchIcon className="h-4 w-4" />
+        <MagnifyingGlass aria-hidden size={20} weight="bold" />
+        {variant === "hero" ? <span>{t("common.search")}</span> : null}
       </button>
     </div>
   );

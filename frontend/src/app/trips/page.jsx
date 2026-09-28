@@ -1,74 +1,83 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { Lightbulb, SuitcaseRolling } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
+import { getMyBookings } from "@/services/bookingService";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import TripCard from "@/features/trips/TripCard";
 import Container from "@/components/layout/Container";
+import EmptyState from "@/components/molecules/EmptyState";
+import { useTranslations } from "@/i18n/LocaleProvider";
 
 function TripsContent() {
   const router = useRouter();
-  const dispatch = useDispatch();
+  const t = useTranslations();
   const sp = useSearchParams();
   const user = useSelector((s) => s.auth.user);
   const isInitialized = useSelector((s) => s.auth.isInitialized);
-  
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [payment] = useState(() => ({ status: sp.get("payment"), id: sp.get("bookingId"), code: sp.get("code") }));
   const [busy, setBusy] = useState({ repayId: null, cancelId: null, checkoutId: null });
 
-  const paymentStatus = sp.get("payment");
-  const bookingId = sp.get("bookingId");
-  const code = sp.get("code");
-
-  // 1. Logic xử lý thông báo và kích hoạt Polling (Chống trôi trạng thái)
+  // Đồng bộ trạng thái giao dịch sau khi quay lại từ cổng thanh toán.
   useEffect(() => {
-    const pStatus = sp.get("payment");
-    const bid = sp.get("bookingId");
-    const pCode = sp.get("code");
-    
+    if (!isInitialized) return;
+    const { status: pStatus, id: bid, code: pCode } = payment;
+
     if (!pStatus) return;
 
     let intervalId;
+    let active = true;
+    let polling = false;
 
     if (pStatus === "success") {
-      notifySuccess("Thanh toán thành công");
-      
+      notifySuccess(t("trips.paymentSuccess"));
+
       let count = 0;
       intervalId = setInterval(async () => {
+        if (polling) return;
         count++;
         if (count > 5) {
           clearInterval(intervalId);
           return;
         }
 
-        console.log(`[TripsPage] Polling payment status... lần thứ ${count}`);
+        polling = true;
         try {
           const res = await apiFetch("/api/v1/bookings/me", { method: "GET" });
+          if (!active) return;
           const newItems = res.data?.items || [];
           setItems(newItems);
 
           const target = newItems.find(b => String(b.id) === String(bid));
           if (target && target.status !== "pending_payment") {
-            console.log("[TripsPage] Payment confirmed in background!");
             clearInterval(intervalId);
           }
         } catch (err) {
-          console.error("[TripsPage] Polling error:", err);
-        }
+          if (active) notifyError(t("trips.loadFailed"));
+        } finally { polling = false; }
       }, 3000);
-    } 
+    }
     else if (pStatus === "failed") {
-      notifyInfo(`Thanh toán không thành công${pCode ? ` (code ${pCode})` : ""}`);
-    } 
+      notifyInfo(
+        t("trips.paymentFailed", {
+          code: pCode ? t("trips.paymentCode", { code: pCode }) : "",
+        }),
+      );
+    }
     else if (pStatus === "error") {
-      notifyError("Không xác nhận được kết quả thanh toán");
+      notifyError(t("trips.paymentUnknown"));
     }
 
-    // --- Clean URL (Luôn chạy nếu có pStatus) ---
+    // Loại bỏ tham số callback để thao tác làm mới không hiển thị toast lần nữa.
     const u = new URL(window.location.href);
     const paramsToClean = ["payment", "bookingId", "paymentId", "code", "message"];
     let needsClean = false;
@@ -84,41 +93,54 @@ function TripsContent() {
     }
 
     return () => {
+      active = false;
       if (intervalId) clearInterval(intervalId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sp]); 
+  }, [payment, t, isInitialized]);
 
 
   async function load() {
-    setLoading(true);
     try {
-      const res = await apiFetch("/api/v1/bookings/me", { method: "GET" });
-      setItems(res.data?.items || []);
+      setItems(await getMyBookings());
+      setLoadError(false);
     } catch (e) {
       if (e?.status === 401) {
-        notifyInfo("Bạn cần đăng nhập để xem chuyến đi");
+        notifyInfo(t("trips.loginRequired"));
         router.push("/login");
         return;
       }
-      notifyError(e?.message || "Không tải được trips");
+      setLoadError(true);
+      notifyError(e?.message || t("trips.loadFailed"));
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (isInitialized) {
-      if (!user) {
-        router.push("/login");
-      } else {
-        load();
-      }
+    if (!isInitialized) return;
+    if (!user) {
+      router.push("/login");
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInitialized, user]);
 
+    let active = true;
+    getMyBookings()
+      .then((bookings) => {
+        if (active) { setItems(bookings); setLoadError(false); }
+      })
+      .catch((error) => {
+        if (!active) return;
+        setLoadError(true);
+        notifyError(error?.message || t("trips.loadFailed"));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
+    return () => {
+      active = false;
+    };
+  }, [isInitialized, router, t, user, attempt]);
 
   const pending = useMemo(() => items.filter((b) => b.status === "pending_payment"), [items]);
 
@@ -130,10 +152,10 @@ function TripsContent() {
         body: JSON.stringify({}),
       });
       const url = p.data?.payment_url;
-      if (!url) throw new Error("Không tạo được URL thanh toán");
+      if (!url) throw new Error(t("trips.paymentUrlFailed"));
       window.location.href = url;
     } catch (e) {
-      notifyError(e?.message || "Không thể thanh toán lại");
+      notifyError(e?.message || t("trips.repayFailed"));
     } finally {
       setBusy((s) => ({ ...s, repayId: null }));
     }
@@ -146,10 +168,10 @@ function TripsContent() {
         method: "POST",
         body: JSON.stringify({}),
       });
-      notifySuccess("Đã hủy booking");
+      notifySuccess(t("trips.cancelled"));
       await load();
     } catch (e) {
-      notifyError(e?.message || "Không thể hủy booking");
+      notifyError(e?.message || t("trips.cancelFailed"));
     } finally {
       setBusy((s) => ({ ...s, cancelId: null }));
     }
@@ -162,47 +184,53 @@ function TripsContent() {
         method: "POST",
         body: JSON.stringify({}),
       });
-      notifySuccess("Checkout thành công. Bạn có thể đánh giá ngay!");
-      // Optimistic update
+      notifySuccess(t("trips.checkoutSuccess"));
+      // Cập nhật trước trên giao diện rồi đồng bộ lại với máy chủ.
       setItems((prev) =>
         prev.map((b) => (String(b.id) === String(bookingId) ? { ...b, status: "completed", can_review: true } : b))
       );
       load();
     } catch (e) {
-      notifyError(e?.message || "Không thể checkout");
+      notifyError(e?.message || t("trips.checkoutFailed"));
     } finally {
       setBusy((s) => ({ ...s, checkoutId: null }));
     }
   }
 
   return (
-    <Container className="py-12 w-full">
+    <Container className="w-full py-12">
       <div className="mb-8 w-full">
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Chuyến đi của bạn</h1>
-        <p className="mt-2 text-lg text-slate-500">Danh sách các phòng bạn đã đặt và trạng thái hiện tại.</p>
+        <h1 className="text-3xl font-bold tracking-[-0.035em] text-ink">
+          {t("trips.title")}
+        </h1>
+        <p className="mt-2 text-base text-muted-ink">
+          {t("trips.description")}
+        </p>
       </div>
 
       <div className="w-full min-h-[600px] flex flex-col">
         {loading ? (
-          <div className="flex-1 flex items-center justify-center p-20 bg-white border border-slate-100 rounded-3xl shadow-sm w-full">
+          <div className="flex w-full flex-1 items-center justify-center rounded-2xl border border-line bg-surface p-20 shadow-sm">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-slate-400 font-medium">Đang tải chuyến đi...</p>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
+              <p className="font-medium text-muted-ink">{t("trips.loading")}</p>
             </div>
           </div>
-        ) : items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-16 bg-white border border-slate-100 rounded-3xl shadow-sm text-center w-full">
-            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-              <span className="text-4xl">✈️</span>
-            </div>
-            <h3 className="text-xl font-bold text-slate-900">Chưa có booking nào</h3>
-            <p className="mt-2 text-slate-500 max-w-sm">
-              Đã đến lúc phủi bụi chiếc vali và bắt đầu lên kế hoạch cho chuyến phiêu lưu tiếp theo rồi!
-            </p>
-            <Link href="/" className="mt-8 px-8 py-3 bg-brand text-white rounded-2xl font-bold hover:bg-brand-dark transition-all">
-              Khám phá ngay
-            </Link>
-          </div>
+        ) : loadError ? (<EmptyState title={t("trips.loadFailed")} action={<button className="min-h-11 rounded-xl border border-line px-4" onClick={() => { setLoading(true); setAttempt(value => value + 1); }}>{t("common.retry")}</button>} />) : items.length === 0 ? (
+          <EmptyState
+            className="flex-1 justify-center"
+            icon={<SuitcaseRolling aria-hidden size={30} />}
+            title={t("trips.emptyTitle")}
+            description={t("trips.emptyDescription")}
+            action={
+              <Link
+                href="/"
+                className="inline-flex min-h-11 items-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
+              >
+                {t("trips.explore")}
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-6 w-full flex-1">
             {items.map((b) => (
@@ -220,11 +248,10 @@ function TripsContent() {
       </div>
 
       {pending.length > 0 && (
-        <div className="mt-8 p-6 bg-amber-50 rounded-2xl border border-amber-100 flex gap-4">
-          <div className="text-amber-500">💡</div>
-          <p className="text-sm text-amber-800 leading-relaxed">
-            Booking ở trạng thái <b>Chờ thanh toán</b> sẽ được giữ chỗ trong một thời gian ngắn. 
-            Nếu chưa thanh toán, bạn có thể bấm <b>Thanh toán</b> để tiếp tục giao dịch.
+        <div className="mt-8 flex gap-4 rounded-2xl border border-caution/20 bg-caution/10 p-5 text-caution">
+          <Lightbulb aria-hidden size={22} className="shrink-0" />
+          <p className="text-sm leading-6">
+            {t("trips.pendingHint")}
           </p>
         </div>
       )}
@@ -233,8 +260,16 @@ function TripsContent() {
 }
 
 export default function TripsPage() {
+  const t = useTranslations();
+
   return (
-    <Suspense fallback={<div className="max-w-5xl px-4 py-12 mx-auto">Đang tải...</div>}>
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-5xl px-4 py-12 text-muted-ink">
+          {t("common.loading")}
+        </div>
+      }
+    >
       <TripsContent />
     </Suspense>
   );

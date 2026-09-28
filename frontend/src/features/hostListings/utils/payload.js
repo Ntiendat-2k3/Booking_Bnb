@@ -1,9 +1,6 @@
 import { intOrNull, numOrNull } from "./number";
 
-/**
- * Build listing payload matching backend expectations.
- * Keeps original keys from existing pages.
- */
+/** Chuẩn hóa số trước khi gửi, giữ nguyên tên trường mà backend đang nhận. */
 export function buildListingPayload(form) {
   return {
     ...form,

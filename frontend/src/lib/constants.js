@@ -1,6 +1,6 @@
 /**
- * Centralized constants for the Booking BnB frontend.
- * Import from here instead of hardcoding values in components.
+ * Các cấu hình dùng chung của giao diện Booking BnB.
+ * Giá trị gửi lên API được giữ độc lập với khóa nội dung hiển thị.
  */
 
 // ─── Site Info ────────────────────────────────────────────────────
@@ -13,70 +13,70 @@ export const SITE_CURRENCY = "VND";
 
 // ─── Property Categories ─────────────────────────────────────────
 export const CATEGORIES = [
-  { key: "Căn hộ", label: "Căn hộ" },
-  { key: "Nhà", label: "Nhà" },
-  { key: "Khách sạn", label: "Khách sạn" },
-  { key: "Villa", label: "Villa" },
-  { key: "Hanok", label: "Hanok" },
-  { key: "Nhà khách", label: "Nhà khách" },
-  { key: "Phòng", label: "Phòng" },
+  { key: "Căn hộ", labelKey: "categories.apartment", icon: "BuildingApartment" },
+  { key: "Nhà", labelKey: "categories.house", icon: "HouseLine" },
+  { key: "Khách sạn", labelKey: "categories.hotel", icon: "Buildings" },
+  { key: "Villa", labelKey: "categories.villa", icon: "House" },
+  { key: "Hanok", labelKey: "categories.hanok", icon: "Warehouse" },
+  { key: "Nhà khách", labelKey: "categories.guesthouse", icon: "DoorOpen" },
+  { key: "Phòng", labelKey: "categories.room", icon: "Bed" },
 ];
 
 // ─── Homepage Section Configuration ──────────────────────────────
 export const SECTION_CONFIG = [
-  { title: "Gợi ý cho bạn", limit: 12 },
-  { title: "Được khách yêu thích tại Hồ Chí Minh", city: "Hồ Chí Minh", limit: 10 },
-  { title: "Chỗ ở nổi bật tại Hà Nội", city: "Hà Nội", limit: 10 },
-  { title: "Trốn nóng ở Đà Nẵng", city: "Đà Nẵng", limit: 10 },
-  { title: "Chỗ ở tại Huyện Văn Giang", city: "Văn Giang", limit: 10 },
-  { title: "Còn phòng tại Seoul vào tháng tới", city: "Seoul", limit: 10 },
+  { titleKey: "home.suggested", limit: 12 },
+  { titleKey: "home.popularHcm", city: "Hồ Chí Minh", limit: 10 },
+  { titleKey: "home.popularHanoi", city: "Hà Nội", limit: 10 },
+  { titleKey: "home.popularDanang", city: "Đà Nẵng", limit: 10 },
+  { titleKey: "home.popularVangiang", city: "Văn Giang", limit: 10 },
+  { titleKey: "home.popularSeoul", city: "Seoul", limit: 10 },
 ];
 
 // ─── Sort Options ────────────────────────────────────────────────
 export const SORT_OPTIONS = [
-  { value: "rating_desc", label: "Đánh giá cao" },
-  { value: "distance_asc", label: "Gần nhất", requiresLocation: true },
-  { value: "price_asc", label: "Giá tăng dần" },
-  { value: "price_desc", label: "Giá giảm dần" },
-  { value: "newest", label: "Mới nhất" },
+  { value: "rating_desc", labelKey: "search.sortRating" },
+  { value: "distance_asc", labelKey: "search.sortDistance", requiresLocation: true },
+  { value: "price_asc", labelKey: "search.sortPriceAsc" },
+  { value: "price_desc", labelKey: "search.sortPriceDesc" },
+  { value: "newest", labelKey: "search.sortNewest" },
 ];
 
 // ─── Footer Navigation ──────────────────────────────────────────
 export const FOOTER_LINKS = [
   {
-    title: "Về chúng tôi",
+    titleKey: "footer.about",
     links: [
-      { label: "Tuyển dụng", href: null },
-      { label: "Tin tức", href: null },
-      { label: "Nhà đầu tư", href: null },
-      { label: "Booking BnB Plus", href: null },
+      { labelKey: "footer.careers", href: null },
+      { labelKey: "footer.news", href: null },
+      { labelKey: "footer.investors", href: null },
+      { labelKey: "footer.plus", href: null },
     ],
   },
   {
-    title: "Cộng đồng",
+    titleKey: "footer.community",
     links: [
-      { label: "Sự đa dạng và Cảm giác thuộc về", href: null },
-      { label: "Tiện nghi phù hợp cho người khuyết tật", href: null },
-      { label: "Đối tác liên kết", href: null },
-      { label: "Chỗ ở cho tuyến đầu", href: null },
+      { labelKey: "footer.diversity", href: null },
+      { labelKey: "footer.accessibility", href: null },
+      { labelKey: "footer.affiliates", href: null },
+      { labelKey: "footer.frontline", href: null },
     ],
   },
   {
-    title: "Host",
+    titleKey: "footer.host",
     links: [
-      { label: "Cho thuê nhà", href: "/host" },
-      { label: "Cho thuê trải nghiệm", href: null },
-      { label: "Tài nguyên cho Host", href: null },
-      { label: "Diễn đàn cộng đồng", href: null },
+      { labelKey: "footer.listHome", href: "/host" },
+      { labelKey: "footer.hostExperiences", href: null },
+      { labelKey: "footer.hostResources", href: null },
+      { labelKey: "footer.communityForum", href: null },
     ],
   },
   {
-    title: "Hỗ trợ",
+    titleKey: "footer.support",
     links: [
-      { label: "Trung tâm trợ giúp", href: null },
-      { label: "Hỗ trợ khu dân cư", href: null },
-      { label: "Thông tin an toàn", href: null },
-      { label: "Tùy chọn hủy", href: null },
+      { labelKey: "footer.helpCenter", href: null },
+      { labelKey: "footer.neighborhoodSupport", href: null },
+      { labelKey: "footer.safety", href: null },
+      { labelKey: "footer.cancellation", href: null },
     ],
   },
 ];

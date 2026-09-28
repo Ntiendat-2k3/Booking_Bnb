@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "@/i18n/LocaleProvider";
 
 function asNum(v) {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
   const n = typeof v === "string" ? Number(v) : v;
   return Number.isFinite(n) ? n : null;
 }
 
 export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
   const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const t = useTranslations();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -27,6 +30,7 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
 
     (async () => {
       const mapboxgl = (await import("mapbox-gl")).default;
+      if (cancelled || !containerRef.current) return;
       mapboxgl.accessToken = token;
 
       const center =
@@ -82,9 +86,9 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
   if (!token) {
     return (
       <div
-        className={`flex ${heightClass} items-center justify-center rounded-2xl border bg-slate-50 text-slate-600`}
+        className={`flex ${heightClass} items-center justify-center rounded-2xl border border-line bg-muted-surface px-6 text-center text-sm text-muted-ink`}
       >
-        Thiếu NEXT_PUBLIC_MAPBOX_TOKEN → chưa bật Mapbox
+        {t("search.mapMissingToken")}
       </div>
     );
   }
@@ -92,16 +96,16 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
   if (lngNum === null || latNum === null) {
     return (
       <div
-        className={`flex ${heightClass} items-center justify-center rounded-2xl border bg-slate-50 text-slate-600`}
+        className={`flex ${heightClass} items-center justify-center rounded-2xl border border-line bg-muted-surface px-6 text-center text-sm text-muted-ink`}
       >
-        Chưa có tọa độ để hiển thị bản đồ
+        {t("search.locationMissing")}
       </div>
     );
   }
 
   return (
     <div
-      className={`overflow-hidden rounded-2xl border bg-slate-50 ${heightClass}`}
+      className={`overflow-hidden rounded-2xl border border-line bg-muted-surface ${heightClass}`}
     >
       <div ref={containerRef} className="w-full h-full" />
     </div>

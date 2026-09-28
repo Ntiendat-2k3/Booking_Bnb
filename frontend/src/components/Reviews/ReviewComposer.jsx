@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { notifyInfo } from "@/lib/notify";
 import { useEffect, useRef } from "react";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import Button from "@/components/atoms/Button";
 
 export default function ReviewComposer({
   mine,
@@ -16,13 +18,14 @@ export default function ReviewComposer({
   saving,
   autoFocusComposer
 }) {
+  const t = useTranslations();
   const commentRef = useRef(null);
   const didAutoFocus = useRef(false);
 
   useEffect(() => {
     if (!autoFocusComposer) return;
     if (didAutoFocus.current) return;
-    if (!mine && !canReview) return; // not eligible
+    if (!mine && !canReview) return;
 
     didAutoFocus.current = true;
     setTimeout(() => {
@@ -35,31 +38,35 @@ export default function ReviewComposer({
   const disabled = !mine && !canReview;
 
   return (
-    <div className="mt-4 rounded-2xl border p-4">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold">
-          {mine ? "Đánh giá của bạn" : "Viết đánh giá"}
+    <div className="mt-5 rounded-2xl bg-muted-surface p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="font-semibold text-ink">
+          {mine ? t("reviews.yourReview") : t("reviews.writeReview")}
         </div>
         {!mine && !canReview && (
-          <div className="text-xs text-slate-500">
-            * Bạn chỉ có thể đánh giá sau khi đã ở và checkout.
+          <div className="text-xs text-muted-ink">
+            {t("reviews.eligibility")}
           </div>
         )}
       </div>
 
       {!mine && !canReview && (
-        <div className="mt-2 text-sm text-slate-600">
-          Nếu bạn đã có chuyến đi phù hợp mà chưa thấy nút đánh giá, hãy vào <Link href="/trips" className="underline">Chuyến đi</Link>.
+        <div className="mt-2 text-sm leading-6 text-muted-ink">
+          {t("reviews.tripHintBefore")}{" "}
+          <Link href="/trips" className="font-semibold text-ink underline">
+            {t("reviews.tripHintLink")}
+          </Link>
+          .
         </div>
       )}
 
       <div className={`mt-3 grid gap-3 ${disabled ? "opacity-60" : ""}`}>
-        <label className="text-sm font-medium">
-          Số sao
+        <label className="text-sm font-semibold text-ink">
+          {t("reviews.rating")}
           <select
             value={rating}
             onChange={(e) => setRating(Number(e.target.value))}
-            className="mt-1 w-full rounded-xl border px-3 py-2"
+            className="mt-2 min-h-11 w-full rounded-xl border border-line bg-surface px-3 py-2 outline-none focus:border-ink focus:ring-4 focus:ring-ink/10"
             disabled={disabled || saving}
           >
             {[5, 4, 3, 2, 1].map((n) => (
@@ -68,41 +75,46 @@ export default function ReviewComposer({
           </select>
         </label>
 
-        <label className="text-sm font-medium">
-          Nhận xét
+        <label className="text-sm font-semibold text-ink">
+          {t("reviews.comment")}
           <textarea
             ref={commentRef}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={3}
-            className="mt-1 w-full rounded-xl border px-3 py-2"
-            placeholder={disabled ? "Checkout xong bạn sẽ viết được đánh giá ở đây." : "Chia sẻ trải nghiệm của bạn..."}
+            className="mt-2 w-full rounded-xl border border-line bg-surface px-3.5 py-3 text-base font-normal outline-none placeholder:text-muted-ink/70 focus:border-ink focus:ring-4 focus:ring-ink/10"
+            placeholder={
+              disabled
+                ? t("reviews.commentDisabled")
+                : t("reviews.commentPlaceholder")
+            }
             disabled={disabled || saving}
           />
         </label>
 
         <div className="flex flex-wrap gap-2">
-          <button
+          <Button
             onClick={() => {
               if (disabled) {
-                notifyInfo("Bạn cần checkout trước khi đánh giá");
+                notifyInfo(t("reviews.checkoutRequired"));
                 return;
               }
               submit();
             }}
             disabled={saving || disabled}
-            className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+            size="sm"
           >
-            {mine ? "Cập nhật" : "Gửi đánh giá"}
-          </button>
+            {mine ? t("reviews.update") : t("reviews.send")}
+          </Button>
           {mine && (
-            <button
+            <Button
               onClick={remove}
               disabled={saving}
-              className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+              variant="secondary"
+              size="sm"
             >
-              Xóa
-            </button>
+              {t("common.delete")}
+            </Button>
           )}
         </div>
       </div>

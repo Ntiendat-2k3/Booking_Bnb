@@ -15,11 +15,11 @@ export default function Avatar({ src, name, size = 28, className = "" }) {
     return (
       <Image
         src={src}
-        alt={name || "Avatar"}
+        alt={name || ""}
         width={size}
         height={size}
         style={style}
-        className={"rounded-full border border-slate-200 object-cover bg-white " + className}
+        className={"rounded-full border border-line bg-surface object-cover " + className}
       />
     );
   }
@@ -28,10 +28,10 @@ export default function Avatar({ src, name, size = 28, className = "" }) {
     <div
       style={style}
       className={
-        "grid place-items-center rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 " +
+        "grid place-items-center rounded-full border border-line bg-muted-surface text-xs font-semibold text-muted-ink " +
         className
       }
-      aria-label={name || "Avatar"}
+      aria-label={name || undefined}
     >
       {initials(name)}
     </div>

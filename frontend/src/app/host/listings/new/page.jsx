@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "@/i18n/LocaleProvider";
+
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -14,10 +16,11 @@ import ListingFieldsCard from "@/features/hostListings/components/ListingFieldsC
 import AmenitiesPickerCard from "@/features/hostListings/components/AmenitiesPickerCard";
 
 export default function HostListingNewPage() {
+  const t = useTranslations();
   const router = useRouter();
   const dispatch = useDispatch();
 
-  const { grouped } = useAmenities();
+  const { grouped, loadingAmenities, amenitiesError, retryAmenities } = useAmenities();
 
   const [busy, setBusy] = useState(false);
 
@@ -72,18 +75,18 @@ export default function HostListingNewPage() {
     try {
       const res = await HostListingsApi.create(buildListingPayload(form));
       const listing = res.data?.listing;
-      if (!listing?.id) throw new Error("Create failed");
+      if (!listing?.id) throw new Error(t("host.createFailed"));
 
       if (picked.size) {
         await HostListingsApi.setAmenities(listing.id, Array.from(picked));
       }
 
-      notifySuccess("Đã tạo phòng (draft). Hãy thêm ảnh và gửi duyệt.");
+      notifySuccess(t("host.created"));
       router.push(`/host/listings/${listing.id}`);
     } catch (e2) {
       if (e2?.status === 401) return router.push("/login");
       if (e2?.status === 403) return router.push("/host");
-      notifyError(e2?.message || "Tạo phòng thất bại");
+      notifyError(e2?.message || t("host.createFailed"));
     } finally {
       setBusy(false);
     }
@@ -91,34 +94,32 @@ export default function HostListingNewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Tạo phòng mới (Draft)</h1>
+          <h1 className="text-xl font-semibold">{t("host.createTitle")}</h1>
         </div>
         <Link
           href="/host/listings"
-          className="px-4 py-2 text-sm font-semibold border rounded-xl hover:bg-slate-50"
-        >
-          ← Quay lại
-        </Link>
+          className="px-4 py-2 text-sm font-semibold border rounded-xl hover:bg-muted-surface"
+        >{t("common.back")}</Link>
       </div>
 
       <form onSubmit={onCreate} className="grid gap-6 lg:grid-cols-3">
         {/* CỘT TRÁI: CHIẾM 2 PHẦN */}
         <div className="space-y-4 lg:col-span-2">
-          <ListingFieldsCard form={form} setField={setField} />
+          <ListingFieldsCard form={form} setField={setField} disabled={busy} />
         </div>
 
         {/* CỘT PHẢI */}
         <div className="space-y-4">
-          <AmenitiesPickerCard grouped={grouped} picked={picked} onToggle={toggleAmenity} />
+          <AmenitiesPickerCard grouped={grouped} picked={picked} onToggle={toggleAmenity} loading={loadingAmenities} error={amenitiesError} onRetry={retryAmenities} disabled={busy} />
 
           <button
             type="submit"
             disabled={busy}
             className="w-full px-4 py-3 text-base font-bold text-white transition-all rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-60"
           >
-            {busy ? "Đang xử lý..." : "Tạo phòng (Draft)"}
+            {busy ? t("common.processing") : t("host.create")}
           </button>
         </div>
       </form>

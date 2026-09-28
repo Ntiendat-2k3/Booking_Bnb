@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "@/i18n/LocaleProvider";
 import Container from "./layout/Container";
 
 const SECTIONS = [
-  { id: "photos", label: "Ảnh" },
-  { id: "amenities", label: "Tiện nghi" },
-  { id: "reviews", label: "Đánh giá" },
-  { id: "location", label: "Vị trí" },
+  { id: "photos", labelKey: "room.photos" },
+  { id: "amenities", labelKey: "room.amenities" },
+  { id: "reviews", labelKey: "room.reviews" },
+  { id: "location", labelKey: "room.location" },
 ];
 
 export default function RoomTabs() {
+  const t = useTranslations();
   const [active, setActive] = useState("photos");
-
-  const observers = useMemo(() => ({ current: null }), []);
+  const observerRef = useRef(null);
 
   useEffect(() => {
     const els = SECTIONS.map((s) => document.getElementById(s.id)).filter(Boolean);
@@ -30,7 +31,7 @@ export default function RoomTabs() {
     );
 
     els.forEach((el) => io.observe(el));
-    observers.current = io;
+    observerRef.current = io;
 
     return () => {
       try {
@@ -38,7 +39,7 @@ export default function RoomTabs() {
         io.disconnect();
       } catch {}
     };
-  }, [observers]);
+  }, []);
 
   function onGo(id) {
     const el = document.getElementById(id);
@@ -47,21 +48,32 @@ export default function RoomTabs() {
   }
 
   return (
-    <div className="sticky top-16 z-30 border-b bg-white/95 backdrop-blur">
-      <Container className="flex items-center gap-6">
+    <div className="sticky top-[72px] z-30 border-b border-line bg-surface/95 backdrop-blur-xl">
+      <Container>
+        <nav
+          className="flex items-center gap-6 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label={t("room.detailTitle")}
+        >
         {SECTIONS.map((s) => (
           <button
+            type="button"
             key={s.id}
             onClick={() => onGo(s.id)}
+            aria-current={active === s.id ? "location" : undefined}
             className={
-              "relative py-3 text-sm font-medium " +
-              (active === s.id ? "text-slate-900" : "text-slate-600 hover:text-slate-900")
+              "relative min-h-11 shrink-0 py-3 text-sm font-semibold transition " +
+              (active === s.id
+                ? "text-ink"
+                : "text-muted-ink hover:text-ink")
             }
           >
-            {s.label}
-            {active === s.id ? <span className="absolute inset-x-0 -bottom-[1px] h-[2px] bg-slate-900" /> : null}
+            {t(s.labelKey)}
+            {active === s.id ? (
+              <span className="absolute inset-x-0 -bottom-px h-0.5 bg-brand" />
+            ) : null}
           </button>
         ))}
+        </nav>
       </Container>
     </div>
   );

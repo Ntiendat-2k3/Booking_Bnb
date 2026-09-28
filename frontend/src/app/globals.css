@@ -2,8 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-body { @apply bg-white text-slate-900; }
+:root {
+  color-scheme: light;
+  --color-ink: 32 30 27;
+  --color-muted-ink: 98 94 87;
+  --color-accent: 201 54 79;
+  --color-accent-strong: 169 40 64;
+  --color-canvas: 250 250 248;
+  --color-surface: 255 255 255;
+  --color-muted-surface: 242 240 236;
+  --color-line: 222 218 212;
+  --color-positive: 47 106 79;
+  --color-caution: 154 100 26;
+  --color-danger: 180 35 53;
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--color-line));
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-width: 320px;
+    background: rgb(var(--color-canvas));
+    color: rgb(var(--color-ink));
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid rgb(var(--color-accent));
+    outline-offset: 3px;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  label:has(input:focus-visible) {
+    outline: 2px solid rgb(var(--color-accent));
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: rgb(var(--color-accent) / 0.18);
+  }
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(12px); }
@@ -11,4 +68,19 @@ body { @apply bg-white text-slate-900; }
 }
 .animate-fadeIn {
   animation: fadeIn 0.35s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

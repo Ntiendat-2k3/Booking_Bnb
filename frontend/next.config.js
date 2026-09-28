@@ -2,15 +2,18 @@
 const nextConfig = {
   reactStrictMode: true,
 
-  // Remove console.log in production
+  // Loại bỏ log chẩn đoán khỏi bản production.
   compiler: {
     removeConsole:
       process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
 
-  // Tree-shake heavy packages (only import used functions)
+  // Chỉ đưa các biểu tượng và hàm thực sự sử dụng vào bundle.
   experimental: {
-    optimizePackageImports: ["date-fns", "lucide-react"],
+    optimizePackageImports: [
+      "@phosphor-icons/react",
+      "date-fns",
+    ],
   },
 
   images: {
@@ -23,10 +26,10 @@ const nextConfig = {
         hostname: "lh3.googleusercontent.com",
         pathname: "/**",
       },
-      // Placeholder fallbacks (dev / seed data)
+      // Ảnh dự phòng cho dữ liệu mẫu.
       { protocol: "https", hostname: "picsum.photos", pathname: "/**" },
       { protocol: "https", hostname: "i.pravatar.cc", pathname: "/**" },
-      // local dev backend
+      // Backend trong môi trường phát triển.
       {
         protocol: "http",
         hostname: "localhost",

@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "@/i18n/LocaleProvider";
+
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -16,6 +18,7 @@ import NotificationSettings from "@/features/account/NotificationSettings";
 import AppPreferences from "@/features/account/AppPreferences";
 
 export default function AccountSettingsPage() {
+  const t = useTranslations();
   const router = useRouter();
   const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
@@ -39,11 +42,11 @@ export default function AccountSettingsPage() {
         dispatch(setUser(me.data));
       } catch (e) {
         if (e?.status === 401) {
-          notifyInfo("Bạn cần đăng nhập để xem trang này");
+          notifyInfo(t("account.loginRequired"));
           router.push("/login");
           return;
         }
-        notifyError("Không tải được account user info");
+        notifyError(t("account.loadFailed"));
       } finally {
         setLoading(false);
       }
@@ -55,14 +58,12 @@ export default function AccountSettingsPage() {
   if (!user) {
     return (
       <div className="max-w-3xl px-4 py-10 mx-auto">
-        <div className="p-8 text-center bg-white shadow-xl border rounded-3xl">
-          <p className="text-slate-600">Bạn cần đăng nhập để tiếp tục.</p>
+        <div className="p-8 text-center bg-surface shadow-xl border rounded-2xl">
+          <p className="text-muted-ink">{t("account.loginPrompt")}</p>
           <button 
             onClick={() => router.push("/login")}
             className="mt-4 px-6 py-2 bg-brand text-white rounded-xl font-medium"
-          >
-            Đăng nhập ngay
-          </button>
+          >{t("auth.loginNow")}</button>
         </div>
       </div>
     );
@@ -83,13 +84,11 @@ export default function AccountSettingsPage() {
   return (
     <div className="max-w-6xl px-4 py-12 mx-auto">
       <div className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900">Cài đặt tài khoản</h1>
-        <p className="mt-2 text-lg text-slate-500">
-          Quản lý thông tin cá nhân, bảo mật và các tùy chọn trải nghiệm của bạn.
-        </p>
+        <h1 className="text-4xl font-bold tracking-tight text-ink">{t("account.title")}</h1>
+        <p className="mt-2 text-lg text-muted-ink">{t("account.description")}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[256px_1fr] gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-[256px_minmax(0,1fr)] gap-6 lg:gap-10">
         <aside className="w-full">
           <SettingsNavigation 
             activeTab={activeTab} 
@@ -101,13 +100,13 @@ export default function AccountSettingsPage() {
           />
         </aside>
         
-        <main className="w-full min-w-0 flex flex-col">
-          <div className="min-h-[600px] w-full bg-white rounded-3xl border border-slate-100 p-1 md:p-6 overflow-hidden">
+        <section className="w-full min-w-0 flex flex-col" aria-label={t("account.title")}>
+          <div className="min-h-[600px] w-full">
             {loading ? (
               <div className="flex items-center justify-center p-20 w-full">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-10 h-10 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
-                  <p className="text-slate-400 font-medium">Đang tải dữ liệu...</p>
+                  <p className="text-muted-ink font-medium">{t("account.loading")}</p>
                 </div>
               </div>
             ) : (
@@ -116,7 +115,7 @@ export default function AccountSettingsPage() {
               </div>
             )}
           </div>
-        </main>
+        </section>
       </div>
     </div>
   );

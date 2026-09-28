@@ -5,32 +5,13 @@ import { useSelector } from "react-redux";
 import { apiFetch } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import Container from "@/components/layout/Container";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
+import dynamic from "next/dynamic";
 import Image from "next/image";
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+import { useLocale } from "@/i18n/LocaleProvider";
+const RevenueChart = dynamic(() => import("@/components/organisms/RevenueChart"), { ssr: false });
 
 export default function HostDashboardPage() {
+  const { locale, t } = useLocale();
   const user = useSelector((s) => s.auth.user);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,104 +38,67 @@ export default function HostDashboardPage() {
     );
   }
 
-  if (!stats) return <Container className="py-12 text-center text-slate-500">Lỗi không thể tải dữ liệu.</Container>;
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        display: false,
-      },
-      tooltip: {
-        callbacks: {
-          label: (context) => formatVND(context.raw)
-        }
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        ticks: {
-          callback: (val) => formatVND(val)
-        }
-      }
-    }
-  };
-
-  const lineData = {
-    labels: stats.chartLabels,
-    datasets: [
-      {
-        fill: true,
-        label: 'Doanh thu',
-        data: stats.chartValues,
-        borderColor: '#FF385C',
-        backgroundColor: 'rgba(255, 56, 92, 0.1)',
-        tension: 0.4
-      }
-    ]
-  };
+  if (!stats) return <Container className="py-12 text-center text-muted-ink">{t("common.loadFailed")}</Container>;
 
   return (
     <Container className="py-10 space-y-10">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Doanh thu & Thống kê</h1>
-        <p className="text-slate-500 mt-2">Theo dõi hiệu suất kinh doanh từ các phòng cập nhật đến hôm nay.</p>
+        <h1 className="text-3xl font-bold text-ink">{t("host.revenueTitle")}</h1>
+        <p className="text-muted-ink mt-2">{t("host.revenueDescription")}</p>
       </div>
 
-      {/* KPI Cards */}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-          <div className="text-slate-500 text-sm font-semibold uppercase mb-1">Tổng doanh thu</div>
-          <div className="text-3xl font-bold text-slate-900">{formatVND(stats.totalRevenue)}</div>
+        <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
+          <div className="text-muted-ink text-sm font-semibold uppercase mb-1">{t("host.totalRevenue")}</div>
+          <div className="text-3xl font-bold text-ink">{formatVND(stats.totalRevenue, locale === "en" ? "en-US" : "vi-VN")}</div>
         </div>
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-          <div className="text-slate-500 text-sm font-semibold uppercase mb-1">Số phòng đã đặt</div>
-          <div className="text-3xl font-bold text-slate-900">{stats.totalBookings}</div>
+        <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
+          <div className="text-muted-ink text-sm font-semibold uppercase mb-1">{t("host.bookings")}</div>
+          <div className="text-3xl font-bold text-ink">{stats.totalBookings}</div>
         </div>
-        <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-          <div className="text-slate-500 text-sm font-semibold uppercase mb-1">Đang chờ thanh toán</div>
-          <div className="text-3xl font-bold text-slate-900">{stats.pendingBookings}</div>
+        <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
+          <div className="text-muted-ink text-sm font-semibold uppercase mb-1">{t("host.pendingPayment")}</div>
+          <div className="text-3xl font-bold text-ink">{stats.pendingBookings}</div>
         </div>
       </div>
 
-      {/* Chart */}
-      <div className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm h-[400px]">
-        <h3 className="text-lg font-bold text-slate-900 mb-6">Biểu đồ 6 tháng gần nhất</h3>
-        <Line options={chartOptions} data={lineData} />
+
+      <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
+        <h3 className="text-lg font-bold text-ink mb-6">{t("host.chartTitle")}</h3>
+        <RevenueChart labels={stats.chartLabels} values={stats.chartValues} />
       </div>
 
-      {/* Recent Bookings List */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-         <div className="p-6 border-b border-slate-200 bg-slate-50">
-            <h3 className="text-lg font-bold text-slate-900">Giao dịch gần đây</h3>
+
+      <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden">
+         <div className="p-6 border-b border-line bg-muted-surface">
+            <h3 className="text-lg font-bold text-ink">{t("host.recent")}</h3>
          </div>
          <div className="divide-y divide-slate-200">
            {stats.recentBookings.length === 0 ? (
-             <div className="p-6 text-center text-slate-500">Chưa có giao dịch nào.</div>
+             <div className="p-6 text-center text-muted-ink">{t("host.noTransactions")}</div>
            ) : (
              stats.recentBookings.map((b) => (
-               <div key={b.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition">
+               <div key={b.id} className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-muted-surface transition">
                  <div className="flex items-center gap-4">
                    <div className="w-12 h-12 relative rounded-full overflow-hidden bg-slate-200 border">
                      {b.guest?.avatar_url ? (
-                       <Image src={b.guest.avatar_url} alt="Guest" fill className="object-cover" />
+                       <Image src={b.guest.avatar_url} alt={t("host.guestAlt")} fill className="object-cover" />
                      ) : (
-                       <div className="w-full h-full flex items-center justify-center font-bold text-slate-500">
+                       <div className="w-full h-full flex items-center justify-center font-bold text-muted-ink">
                          {b.guest?.full_name?.charAt(0)}
                        </div>
                      )}
                    </div>
                    <div>
-                     <div className="font-semibold text-slate-900">{b.listing?.title}</div>
-                     <div className="text-sm text-slate-500">Khách: {b.guest?.full_name}</div>
+                     <div className="font-semibold text-ink">{b.listing?.title}</div>
+                     <div className="text-sm text-muted-ink">{t("host.guestLabel")}{b.guest?.full_name}</div>
                    </div>
                  </div>
                  <div className="text-right">
-                   <div className="font-bold text-slate-900">{formatVND(b.total_amount)}</div>
-                   <div className="text-xs text-slate-500">
-                     {new Date(b.created_at).toLocaleDateString('vi-VN')}
+                   <div className="font-bold text-ink">{formatVND(b.total_amount, locale === "en" ? "en-US" : "vi-VN")}</div>
+                   <div className="text-xs text-muted-ink">
+                     {new Date(b.created_at).toLocaleDateString(locale === "en" ? "en-US" : "vi-VN")}
                    </div>
                  </div>
                </div>

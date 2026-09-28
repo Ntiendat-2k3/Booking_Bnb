@@ -3,14 +3,28 @@
 import { useEffect, useMemo, useState } from "react";
 import { getReviews, getMyReview, createReview, updateReview, deleteReview } from "@/services/reviewService";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import Button from "@/components/atoms/Button";
 import { toInt } from "./Stars";
 import ReviewComposer from "./ReviewComposer";
 import ReviewList from "./ReviewList";
 
-export default function ReviewsSection({ listingId, initialAvg, initialCount, autoFocusComposer = false }) {
-  const [items, setItems] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, limit: 6, total: 0, total_pages: 1 });
-  const [loading, setLoading] = useState(true);
+export default function ReviewsSection({
+  listingId,
+  initialAvg,
+  initialCount,
+  initialItems = [],
+  autoFocusComposer = false,
+}) {
+  const t = useTranslations();
+  const [items, setItems] = useState(() => initialItems);
+  const [meta, setMeta] = useState(() => ({
+    page: 1,
+    limit: 6,
+    total: initialCount ?? initialItems.length,
+    total_pages: 1,
+  }));
+  const [loading, setLoading] = useState(false);
 
   const [mine, setMine] = useState(null);
   const [canReview, setCanReview] = useState(false);
@@ -31,32 +45,30 @@ export default function ReviewsSection({ listingId, initialAvg, initialCount, au
       setItems(res.data?.items || []);
       setMeta(res.data?.meta || { page: 1, limit: 6, total: 0, total_pages: 1 });
     } catch (e) {
-      notifyError(e?.message || "Không tải được đánh giá");
+      notifyError(e?.message || t("reviews.loadFailed"));
     } finally {
       setLoading(false);
     }
   }
 
+  function applyMine(res) {
+    const review = res?.data?.review || null;
+    setMine(review);
+    setCanReview(Boolean(res?.data?.can_review));
+    setRating(review ? toInt(review.rating, 5) : 5);
+    setComment(review?.comment || "");
+  }
+
   async function loadMine() {
-    try {
-      const res = await getMyReview(listingId);
-      setMine(res.data?.review || null);
-      setCanReview(!!res.data?.can_review);
-      if (res.data?.review) {
-        setRating(toInt(res.data.review.rating, 5));
-        setComment(res.data.review.comment || "");
-      }
-    } catch (e) {
-      // not logged in -> ignore
-      setMine(null);
-      setCanReview(false);
-    }
+    const res = await getMyReview(listingId).catch(() => null);
+    applyMine(res);
   }
 
   useEffect(() => {
-    load(1);
-    loadMine();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let active = true;
+    getMyReview(listingId).then((res) => { if (active) applyMine(res); })
+      .catch(() => { if (active) applyMine(null); });
+    return () => { active = false; };
   }, [listingId]);
 
   async function submit() {
@@ -64,19 +76,19 @@ export default function ReviewsSection({ listingId, initialAvg, initialCount, au
     try {
       if (mine?.id) {
         await updateReview(mine.id, rating, comment);
-        notifySuccess("Đã cập nhật đánh giá");
+        notifySuccess(t("reviews.updated"));
       } else {
         await createReview(listingId, rating, comment);
-        notifySuccess("Đã gửi đánh giá");
+        notifySuccess(t("reviews.created"));
       }
       await load(1);
       await loadMine();
     } catch (e) {
       if (e?.status === 401) {
-        notifyInfo("Bạn cần đăng nhập để đánh giá");
+        notifyInfo(t("reviews.loginRequired"));
         return;
       }
-      notifyError(e?.message || "Không thể lưu đánh giá");
+      notifyError(e?.message || t("reviews.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -84,10 +96,10 @@ export default function ReviewsSection({ listingId, initialAvg, initialCount, au
 
   async function remove() {
     if (!mine?.id) return;
-    if (!confirm("Xóa đánh giá này?")) return;
+    if (!confirm(t("reviews.deleteConfirm"))) return;
     try {
       await deleteReview(mine.id);
-      notifySuccess("Đã xóa đánh giá");
+      notifySuccess(t("reviews.deleted"));
       setMine(null);
       setCanReview(false);
       setRating(5);
@@ -95,32 +107,39 @@ export default function ReviewsSection({ listingId, initialAvg, initialCount, au
       await load(1);
       await loadMine();
     } catch (e) {
-      notifyError(e?.message || "Không thể xóa đánh giá");
+      notifyError(e?.message || t("reviews.deleteFailed"));
     }
   }
 
   return (
-    <section id="reviews" className="scroll-mt-28 rounded-2xl border bg-white p-5">
+    <section id="reviews" className="scroll-mt-32 border-b border-line pb-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Đánh giá</h2>
-          <div className="mt-1 text-sm text-slate-600">
+          <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
+            {t("reviews.title")}
+          </h2>
+          <div className="mt-1 text-sm text-muted-ink">
             {avg !== null ? (
               <span>
-                <span className="font-semibold text-slate-900">{avg.toFixed(2)}</span> • {initialCount ?? meta.total} đánh giá
+                <span className="font-semibold text-ink">{avg.toFixed(1)}</span>
+                {" · "}
+                {t("reviews.count", { count: initialCount ?? meta.total })}
               </span>
             ) : (
-              <span>{initialCount ?? meta.total} đánh giá</span>
+              <span>
+                {t("reviews.count", { count: initialCount ?? meta.total })}
+              </span>
             )}
           </div>
         </div>
-        <button
+        <Button
           onClick={() => load(meta.page)}
-          className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-slate-50"
+          variant="secondary"
+          size="sm"
           disabled={loading}
         >
-          Tải lại
-        </button>
+          {t("reviews.reload")}
+        </Button>
       </div>
 
       <ReviewComposer

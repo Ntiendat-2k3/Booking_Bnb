@@ -1,119 +1,31 @@
 "use client";
+import dynamic from "next/dynamic";
+import InputField from "@/components/atoms/InputField";
+import { useTranslations } from "@/i18n/LocaleProvider";
+const MapboxAddressPicker = dynamic(() => import("@/components/MapboxAddressPicker"), { ssr: false });
 
-import MapboxAddressPicker from "@/components/MapboxAddressPicker";
-
-export default function ListingFieldsCard({ form, setField, setForm }) {
+export default function ListingFieldsCard({ form, setField, setForm, disabled = false }) {
+  const t = useTranslations();
   const applyPatch = (patch) => {
-    if (typeof setForm === "function") {
-      setForm((p) => ({ ...p, ...patch }));
-      return;
-    }
-    // fallback: best-effort apply through setField
-    Object.entries(patch || {}).forEach(([k, v]) => setField(k, v));
+    if (typeof setForm === "function") { setForm((previous) => ({ ...previous, ...patch })); return; }
+    Object.entries(patch || {}).forEach(([key, value]) => setField(key, value));
   };
-
-  return (
-    <div className="p-6 space-y-4 bg-white border rounded-2xl">
-      <div>
-        <label className="text-sm font-semibold">Tiêu đề</label>
-        <input
-          value={form.title}
-          onChange={(e) => setField("title", e.target.value)}
-          className="w-full px-3 py-2 mt-2 border rounded-xl"
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-semibold">Mô tả</label>
-        <textarea
-          value={form.description}
-          onChange={(e) => setField("description", e.target.value)}
-          className="w-full px-3 py-2 mt-2 border rounded-xl min-h-[120px]"
-          rows={5}
-        />
-      </div>
-
-      <div className="sm:col-span-2">
-        <MapboxAddressPicker
-          address={form.address}
-          city={form.city}
-          country={form.country}
-          lat={form.lat}
-          lng={form.lng}
-          onChange={applyPatch}
-        />
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="text-sm font-semibold">Giá / đêm (VND)</label>
-          <input
-            type="number"
-            value={form.price_per_night}
-            onChange={(e) => setField("price_per_night", e.target.value)}
-            className="w-full px-3 py-2 mt-2 border rounded-xl"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-semibold">Max guests</label>
-          <input
-            type="number"
-            value={form.max_guests}
-            onChange={(e) => setField("max_guests", e.target.value)}
-            className="w-full px-3 py-2 mt-2 border rounded-xl"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div>
-          <label className="text-sm font-semibold">Bedrooms</label>
-          <input
-            type="number"
-            value={form.bedrooms}
-            onChange={(e) => setField("bedrooms", e.target.value)}
-            className="w-full px-3 py-2 mt-2 border rounded-xl"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-semibold">Beds</label>
-          <input
-            type="number"
-            value={form.beds}
-            onChange={(e) => setField("beds", e.target.value)}
-            className="w-full px-3 py-2 mt-2 border rounded-xl"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-semibold">Bathrooms</label>
-          <input
-            type="number"
-            value={form.bathrooms}
-            onChange={(e) => setField("bathrooms", e.target.value)}
-            className="w-full px-3 py-2 mt-2 border rounded-xl"
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="text-sm font-semibold">Loại nhà</label>
-          <input
-            value={form.property_type}
-            onChange={(e) => setField("property_type", e.target.value)}
-            className="w-full px-3 py-2 mt-2 border rounded-xl"
-          />
-        </div>
-        <div>
-          <label className="text-sm font-semibold">Loại phòng</label>
-          <input
-            value={form.room_type}
-            onChange={(e) => setField("room_type", e.target.value)}
-            className="w-full px-3 py-2 mt-2 border rounded-xl"
-          />
-        </div>
-      </div>
+  return <fieldset disabled={disabled} className="min-w-0 space-y-5 rounded-2xl border border-line bg-surface p-5 sm:p-6">
+    <InputField label={t("host.listingTitle")} value={form.title} onChange={(e) => setField("title", e.target.value)} />
+    <div><label htmlFor="listing-description" className="mb-2 block text-sm font-semibold">{t("host.description")}</label><textarea id="listing-description" value={form.description} onChange={(e) => setField("description", e.target.value)} rows={5} className="w-full rounded-xl border border-line px-4 py-3" /></div>
+    <MapboxAddressPicker address={form.address} city={form.city} country={form.country} lat={form.lat} lng={form.lng} onChange={applyPatch} />
+    <div className="grid gap-4 sm:grid-cols-2">
+      <InputField label={t("host.price")} type="number" value={form.price_per_night} onChange={(e) => setField("price_per_night", e.target.value)} />
+      <InputField label={t("host.maxGuests")} type="number" value={form.max_guests} onChange={(e) => setField("max_guests", e.target.value)} />
     </div>
-  );
+    <div className="grid gap-4 sm:grid-cols-3">
+      <InputField label={t("host.bedrooms")} type="number" value={form.bedrooms} onChange={(e) => setField("bedrooms", e.target.value)} />
+      <InputField label={t("host.beds")} type="number" value={form.beds} onChange={(e) => setField("beds", e.target.value)} />
+      <InputField label={t("host.bathrooms")} type="number" step="any" value={form.bathrooms} onChange={(e) => setField("bathrooms", e.target.value)} />
+    </div>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <InputField label={t("host.propertyType")} value={form.property_type} onChange={(e) => setField("property_type", e.target.value)} />
+      <InputField label={t("host.roomType")} value={form.room_type} onChange={(e) => setField("room_type", e.target.value)} />
+    </div>
+  </fieldset>;
 }

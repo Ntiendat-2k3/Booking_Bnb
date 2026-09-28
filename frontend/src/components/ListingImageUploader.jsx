@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "@/i18n/LocaleProvider";
+
 
 import { useEffect, useMemo, useState } from "react";
 import { apiUpload } from "@/lib/apiUpload";
@@ -7,8 +9,11 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 import Image from "next/image";
 
 export default function ListingImageUploader({ listingId }) {
+  const t = useTranslations();
   const [busy, setBusy] = useState(false);
   const [items, setItems] = useState([]);
+  const [loadingImages, setLoadingImages] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   const hasCover = useMemo(() => items.some((x) => x.is_cover), [items]);
 
@@ -23,14 +28,20 @@ export default function ListingImageUploader({ listingId }) {
       });
       const images = res.data?.listing?.images || [];
       setItems(images);
+      setLoadError(false);
     } catch {
-      // ignore (page will show error elsewhere)
+      setLoadError(true);
     }
   }
 
   useEffect(() => {
-    loadImages(listingId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!listingId) return;
+    let active = true;
+    apiFetch(`/api/v1/host/listings/${listingId}`, { method: "GET" })
+      .then((res) => { if (active) { setItems(res.data?.listing?.images || []); setLoadError(false); } })
+      .catch(() => { if (active) setLoadError(true); })
+      .finally(() => { if (active) setLoadingImages(false); });
+    return () => { active = false; };
   }, [listingId]);
 
   async function attachImage(payload) {
@@ -49,13 +60,13 @@ export default function ListingImageUploader({ listingId }) {
     if (!files.length) return;
 
     if (!listingId) {
-      notifyError("Bạn cần tạo phòng trước khi upload ảnh");
+      notifyError(t("images.createFirst"));
       return;
     }
 
     setBusy(true);
     try {
-      // Use local counter to avoid stale state when uploading multiple files
+      // Duy trì thứ tự ảnh trong cùng lượt tải nhiều tệp.
       let nextOrder = items.length;
       let coverAlready = hasCover || items.length > 0;
 
@@ -65,15 +76,15 @@ export default function ListingImageUploader({ listingId }) {
         const fd = new FormData();
         fd.append("image", file);
 
-        // 1) upload to cloudinary
+        // Tải tệp lên dịch vụ lưu trữ trước khi gắn vào chỗ ở.
         const up = await apiUpload(
           `/api/v1/uploads/listing-image?listing_id=${encodeURIComponent(listingId)}`,
           fd,
         );
         const u = up.data;
 
-        // 2) attach to listing in DB
-        const isCover = !coverAlready && nextOrder === 0; // first-ever image becomes cover
+        // Gắn ảnh đã tải thành công vào chỗ ở.
+        const isCover = !coverAlready && nextOrder === 0; // Ảnh đầu tiên được dùng làm ảnh bìa.
         const img = await attachImage({
           url: u.url,
           public_id: u.public_id,
@@ -92,11 +103,14 @@ export default function ListingImageUploader({ listingId }) {
       }
 
       setItems((prev) => [...prev, ...newlyAdded]);
-      notifySuccess("Upload ảnh thành công");
+      notifySuccess(t("images.uploaded"));
       e.target.value = "";
     } catch (err) {
-      notifyError(err?.message || "Upload thất bại");
+      notifyError(err?.message || t("images.uploadFailed"));
     } finally {
+      // Đồng bộ cả các ảnh đã gắn thành công nếu một tệp trong lượt tải bị lỗi.
+      await loadImages(listingId);
+      e.target.value = "";
       setBusy(false);
     }
   }
@@ -113,9 +127,9 @@ export default function ListingImageUploader({ listingId }) {
         },
       );
       await loadImages(listingId);
-      notifySuccess("Đã đặt làm ảnh cover");
+      notifySuccess(t("images.coverSaved"));
     } catch (e) {
-      notifyError(e?.message || "Đặt cover thất bại");
+      notifyError(e?.message || t("images.coverFailed"));
     } finally {
       setBusy(false);
     }
@@ -128,10 +142,10 @@ export default function ListingImageUploader({ listingId }) {
       await apiFetch(`/api/v1/host/listings/${listingId}/images/${image.id}`, {
         method: "DELETE",
       });
-      await loadImages(listingId); // reload because cover may change server-side
-      notifySuccess("Đã xóa ảnh");
+      await loadImages(listingId); // Đồng bộ lại vì máy chủ có thể chọn ảnh bìa mới.
+      notifySuccess(t("images.deleted"));
     } catch (e) {
-      notifyError(e?.message || "Xóa ảnh thất bại");
+      notifyError(e?.message || t("images.deleteFailed"));
     } finally {
       setBusy(false);
     }
@@ -147,36 +161,37 @@ export default function ListingImageUploader({ listingId }) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border bg-white p-4">
-        <div className="text-sm font-semibold">Ảnh phòng</div>
+      <div className="rounded-2xl border bg-surface p-4">
+        <div className="text-sm font-semibold">{t("images.title")}</div>
 
         <div className="mt-3">
           <input
             type="file"
+            aria-label={t("images.upload")}
             multiple
             accept="image/png,image/jpeg,image/webp"
             onChange={onPick}
-            disabled={busy || !listingId}
+            disabled={busy || loadingImages || !listingId}
             className="block w-full text-sm"
           />
         </div>
 
         {busy ? (
-          <div className="mt-2 text-sm text-slate-600">Đang xử lý...</div>
+          <div className="mt-2 text-sm text-muted-ink">{t("common.processing")}</div>
         ) : null}
       </div>
 
-      {sorted.length ? (
+      {loadingImages ? <p role="status">{t("common.loading")}</p> : loadError ? <div role="alert"><p>{t("images.loadFailed")}</p><button type="button" className="mt-2 min-h-11 rounded-xl border border-line px-3" onClick={() => loadImages(listingId)}>{t("common.retry")}</button></div> : sorted.length ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {sorted.map((im) => (
             <div
               key={im.id}
-              className="overflow-hidden rounded-2xl border bg-white"
+              className="overflow-hidden rounded-2xl border bg-surface"
             >
               <div className="relative h-44 w-full">
                 <Image
                   src={im.url}
-                  alt="Listing image"
+                  alt={t("images.alt")}
                   fill
                   unoptimized
                   sizes="(max-width: 1024px) 50vw, 33vw"
@@ -184,11 +199,9 @@ export default function ListingImageUploader({ listingId }) {
                 />
               </div>
               <div className="space-y-2 p-3">
-                <div className="truncate text-xs text-slate-600">
+                <div className="truncate text-xs text-muted-ink">
                   {im.is_cover ? (
-                    <span className="mr-2 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">
-                      Cover
-                    </span>
+                    <span className="mr-2 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">{t("images.cover")}</span>
                   ) : null}
                   {im.public_id || "cloudinary"}
                 </div>
@@ -199,29 +212,23 @@ export default function ListingImageUploader({ listingId }) {
                       type="button"
                       onClick={() => onSetCover(im)}
                       disabled={busy}
-                      className="rounded-lg border px-3 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-60"
-                    >
-                      Đặt cover
-                    </button>
+                      className="min-h-11 rounded-lg border px-3 py-1 text-xs font-medium hover:bg-muted-surface disabled:opacity-60"
+                    >{t("images.setCover")}</button>
                   ) : null}
 
                   <button
                     type="button"
                     onClick={() => onRemove(im)}
                     disabled={busy}
-                    className="rounded-lg border px-3 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    Xóa
-                  </button>
+                    className="min-h-11 rounded-lg border px-3 py-1 text-xs font-medium hover:bg-muted-surface disabled:opacity-60"
+                  >{t("common.delete")}</button>
                 </div>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border bg-white p-4 text-sm text-slate-600">
-          Chưa có ảnh. Hãy upload ít nhất 1 ảnh.
-        </div>
+        <div className="rounded-2xl border bg-surface p-4 text-sm text-muted-ink">{t("images.empty")}</div>
       )}
     </div>
   );

@@ -1,19 +1,23 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CalendarDots, ShieldCheck, Users } from "@phosphor-icons/react";
 import { createBooking } from "@/services/bookingService";
 import { formatVND } from "@/lib/format";
 import { notifyError, notifyInfo } from "@/lib/notify";
+import { useLocale } from "@/i18n/LocaleProvider";
+import Button from "@/components/atoms/Button";
 import Link from "next/link";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format, differenceInDays } from "date-fns";
+import { enUS, vi } from "date-fns/locale";
 
-// Component nhận prop 'listing' từ component cha
 export default function BookingSidebar({ listing }) {
   const router = useRouter();
+  const { locale, t } = useLocale();
   const user = useSelector((s) => s.auth.user);
   const isInitialized = useSelector((s) => s.auth.isInitialized);
 
@@ -23,43 +27,40 @@ export default function BookingSidebar({ listing }) {
   const [guests, setGuests] = useState(1);
   const [loading, setLoading] = useState(false);
 
-  // Tính số đêm dựa trên ngày nhận và trả phòng
   const nights = useMemo(() => {
     if (!startDate || !endDate) return 0;
     const n = differenceInDays(endDate, startDate);
     return Number.isFinite(n) && n > 0 ? n : 0;
   }, [startDate, endDate]);
 
-  // Tính tổng tiền
   const total = useMemo(() => {
     const p = Number(listing.price_per_night);
     if (!nights || !Number.isFinite(p)) return 0;
     return p * nights;
   }, [listing.price_per_night, nights]);
 
-  // Hàm xử lý đặt phòng
   async function onReserve() {
-    if (!isInitialized) return;
+    if (!isInitialized || loading) return;
     if (!user) {
-      notifyInfo("Bạn cần đăng nhập để đặt phòng");
+      notifyInfo(t("booking.loginRequired"));
       return;
     }
     if (!startDate || !endDate) {
-      notifyError("Vui lòng chọn ngày nhận phòng và trả phòng");
+      notifyError(t("booking.datesRequired"));
       return;
     }
 
     if (!nights) {
-      notifyError("Khoảng ngày không hợp lệ");
+      notifyError(t("booking.invalidDates"));
       return;
     }
     const g = Number(guests);
     if (!Number.isInteger(g) || g <= 0) {
-      notifyError("Số khách không hợp lệ");
+      notifyError(t("booking.invalidGuests"));
       return;
     }
     if (g > Number(listing.max_guests)) {
-      notifyError(`Tối đa ${listing.max_guests} khách`);
+      notifyError(t("booking.maxGuests", { count: listing.max_guests }));
       return;
     }
 
@@ -73,95 +74,120 @@ export default function BookingSidebar({ listing }) {
       });
 
       const bookingId = booking?.id;
-      if (!bookingId) throw new Error("Create booking failed");
+      if (!bookingId) throw new Error(t("booking.failed"));
 
       router.push(`/checkout/${bookingId}`);
     } catch (e) {
-      notifyError(e?.message || "Đặt phòng thất bại");
+      notifyError(e?.message || t("booking.failed"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <aside className="h-fit lg:sticky lg:top-28 rounded-2xl border bg-white p-5 shadow-sm">
+    <aside className="h-fit rounded-2xl border border-line bg-surface p-5 shadow-soft lg:sticky lg:top-32">
       <div className="flex items-end justify-between">
-        <div className="text-xl font-semibold">
-          {formatVND(listing.price_per_night)}{" "}
-          <span className="text-sm font-normal text-slate-600">/ đêm</span>
+        <div className="text-xl font-bold text-ink">
+          {formatVND(
+            listing.price_per_night,
+            locale === "en" ? "en-US" : "vi-VN",
+          )}{" "}
+          <span className="text-sm font-normal text-muted-ink">
+            {t("booking.perNight")}
+          </span>
         </div>
       </div>
-      {/* KHU VỰC CHỌN NGÀY VÀ KHÁCH */}
-      <div className="mt-4 rounded-2xl border">
+      <div className="mt-5 overflow-hidden rounded-xl border border-line">
         <div className="grid grid-cols-1">
-          {/* Section: Thời gian */}
-          <div className="border-b p-3">
-            <div className="text-[10px] font-semibold uppercase text-slate-700 mb-1">
-              Thời gian
-            </div>
+          <div className="border-b border-line p-3">
+            <label id="booking-dates-label" htmlFor="booking-dates" className="mb-1 flex items-center gap-1.5 text-xs font-bold text-ink">
+              <CalendarDots aria-hidden size={16} />
+              {t("booking.dates")}
+            </label>
             <DatePicker
+              id="booking-dates"
+              ariaLabelledBy="booking-dates-label"
               selectsRange={true}
               startDate={startDate}
               endDate={endDate}
               onChange={(update) => setDateRange(update)}
               minDate={new Date()}
-              placeholderText="Chọn ngày nhận và trả phòng"
-              className="w-full rounded-lg border px-3 py-2 text-sm z-50 focus:border-brand focus:ring-1 focus:ring-brand outline-none"
+              placeholderText={t("booking.chooseDates")}
+              className="z-50 min-h-11 w-full rounded-xl border border-line px-3 py-2 text-sm outline-none focus:border-ink focus:ring-4 focus:ring-ink/10"
               calendarClassName="shadow-lg border-slate-200 rounded-2xl"
-              monthsShown={2}
+              monthsShown={1}
+              locale={locale === "en" ? enUS : vi}
             />
           </div>
 
-          {/* Section: Số lượng khách */}
           <div className="p-3">
-            <div className="text-[10px] font-semibold uppercase text-slate-700">
-              Khách
-            </div>
+            <label
+              htmlFor="booking-guests"
+              className="flex items-center gap-1.5 text-xs font-bold text-ink"
+            >
+              <Users aria-hidden size={16} />
+              {t("booking.guests")}
+            </label>
             <input
+              id="booking-guests"
               type="number"
               min={1}
               max={listing.max_guests}
-              className="mt-1 w-full rounded-lg border px-2 py-1 text-sm"
+              className="mt-1 min-h-11 w-full rounded-xl border border-line px-3 py-2 text-sm outline-none focus:border-ink focus:ring-4 focus:ring-ink/10"
               value={guests}
               onChange={(e) => setGuests(e.target.value)}
             />
-            <div className="mt-1 text-xs text-slate-500">
-              Tối đa {listing.max_guests} khách
+            <div className="mt-1 text-xs text-muted-ink">
+              {t("booking.maxGuests", { count: listing.max_guests })}
             </div>
           </div>
-        </div>{" "}
+        </div>
       </div>
 
       {nights > 0 && (
-        <div className="mt-4 rounded-2xl border p-3 text-sm">
+        <div className="mt-4 rounded-xl bg-muted-surface p-4 text-sm text-ink">
           <div className="flex items-center justify-between">
             <span>
-              {formatVND(listing.price_per_night)} x {nights} đêm
+              {t("booking.nightsPrice", {
+                price: formatVND(
+                  listing.price_per_night,
+                  locale === "en" ? "en-US" : "vi-VN",
+                ),
+                count: nights,
+              })}
             </span>
-            <span className="font-medium">{formatVND(total)}</span>
+            <span className="font-medium">
+              {formatVND(total, locale === "en" ? "en-US" : "vi-VN")}
+            </span>
           </div>
-          <div className="mt-2 flex items-center justify-between border-t pt-2">
-            <span className="font-semibold">Tổng</span>
-            <span className="font-semibold">{formatVND(total)}</span>
+          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+            <span className="font-bold">{t("booking.total")}</span>
+            <span className="font-bold">
+              {formatVND(total, locale === "en" ? "en-US" : "vi-VN")}
+            </span>
           </div>
         </div>
       )}
-      {/* NÚT ĐẶT PHÒNG */}
-      <button
-        className="mt-4 w-full rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+      <Button
+        className="mt-4 w-full"
+        size="lg"
         onClick={onReserve}
-        disabled={loading}
+        loading={loading}
+        disabled={!isInitialized}
       >
-        {loading ? "Đang xử lý..." : "Đặt phòng"}
-      </button>
-      {/* THÔNG BÁO ĐĂNG NHẬP */}
+        {loading ? t("booking.processing") : t("booking.reserve")}
+      </Button>
+      <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-ink">
+        <ShieldCheck aria-hidden size={16} />
+        {t("booking.secureNote")}
+      </p>
       {isInitialized && !user && (
-        <p className="mt-3 text-xs text-slate-600">
-          Bạn chưa đăng nhập.{" "}
-          <Link className="underline" href="/login">
-            Đăng nhập
+        <p className="mt-3 text-xs leading-5 text-muted-ink">
+          {t("booking.loginPrefix")}{" "}
+          <Link className="font-semibold text-ink underline" href="/login">
+            {t("navigation.login")}
           </Link>{" "}
-          để đặt phòng.
+          {t("booking.loginSuffix")}
         </p>
       )}
     </aside>

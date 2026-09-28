@@ -1,171 +1,62 @@
 "use client";
-
-import { useState, useEffect } from "react";
-import Image from "next/image";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Camera } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
 import { apiUpload } from "@/lib/apiUpload";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { setUser } from "@/store/authSlice";
-
-import { Camera, Save, User as UserIcon, Phone as PhoneIcon, MapPin } from "lucide-react";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import InputField from "@/components/atoms/InputField";
+import Button from "@/components/atoms/Button";
+import Avatar from "@/components/atoms/Avatar";
 
 export default function ProfileForm() {
+  const t = useTranslations();
   const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
-
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [about, setAbout] = useState("");
-  const [location, setLocation] = useState("");
+  const [fullName, setFullName] = useState(user?.full_name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [about, setAbout] = useState(user?.about || "");
+  const [location, setLocation] = useState(user?.location || "");
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setFullName(user.full_name || "");
-      setPhone(user.phone || "");
-      setAbout(user.about || "");
-      setLocation(user.location || "");
-    }
-  }, [user]);
-
-  async function saveProfile() {
+  const [uploading, setUploading] = useState(false);
+  async function saveProfile(event) {
+    event.preventDefault();
     setIsSaving(true);
     try {
-      const res = await apiFetch("/api/v1/users/me", {
-        method: "PATCH",
-        body: { full_name: fullName, phone, about, location },
-      });
+      const res = await apiFetch("/api/v1/users/me", { method: "PATCH", body: { full_name: fullName, phone, about, location } });
       dispatch(setUser(res.data));
-      notifySuccess("Đã cập nhật thông tin cá nhân");
-    } catch (e) {
-      notifyError(e?.errors ? Object.values(e.errors).join(", ") : e?.message || "Không thể cập nhật");
-    } finally {
-      setIsSaving(false);
-    }
+      notifySuccess(t("profile.updated"));
+    } catch (error) { notifyError(error?.errors ? Object.values(error.errors).join(", ") : error?.message || t("profile.updateFailed")); }
+    finally { setIsSaving(false); }
   }
-
   async function uploadAvatar(file) {
+    setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("image", file);
-      const res = await apiUpload("/api/v1/users/me/avatar", fd, {
-        method: "POST",
-      });
+      const body = new FormData(); body.append("image", file);
+      const res = await apiUpload("/api/v1/users/me/avatar", body, { method: "POST" });
       dispatch(setUser(res.data?.user));
-      notifySuccess("Đã cập nhật ảnh đại diện");
-    } catch (e) {
-      notifyError(e?.message || "Không thể upload avatar");
-    }
+      notifySuccess(t("profile.avatarUpdated"));
+    } catch (error) { notifyError(error?.message || t("profile.avatarFailed")); }
+    finally { setUploading(false); }
   }
-
   if (!user) return null;
-
-  return (
-    <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden">
-      <div className="p-8 border-b border-slate-50">
-        <h2 className="text-xl font-bold text-slate-900">Thông tin cá nhân</h2>
-        <p className="text-sm text-slate-500">Cập nhật tên và thông tin liên hệ của bạn.</p>
-      </div>
-
-      <div className="p-8">
-        <div className="flex flex-col items-center gap-10 md:flex-row md:items-start">
-          <div className="relative group">
-            <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-slate-50 transition-all group-hover:ring-brand/20">
-              <Image
-                src={user.avatar_url || "https://i.pravatar.cc/150"}
-                alt={user.full_name || "Avatar"}
-                width={128}
-                height={128}
-                className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
-              />
-            </div>
-            <label className="absolute bottom-0 right-0 p-2.5 bg-brand text-white rounded-full shadow-lg cursor-pointer transition-transform hover:scale-110 active:scale-95">
-              <Camera size={18} />
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) uploadAvatar(f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-          </div>
-
-          <div className="flex-1 w-full space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <UserIcon size={16} className="text-slate-400" />
-                  Họ và tên
-                </label>
-                <input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none"
-                  placeholder="VD: Nguyễn Văn An"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <PhoneIcon size={16} className="text-slate-400" />
-                  Số điện thoại
-                </label>
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none"
-                  placeholder="0987 654 321"
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <MapPin size={16} className="text-slate-400" />
-                  Địa điểm
-                </label>
-                <input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none"
-                  placeholder="VD: Hà Nội, Việt Nam"
-                />
-              </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  Giới thiệu bản thân
-                </label>
-                <textarea
-                  value={about}
-                  onChange={(e) => setAbout(e.target.value)}
-                  className="w-full h-32 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-white focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all outline-none resize-none"
-                  placeholder="Chia sẻ một chút về bản thân bạn..."
-                />
-              </div>
-            </div>
-
-            <div className="pt-4 flex justify-end">
-              <button
-                disabled={isSaving}
-                onClick={saveProfile}
-                className="flex items-center gap-2 px-8 py-3 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/25 hover:bg-brand-dark hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:translate-y-0"
-              >
-                {isSaving ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <Save size={18} />
-                )}
-                Lưu thay đổi
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+  return <section className="rounded-2xl border border-line bg-surface p-5 sm:p-8">
+    <h2 className="text-xl font-bold">{t("profile.title")}</h2><p className="mt-2 text-sm text-muted-ink">{t("profile.description")}</p>
+    <div className="mt-6 flex flex-wrap items-center gap-5"><Avatar src={user.avatar_url} name={user.full_name || t("common.account")} size={96} />
+      <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line px-4 py-2 hover:bg-muted-surface"><Camera aria-hidden size={20} /><span>{t("common.avatar")}</span>
+        <input type="file" accept="image/*" className="sr-only" aria-label={t("common.avatar")} disabled={uploading || isSaving} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadAvatar(file); e.target.value = ""; }} />
+      </label>{uploading ? <p role="status" className="text-sm text-muted-ink">{t("common.processing")}</p> : null}
     </div>
-  );
+    <form onSubmit={saveProfile} className="mt-6 space-y-5">
+      <fieldset disabled={isSaving || uploading} className="grid min-w-0 gap-5 sm:grid-cols-2">
+        <InputField label={t("auth.fullName")} value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required />
+        <InputField label={t("profile.phone")} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+        <InputField label={t("profile.address")} value={location} onChange={(e) => setLocation(e.target.value)} className="sm:col-span-2" placeholder={t("profile.locationHint")} />
+        <div className="sm:col-span-2"><label htmlFor="profile-about" className="mb-2 block text-sm font-semibold">{t("profile.introduction")}</label><textarea id="profile-about" value={about} onChange={(e) => setAbout(e.target.value)} rows={4} placeholder={t("profile.aboutHint")} className="w-full rounded-xl border border-line bg-surface px-4 py-3" /></div>
+      </fieldset>
+      <Button type="submit" loading={isSaving} disabled={uploading}>{t("profile.save")}</Button>
+    </form>
+  </section>;
 }

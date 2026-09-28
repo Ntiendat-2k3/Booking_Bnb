@@ -1,262 +1,118 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CreditCard, Plus, Trash, CheckCircle } from "@phosphor-icons/react";
+import { useTranslations } from "@/i18n/LocaleProvider";
 import { apiFetch } from "@/lib/api";
-import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
-import clsx from "clsx";
+import { notifyError, notifySuccess } from "@/lib/notify";
+import Button from "@/components/atoms/Button";
+import IconButton from "@/components/atoms/IconButton";
+import InputField from "@/components/atoms/InputField";
+import Badge from "@/components/atoms/Badge";
+import EmptyState from "@/components/molecules/EmptyState";
 
-const PROVIDERS = [
-  { value: "stripe", label: "Stripe" },
-  { value: "bank", label: "Bank" },
-  { value: "momo", label: "MoMo" },
-];
-
-const TYPES = [
-  { value: "card", label: "Card" },
-  { value: "ewallet", label: "E-wallet" },
-  { value: "bank_transfer", label: "Bank transfer" },
-];
-
-import { CreditCard, Plus, Trash2, CheckCircle2, Landmark, Wallet } from "lucide-react";
+const PROVIDERS = ["stripe", "bank", "momo"];
+const TYPES = ["card", "ewallet", "bank_transfer"];
 
 export default function PaymentMethods({ user }) {
-  const [pm, setPm] = useState([]);
-  const [newProvider, setNewProvider] = useState("stripe");
-  const [newType, setNewType] = useState("card");
-  const [newLabel, setNewLabel] = useState("");
-  const [savingPm, setSavingPm] = useState(false);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const t = useTranslations();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [provider, setProvider] = useState("stripe");
+  const [type, setType] = useState("card");
+  const [label, setLabel] = useState("");
+  const userId = user?.id;
 
   useEffect(() => {
-    if (!user) return;
-    async function loadPm() {
-      try {
-        const p = await apiFetch("/api/v1/users/me/payment-methods", {
-          method: "GET",
-        });
-        setPm(p.data?.items || []);
-      } catch (e) {
-        console.error("Lỗi tải payment methods", e);
-      }
-    }
-    loadPm();
-  }, [user]);
+    if (!userId) return;
+    let active = true;
+    apiFetch("/api/v1/users/me/payment-methods", { method: "GET" })
+      .then(res => { if (active) { setItems(res.data?.items || []); setError(false); } })
+      .catch(() => { if (active) setError(true); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [userId, attempt]);
 
-  async function addPaymentMethod() {
-    if (!newLabel.trim()) {
-      notifyInfo("Vui lòng nhập tên gợi nhớ (VD: Thẻ Visa)");
-      return;
-    }
-    setSavingPm(true);
+  async function addPaymentMethod(event) {
+    event.preventDefault();
+    if (busy || !label.trim()) return;
+    setBusy(true);
     try {
       await apiFetch("/api/v1/users/me/payment-methods", {
-        method: "POST",
-        body: {
-          provider: newProvider,
-          type: newType,
-          label: newLabel,
-        },
+        method: "POST", body: { provider, type, label: label.trim() },
       });
-      setNewLabel("");
-      setShowAddForm(false);
-      const p = await apiFetch("/api/v1/users/me/payment-methods", {
-        method: "GET",
-      });
-      setPm(p.data?.items || []);
-      notifySuccess("Đã thêm phương thức thanh toán mới");
-    } catch (e) {
-      notifyError(e?.message || "Không thể thêm");
-    } finally {
-      setSavingPm(false);
-    }
+      const res = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+      setItems(res.data?.items || []);
+      setLabel("");
+      setShowForm(false);
+      notifySuccess(t("payments.added"));
+    } catch (err) { notifyError(err?.message || t("payments.addFailed")); }
+    finally { setBusy(false); }
   }
 
   async function setDefault(id) {
+    if (busy) return;
+    setBusy(true);
     try {
-      await apiFetch(`/api/v1/users/me/payment-methods/${id}/default`, {
-        method: "POST",
-      });
-      const p = await apiFetch("/api/v1/users/me/payment-methods", {
-        method: "GET",
-      });
-      setPm(p.data?.items || []);
-      notifySuccess("Đã đặt làm mặc định");
-    } catch (e) {
-      notifyError(e?.message || "Thao tác thất bại");
-    }
+      await apiFetch(`/api/v1/users/me/payment-methods/${id}/default`, { method: "POST" });
+      const res = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+      setItems(res.data?.items || []);
+      notifySuccess(t("payments.defaultSaved"));
+    } catch (err) { notifyError(err?.message || t("payments.actionFailed")); }
+    finally { setBusy(false); }
   }
 
   async function removePm(id) {
-    if (!confirm("Bạn có chắc chắn muốn xóa phương thức này?")) return;
+    if (busy || !window.confirm(t("payments.deleteConfirm"))) return;
+    setBusy(true);
     try {
-      await apiFetch(`/api/v1/users/me/payment-methods/${id}`, {
-        method: "DELETE",
-      });
-      const p = await apiFetch("/api/v1/users/me/payment-methods", {
-        method: "GET",
-      });
-      setPm(p.data?.items || []);
-      notifySuccess("Đã xóa phương thức thanh toán");
-    } catch (e) {
-      notifyError(e?.message || "Không thể xóa");
-    }
+      await apiFetch(`/api/v1/users/me/payment-methods/${id}`, { method: "DELETE" });
+      const res = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+      setItems(res.data?.items || []);
+      notifySuccess(t("payments.deleted"));
+    } catch (err) { notifyError(err?.message || t("payments.deleteFailed")); }
+    finally { setBusy(false); }
   }
 
-  const getProviderIcon = (provider) => {
-    switch (provider) {
-      case "bank": return <Landmark size={24} />;
-      case "momo": return <Wallet size={24} />;
-      default: return <CreditCard size={24} />;
-    }
-  };
-
-  return (
-    <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden text-slate-900">
-      <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <CreditCard size={24} className="text-brand" />
-            Phương thức thanh toán
-          </h2>
-          <p className="text-sm text-slate-500">Quản lý các thẻ và ví điện tử của bạn.</p>
-        </div>
-        {!showAddForm && (
-          <button 
-            onClick={() => setShowAddForm(true)}
-            className="p-2 bg-slate-50 hover:bg-brand hover:text-white rounded-xl transition-all"
-          >
-            <Plus size={20} />
-          </button>
-        )}
-      </div>
-
-      <div className="p-8">
-        {pm.length === 0 ? (
-          <div className="text-center py-10 px-4 border-2 border-dashed border-slate-100 rounded-3xl">
-            <CreditCard size={48} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-slate-400 font-medium">Bạn chưa lưu phương thức thanh toán nào.</p>
-            <button 
-              onClick={() => setShowAddForm(true)}
-              className="mt-4 text-brand font-bold text-sm hover:underline"
-            >
-              + Thêm ngay
-            </button>
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {pm.map((m) => (
-              <div
-                key={m.id}
-                className={clsx(
-                  "relative p-6 border-2 rounded-3xl transition-all group",
-                  m.is_default 
-                    ? "border-brand bg-brand/[0.02]" 
-                    : "border-slate-100 hover:border-slate-200"
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div className={clsx(
-                    "p-3 rounded-2xl",
-                    m.is_default ? "bg-brand text-white" : "bg-slate-50 text-slate-400"
-                  )}>
-                    {getProviderIcon(m.provider)}
-                  </div>
-                  <div className="flex gap-1">
-                    {!m.is_default && (
-                      <button
-                        onClick={() => setDefault(m.id)}
-                        className="p-2 text-slate-400 hover:text-brand transition-colors"
-                        title="Đặt làm mặc định"
-                      >
-                        <CheckCircle2 size={18} />
-                      </button>
-                    )}
-                    <button
-                      onClick={() => removePm(m.id)}
-                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Xóa"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <div className="font-bold text-lg">{m.label}</div>
-                  <div className="text-sm text-slate-500 uppercase tracking-wider mt-1">
-                    {m.provider} • {m.type}
-                  </div>
-                </div>
-
-                {m.is_default && (
-                  <div className="absolute top-4 right-4 animate-in fade-in zoom-in duration-300">
-                    <span className="bg-brand text-white text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-                      Mặc định
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {showAddForm && (
-          <div className="mt-8 p-8 bg-slate-50 border border-slate-100 rounded-3xl animate-in slide-in-from-top-4 duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-bold">Thêm phương thức mới</h3>
-              <button onClick={() => setShowAddForm(false)} className="text-sm text-slate-400 hover:text-slate-600">Hủy</button>
-            </div>
-            
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Nhà cung cấp</label>
-                <select
-                  value={newProvider}
-                  onChange={(e) => setNewProvider(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all font-medium"
-                >
-                  {PROVIDERS.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Loại</label>
-                <select
-                  value={newType}
-                  onChange={(e) => setNewType(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all font-medium"
-                >
-                  {TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2 sm:col-span-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Tên gợi nhớ</label>
-                <input
-                  value={newLabel}
-                  onChange={(e) => setNewLabel(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand transition-all font-medium"
-                  placeholder="VD: Thẻ Visa thanh toán chính"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <button
-                  disabled={savingPm}
-                  onClick={addPaymentMethod}
-                  className="w-full px-6 py-4 bg-brand text-white rounded-2xl font-bold shadow-lg shadow-brand/20 hover:bg-brand-dark transition-all disabled:opacity-50"
-                >
-                  {savingPm ? "Đang xử lý..." : "Xác nhận thêm"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+  return <section className="rounded-[20px] border border-line bg-surface p-5 sm:p-8" aria-busy={loading || busy}>
+    <div className="flex items-start justify-between gap-3">
+      <div><h2 className="text-xl font-bold">{t("payments.title")}</h2>
+        <p className="mt-2 text-sm text-muted-ink">{t("payments.description")}</p></div>
+      <IconButton label={t("payments.addTitle")} disabled={busy || loading} onClick={() => setShowForm(true)}><Plus size={20} /></IconButton>
     </div>
-  );
+    <div className="mt-6">
+      {loading ? <p role="status">{t("common.loading")}</p> : error ? <div role="alert">
+        <p>{t("common.loadFailed")}</p><Button variant="secondary" className="mt-3" onClick={() => { setLoading(true); setAttempt(value => value + 1); }}>{t("common.retry")}</Button>
+      </div> : items.length ? <div className="grid gap-4 xl:grid-cols-2">
+        {items.map(item => <article key={item.id} className="rounded-2xl border border-line p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CreditCard aria-hidden size={24} className="text-brand" />
+            {item.is_default ? <Badge tone="brand">{t("payments.default")}</Badge> : null}
+            <div className="flex gap-1">
+              {!item.is_default ? <IconButton label={t("payments.makeDefault")} disabled={busy} onClick={() => setDefault(item.id)}><CheckCircle size={20} /></IconButton> : null}
+              <IconButton label={t("common.delete")} disabled={busy} onClick={() => removePm(item.id)}><Trash size={20} /></IconButton>
+            </div>
+          </div>
+          <h3 className="mt-3 break-words font-semibold">{item.label}</h3>
+          <p className="mt-1 text-sm text-muted-ink">{t(`payments.providers.${item.provider}`)} · {t(`payments.types.${item.type}`)}</p>
+        </article>)}
+      </div> : <EmptyState icon={<CreditCard aria-hidden size={28} />} title={t("payments.empty")} />}
+    </div>
+    {showForm ? <form onSubmit={addPaymentMethod} className="mt-6 space-y-4 rounded-2xl bg-muted-surface p-4 sm:p-6">
+      <h3 className="font-semibold">{t("payments.addTitle")}</h3>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><label htmlFor="payment-provider" className="text-sm font-medium">{t("payments.provider")}</label>
+          <select id="payment-provider" value={provider} disabled={busy} onChange={event => setProvider(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-surface px-3 py-2">{PROVIDERS.map(value => <option key={value} value={value}>{t(`payments.providers.${value}`)}</option>)}</select></div>
+        <div><label htmlFor="payment-type" className="text-sm font-medium">{t("payments.type")}</label>
+          <select id="payment-type" value={type} disabled={busy} onChange={event => setType(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-surface px-3 py-2">{TYPES.map(value => <option key={value} value={value}>{t(`payments.types.${value}`)}</option>)}</select></div>
+      </div>
+      <InputField id="payment-label" label={t("payments.label")} placeholder={t("payments.labelHint")} value={label} onChange={event => setLabel(event.target.value)} required disabled={busy} />
+      <div className="flex flex-wrap gap-3"><Button type="submit" disabled={busy}>{busy ? t("common.processing") : t("payments.confirmAdd")}</Button>
+        <Button variant="secondary" disabled={busy} onClick={() => setShowForm(false)}>{t("common.cancel")}</Button></div>
+    </form> : null}
+  </section>;
 }

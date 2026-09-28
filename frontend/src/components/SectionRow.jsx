@@ -1,63 +1,65 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import Link from "next/link";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { useTranslations } from "@/i18n/LocaleProvider";
 import ListingCard from "./ListingCard";
 
 export default function SectionRow({ title, items, city }) {
-  if (!items?.length) return null;
-
   const scrollerRef = useRef(null);
-
-  const viewMoreHref = useMemo(() => {
-    if (!city) return "/search";
-    const q = new URLSearchParams({ city });
-    return `/search?${q.toString()}`;
-  }, [city]);
+  const t = useTranslations();
+  const viewMoreHref = city
+    ? `/search?${new URLSearchParams({ city }).toString()}`
+    : "/search";
 
   const scrollBy = (dx) => {
     scrollerRef.current?.scrollBy({ left: dx, behavior: "smooth" });
   };
 
+  if (!items?.length) return null;
+
   return (
-    <section className="space-y-3">
-      <div className="flex items-end justify-between">
-        <h2 className="text-xl font-semibold">{title}</h2>
+    <section className="space-y-5">
+      <div className="flex items-end justify-between gap-4">
+        <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
+          {title}
+        </h2>
         <div className="flex items-center gap-2">
           <Link
             href={viewMoreHref}
-            className="text-sm font-medium text-gray-700 hover:underline"
+            className="mr-1 text-sm font-semibold text-ink transition hover:text-brand hover:underline"
           >
-            Xem thêm
+            {t("common.seeMore")}
           </Link>
           <button
             type="button"
             onClick={() => scrollBy(-900)}
-            className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-full border bg-white hover:bg-gray-50"
-            aria-label="Previous"
+            className="hidden h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink transition hover:bg-muted-surface sm:inline-flex"
+            aria-label={t("common.previous")}
           >
-            ‹
+            <CaretLeft aria-hidden size={18} weight="bold" />
           </button>
           <button
             type="button"
             onClick={() => scrollBy(900)}
-            className="hidden sm:inline-flex h-9 w-9 items-center justify-center rounded-full border bg-white hover:bg-gray-50"
-            aria-label="Next"
+            className="hidden h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink transition hover:bg-muted-surface sm:inline-flex"
+            aria-label={t("common.next")}
           >
-            ›
+            <CaretRight aria-hidden size={18} weight="bold" />
           </button>
         </div>
       </div>
 
       <div
         ref={scrollerRef}
-        className="flex gap-6 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory"
+        className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2"
         style={{ scrollbarWidth: "none" }}
       >
         {items.map((it, idx) => (
           <div
             key={it?.id || it?.listing_id || it?.uuid}
-            className="shrink-0 snap-start w-[260px] sm:w-[280px]"
+            className="w-[275px] shrink-0 snap-start sm:w-[292px]"
           >
             <ListingCard listing={it} priority={idx < 4} />
           </div>

@@ -1,6 +1,10 @@
-export function formatVND(value) {
+export function formatVND(value, locale = "vi-VN") {
   try {
-    return new Intl.NumberFormat("vi-VN").format(Number(value || 0)) + " ₫";
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
+    }).format(Number(value || 0));
   } catch {
     return value + " ₫";
   }

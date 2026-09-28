@@ -23,3 +23,8 @@ export async function updateBooking(bookingId, payload) {
   });
   return res?.data?.booking;
 }
+
+export async function getMyBookings() {
+  const res = await apiFetch("/api/v1/bookings/me", { method: "GET" });
+  return res?.data?.items || [];
+}

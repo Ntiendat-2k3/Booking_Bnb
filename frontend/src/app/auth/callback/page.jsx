@@ -1,4 +1,6 @@
 "use client";
+import { useTranslations } from "@/i18n/LocaleProvider";
+
 
 import { useEffect, Suspense } from "react";
 import { useDispatch } from "react-redux";
@@ -6,6 +8,7 @@ import { refreshSession, fetchProfile, ensureCsrf } from "@/store/authThunks";
 import { useRouter, useSearchParams } from "next/navigation";
 
 function AuthCallbackContent() {
+  const t = useTranslations();
   const params = useSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
@@ -30,12 +33,13 @@ function AuthCallbackContent() {
     run();
   }, [dispatch, params, router]);
 
-  return <div className="mx-auto max-w-md rounded-lg border p-4">Đang xử lý đăng nhập...</div>;
+  return <div className="mx-auto max-w-md rounded-lg border p-4">{t("auth.processing")}</div>;
 }
 
 export default function AuthCallbackPage() {
+  const t = useTranslations();
   return (
-    <Suspense fallback={<div className="mx-auto max-w-md rounded-lg border p-4">Đang xử lý đăng nhập...</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-md rounded-lg border p-4">{t("auth.processing")}</div>}>
       <AuthCallbackContent />
     </Suspense>
   );

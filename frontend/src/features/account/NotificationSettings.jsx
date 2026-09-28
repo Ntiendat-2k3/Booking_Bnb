@@ -1,68 +1,38 @@
 "use client";
-
-import { Bell, Mail, Smartphone, Info } from "lucide-react";
-import { useState } from "react";
-import { notifySuccess } from "@/lib/notify";
-
+import { useState, useSyncExternalStore } from "react";
+import { useSelector } from "react-redux";
+import { Bell } from "@phosphor-icons/react";
+import { notifyError, notifySuccess } from "@/lib/notify";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import Button from "@/components/atoms/Button";
+const defaults = { messages: true, reminders: true, offers: true };
+function subscribe(listener) {
+  window.addEventListener("storage", listener); window.addEventListener("booking-preferences", listener);
+  return () => { window.removeEventListener("storage", listener); window.removeEventListener("booking-preferences", listener); };
+}
+/** Lưu lựa chọn theo tài khoản trên trình duyệt, vì API hiện có chưa có trường cho ba nhóm thông báo này. */
 export default function NotificationSettings() {
-  const [loading, setLoading] = useState(false);
-
-  const sections = [
-    {
-      title: "Thông báo từ Booking-bnb",
-      items: [
-        { id: "messages", label: "Tin nhắn", desc: "Thông báo khi có tin nhắn từ chủ nhà hoặc khách.", icon: Mail },
-        { id: "reminders", label: "Nhắc nhở đặt phòng", desc: "Thông báo về lịch trình và các bước tiếp theo.", icon: Bell },
-        { id: "offers", label: "Ưu đãi & Khuyến mãi", desc: "Nhận thông tin về các chương trình giảm giá.", icon: Info },
-      ]
-    }
-  ];
-
-  return (
-    <div className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden text-slate-900">
-      <div className="p-8 border-b border-slate-50">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Bell size={24} className="text-brand" />
-          Cài đặt thông báo
-        </h2>
-        <p className="text-sm text-slate-500">Chọn cách bạn muốn nhận thông tin từ chúng tôi.</p>
-      </div>
-
-      <div className="p-8 space-y-10">
-        {sections.map((section, idx) => (
-          <div key={idx} className="space-y-6">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">{section.title}</h3>
-            <div className="space-y-6">
-              {section.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between">
-                  <div className="flex gap-4">
-                    <div className="mt-1 p-2 bg-slate-50 rounded-xl text-slate-400">
-                      <item.icon size={20} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold">{item.label}</h4>
-                      <p className="text-sm text-slate-500">{item.desc}</p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" defaultChecked />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-        
-        <div className="pt-4">
-          <button 
-            onClick={() => notifySuccess("Đã lưu tùy chọn thông báo")}
-            className="w-full sm:w-auto px-8 py-3 bg-brand text-white rounded-2xl font-bold hover:bg-brand-dark transition-all"
-          >
-            Lưu thay đổi
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const t = useTranslations();
+  const userId = useSelector((state) => state.auth.user?.id);
+  const storageKey = "booking_notification_preferences:" + userId;
+  const snapshot = useSyncExternalStore(subscribe, () => { try { return localStorage.getItem(storageKey); } catch { return null; } }, () => null);
+  const [draft, setDraft] = useState(null);
+  let saved = defaults;
+  try { saved = { ...defaults, ...JSON.parse(snapshot || "{}") }; } catch {}
+  const preferences = draft || saved;
+  const items = [{ id: "messages", label: "notificationSettings.messages", description: "notificationSettings.messagesDescription" }, { id: "reminders", label: "notificationSettings.reminders", description: "notificationSettings.remindersDescription" }, { id: "offers", label: "notificationSettings.offers", description: "notificationSettings.offersDescription" }];
+  function save() {
+    try { localStorage.setItem(storageKey, JSON.stringify(preferences)); window.dispatchEvent(new Event("booking-preferences")); setDraft(null); notifySuccess(t("notificationSettings.saved")); }
+    catch { notifyError(t("common.saveFailed")); }
+  }
+  return <section className="rounded-2xl border border-line bg-surface p-5 sm:p-8">
+    <h2 className="flex items-center gap-2 text-xl font-bold"><Bell aria-hidden size={24} className="text-brand" />{t("notificationSettings.title")}</h2>
+    <p className="mt-2 text-sm text-muted-ink">{t("notificationSettings.description")}</p>
+    <p className="mt-2 text-xs text-muted-ink">{t("notificationSettings.localNote")}</p>
+    <div className="mt-6 space-y-6">{items.map((item) => <label key={item.id} className="flex min-h-11 cursor-pointer items-start justify-between gap-4">
+      <span className="min-w-0"><span className="block font-semibold">{t(item.label)}</span><span className="mt-1 block text-sm leading-6 text-muted-ink">{t(item.description)}</span></span>
+      <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-brand" aria-label={t(item.label)} checked={Boolean(preferences[item.id])} onChange={(e) => setDraft({ ...preferences, [item.id]: e.target.checked })} />
+    </label>)}</div>
+    <Button className="mt-6" onClick={save} disabled={!draft}>{t("profile.save")}</Button>
+  </section>;
 }

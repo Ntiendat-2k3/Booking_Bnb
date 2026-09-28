@@ -4,13 +4,18 @@ import { useEffect, useId, useRef, useState } from "react";
 
 export default function Dropdown({
   button,
+  label,
   children,
-  align = "right", // right|left
+  align = "right",
   widthClass = "w-64",
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const menuId = useId();
+
+  useEffect(() => {
+    if (open) rootRef.current?.querySelector('[role="menuitem"]')?.focus();
+  }, [open]);
 
   useEffect(() => {
     function onDocClick(e) {
@@ -20,7 +25,19 @@ export default function Dropdown({
     }
     function onKeyDown(e) {
       if (!open) return;
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        rootRef.current?.querySelector("button")?.focus();
+      }
+      if (e.key === "Tab") setOpen(false);
+      if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
+        e.preventDefault();
+        const items = Array.from(rootRef.current?.querySelectorAll('[role="menuitem"]') || []);
+        if (!items.length) return;
+        const current = items.indexOf(document.activeElement);
+        const index = e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : (current + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+        items[index]?.focus();
+      }
     }
     document.addEventListener("mousedown", onDocClick);
     document.addEventListener("keydown", onKeyDown);
@@ -36,11 +53,12 @@ export default function Dropdown({
     <div className="relative" ref={rootRef}>
       <button
         type="button"
+        aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
         onClick={() => setOpen((v) => !v)}
-        className="outline-none"
+        className="rounded-full outline-none focus-visible:ring-4 focus-visible:ring-ink/20"
       >
         {button}
       </button>
@@ -54,7 +72,7 @@ export default function Dropdown({
             side +
             " mt-2 " +
             widthClass +
-            " overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            " z-50 overflow-hidden rounded-2xl border border-line bg-surface shadow-float"
           }
         >
           {children({ close: () => setOpen(false) })}
