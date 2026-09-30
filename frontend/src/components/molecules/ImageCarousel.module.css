@@ -1,0 +1,64 @@
+.carousel {
+  --carousel-gap: 0.75rem;
+}
+
+.viewport {
+  height: 100%;
+  padding-block: 0.75rem;
+  overflow: hidden;
+  border-radius: var(--radius-feature);
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
+}
+
+.track {
+  display: flex;
+  height: 100%;
+}
+
+.slide {
+  flex: 0 0 calc(44% - var(--carousel-gap) / 2);
+  min-width: 0;
+  height: 100%;
+  margin-right: var(--carousel-gap);
+}
+
+.media {
+  position: relative;
+  width: var(--card-width);
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-feature);
+  background: rgb(var(--color-muted-surface));
+  box-shadow: 0 18px 32px -18px rgb(var(--color-shadow) / 0.35);
+  opacity: var(--slide-opacity, 0.64);
+  transform: perspective(1000px) translateZ(var(--slide-depth, -56px)) rotateY(var(--slide-tilt, -8deg)) scale(var(--slide-scale-x, var(--preview-scale)), var(--slide-scale-y, var(--preview-height)));
+  transform-origin: center;
+}
+
+.image {
+  transform: scaleX(var(--cover-scale, var(--preview-cover)));
+}
+
+.initialPrimary {
+  --slide-scale-x: 1;
+  --slide-scale-y: 1;
+  --cover-scale: 1;
+  --slide-depth: 0px;
+  --slide-tilt: 0deg;
+  --slide-opacity: 1;
+}
+
+.single .slide {
+  flex-basis: 100%;
+  margin-right: 0;
+}
+
+.single .media {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .carousel {
+    --carousel-gap: 1rem;
+  }
+}

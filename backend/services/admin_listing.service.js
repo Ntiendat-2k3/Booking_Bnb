@@ -1,6 +1,9 @@
-const { Listing, User, Notification, Sequelize } = require("../models");
-const { sendEmail } = require("../utils/mailer");
-const { Op, literal } = Sequelize;
+const { Listing, User, Notification, Sequelize, sequelize } = require("../models");
+const { enqueue } = require("./background_job.service");
+const { message } = require("../templates/emails");
+const {
+  literal
+} = Sequelize;
 const { isUuid } = require("../utils/validators");
 
 module.exports = {
@@ -44,103 +47,27 @@ module.exports = {
   },
 
   async approve(id) {
-    if (!isUuid(id)) {
-      const err = new Error("Invalid listing id");
-      err.status = 400;
-      throw err;
-    }
-    const listing = await Listing.findByPk(id, {
-      include: [{ model: User, as: "host", attributes: ["id", "full_name", "email"] }]
-    });
-    if (!listing) {
-      const err = new Error("Listing not found");
-      err.status = 404;
-      throw err;
-    }
-    if (listing.status !== "pending") {
-      const err = new Error("Only pending listing can be approved");
-      err.status = 400;
-      throw err;
-    }
-    await listing.update({ status: "published", reject_reason: null });
-
-    // --- Thông báo ---
-    try {
-      if (listing.host) {
-        // Thông báo DB
-        await Notification.create({
-          user_id: listing.host_id,
-          type: "listing_approved",
-          title: "Chỗ nghỉ đã được duyệt!",
-          message: `Chỗ nghỉ "${listing.title}" của bạn đã được Admin phê duyệt và hiện đã hiển thị trên website.`,
-        });
-
-        // Email
-        const html = `
-          <h3>Xin chào ${listing.host.full_name},</h3>
-          <p>Chúc mừng! Chỗ nghỉ <b>"${listing.title}"</b> của bạn đã được duyệt thành công.</p>
-          <p>Hiện tại khách hàng đã có thể tìm thấy và đặt phòng tại chỗ nghỉ này.</p>
-          <br/>
-          <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
-        `;
-        await sendEmail(listing.host.email, "Chỗ nghỉ của bạn đã được duyệt thành công", html);
-      }
-    } catch (msgError) {
-      console.error("[Approve] Failed to send notification:", msgError);
-    }
-
-    return { listing };
+    return this.moderate(id, "published");
   },
 
   async reject(id, reason) {
-    if (!isUuid(id)) {
-      const err = new Error("Invalid listing id");
-      err.status = 400;
-      throw err;
-    }
-    const listing = await Listing.findByPk(id, {
-      include: [{ model: User, as: "host", attributes: ["id", "full_name", "email"] }]
+    return this.moderate(id, "rejected", reason || "Không đạt yêu cầu");
+  },
+
+  async moderate(id, status, reason = null) {
+    if (!isUuid(id)) throw Object.assign(new Error("Invalid listing id"), { status: 400 });
+    return sequelize.transaction(async (transaction) => {
+      const listing = await Listing.findByPk(id, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!listing) throw Object.assign(new Error("Listing not found"), { status: 404 });
+      if (listing.status !== "pending") throw Object.assign(new Error("Only pending listing can be moderated"), { status: 409 });
+      await listing.update({ status, reject_reason: reason }, { transaction });
+      const host = await User.findByPk(listing.host_id, { attributes: ["email"], transaction });
+      const title = status === "published" ? "Chỗ nghỉ đã được duyệt!" : "Chỗ nghỉ bị từ chối duyệt";
+      const text = status === "published" ? "Chỗ nghỉ đã hiển thị trên website." : reason;
+      await Notification.create({ user_id: listing.host_id, type: status === "published" ? "listing_approved" : "listing_rejected", title, message: text }, { transaction });
+      if (host) await enqueue("send_email", { to: host.email, subject: title, html: message(title, [listing.title, text]) }, transaction);
+      return { listing };
     });
-    if (!listing) {
-      const err = new Error("Listing not found");
-      err.status = 404;
-      throw err;
-    }
-    if (listing.status !== "pending") {
-      const err = new Error("Only pending listing can be rejected");
-      err.status = 400;
-      throw err;
-    }
-    const rejReason = reason || "Không đạt yêu cầu";
-    await listing.update({ status: "rejected", reject_reason: rejReason });
-
-    // --- Thông báo ---
-    try {
-      if (listing.host) {
-        // Thông báo DB
-        await Notification.create({
-          user_id: listing.host_id,
-          type: "listing_rejected",
-          title: "Chỗ nghỉ bị từ chối duyệt",
-          message: `Rất tiếc, chỗ nghỉ "${listing.title}" của bạn đã bị từ chối với lý do: ${rejReason}. Vui lòng cập nhật lại thông tin.`,
-        });
-
-        // Email
-        const html = `
-          <h3>Xin chào ${listing.host.full_name},</h3>
-          <p>Chúng tôi rất tiếc phải thông báo rằng chỗ nghỉ <b>"${listing.title}"</b> của bạn chưa đạt yêu cầu kiểm duyệt.</p>
-          <p><b>Lý do:</b> ${rejReason}</p>
-          <p>Vui lòng cập nhật lại thông tin theo yêu cầu và gửi lại để chúng tôi xem xét.</p>
-          <br/>
-          <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
-        `;
-        await sendEmail(listing.host.email, "Thông tin duyệt chỗ nghỉ", html);
-      }
-    } catch (msgError) {
-      console.error("[Reject] Failed to send notification:", msgError);
-    }
-
-    return { listing };
   },
 
   async bulkApprove(ids) {
@@ -171,4 +98,3 @@ module.exports = {
     return { results };
   },
 };
-

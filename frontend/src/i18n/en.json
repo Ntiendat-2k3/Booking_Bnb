@@ -65,7 +65,8 @@
     "notifications": "Notifications",
     "hostRole": "Host",
     "adminRole": "Admin",
-    "guestRole": "Guest"
+    "guestRole": "Guest",
+    "skipToContent": "Skip to main content"
   },
   "footer": {
     "about": "About Booking BnB",
@@ -96,7 +97,8 @@
       "facebook": "Facebook",
       "x": "X",
       "instagram": "Instagram"
-    }
+    },
+    "tagline": "A great place. An unforgettable getaway."
   },
   "search": {
     "destination": "Destination",
@@ -109,6 +111,7 @@
     "noSuggestion": "No destinations found",
     "allCategories": "All",
     "checkIn": "Check in",
+    "chooseCheckIn": "Choose check-in date",
     "city": "City",
     "cityPlaceholder": "Ho Chi Minh City, Da Nang...",
     "minPrice": "Minimum price",
@@ -142,7 +145,10 @@
     "previousPage": "Previous page",
     "nextPage": "Next page",
     "loadFailed": "Could not load search results. Please try again.",
-    "loadError": "Results could not be loaded. Please try again."
+    "loadError": "Results could not be loaded. Please try again.",
+    "dateHint": "Your check-in date will carry through to booking.",
+    "filterTitle": "Find your kind of stay",
+    "showFilters": "More filters"
   },
   "categories": {
     "apartment": "Apartment",
@@ -154,15 +160,23 @@
     "room": "Room"
   },
   "home": {
-    "eyebrow": "A memorable trip starts with the right place",
-    "title": "Find a stay that fits your trip",
-    "description": "Explore well-loved apartments, villas, and homestays across Vietnam and beyond.",
+    "eyebrow": "A little inspiration for your next getaway",
+    "title": "Stay somewhere\nextraordinary.",
+    "description": "City apartments to seaside villas. Find a space you will love coming back to.",
     "suggested": "Suggested for you",
     "popularHcm": "Guest favorites in Ho Chi Minh City",
     "popularHanoi": "Standout stays in Hanoi",
     "popularDanang": "Beach escapes in Da Nang",
     "popularVangiang": "Stays near Van Giang",
-    "popularSeoul": "Available in Seoul next month"
+    "popularSeoul": "Available in Seoul next month",
+    "exteriorAlt": "Modern holiday home surrounded by greenery",
+    "interiorAlt": "A bright living room for a relaxing getaway",
+    "destinationsTitle": "Where to next?",
+    "destinationsDescription": "Start with a city you love. Explore places to stay for your next adventure.",
+    "hostTitle": "Your space.\nTheir next story.",
+    "hostDescription": "Make your space a memorable stop on someone’s journey. Start hosting with Booking BnB.",
+    "discoverCities": "New city. New possibilities.",
+    "carouselLabel": "Spaces for your next getaway"
   },
   "listing": {
     "fallbackTitle": "Stay",
@@ -206,7 +220,13 @@
     "galleryLabel": "Stay photo gallery",
     "imageNumber": "{title}, image {number}",
     "previousImage": "Previous image",
-    "nextImage": "Next image"
+    "nextImage": "Next image",
+    "guestCount": "{count} guests",
+    "bedCount": "{count} beds",
+    "bathCount": "{count} baths",
+    "share": "Share this stay",
+    "linkCopied": "Stay link copied",
+    "shareFailed": "Unable to share. Please try again."
   },
   "booking": {
     "perNight": "/ night",
@@ -697,6 +717,24 @@
     "halong": "Vịnh Hạ Long",
     "quynhon": "Quy Nhơn",
     "cantho": "Cần Thơ",
-    "hue": "Huế"
+    "hue": "Huế",
+    "vangiang": "Văn Giang",
+    "seoul": "Seoul"
+  },
+  "theme": {
+    "label": "Appearance",
+    "description": "Choose light, dark or match your device. Your preference is saved in this browser.",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "carousel": {
+    "role": "carousel",
+    "slide": "slide",
+    "position": "{current} / {total}",
+    "previous": "Previous image",
+    "next": "Next image",
+    "pause": "Pause slideshow",
+    "play": "Play slideshow"
   }
 }

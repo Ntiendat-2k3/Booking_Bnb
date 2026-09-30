@@ -1,5 +1,9 @@
 const bcrypt = require("bcrypt");
-const { User } = require("../models/index");
+const { User, sequelize, Sequelize } = require("../models/index");
+const crypto = require("crypto");
+const { enqueue } = require("./background_job.service");
+const emails = require("../templates/emails");
+const httpError = require("../utils/httpError");
 const UserRepository = require("../repositories/user.repository");
 const RefreshTokenRepository = require("../repositories/refresh-token.repository");
 const { createAccessToken, createRefreshToken, decodeToken } = require("../utils/jwt");
@@ -18,8 +22,8 @@ function refreshExpiresAt() {
 function sanitizeUser(user) {
   if (!user) return null;
   const plain = user.toJSON ? user.toJSON() : user;
-  delete plain.password_hash;
-  return plain;
+  const fields = ["id", "email", "full_name", "phone", "avatar_url", "about", "location", "role", "status", "provider", "provider_id", "created_at", "updated_at"];
+  return Object.fromEntries(fields.filter((field) => field in plain).map((field) => [field, plain[field]]));
 }
 
 module.exports = {
@@ -38,21 +42,23 @@ module.exports = {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      email,
-      password_hash,
-      full_name,
-      provider: "local",
-      provider_id: null,
-      role: "guest",
-      status: "active",
-    });
+    return sequelize.transaction(async (transaction) => {
+      const user = await User.create({
+        email,
+        password_hash,
+        full_name,
+        provider: "local",
+        provider_id: null,
+        role: "guest",
+        status: "active",
+      }, { transaction });
 
-    const tokens = await module.exports.issueTokens(user, meta);
-    return { user: sanitizeUser(user), ...tokens };
+      const tokens = await module.exports.issueTokens(user, meta, { transaction });
+      return { user: sanitizeUser(user), ...tokens };
+    });
   },
 
-  issueTokens: async (user, meta = {}) => {
+  issueTokens: async (user, meta = {}, options = {}) => {
     const accessToken = createAccessToken({
       id: user.id,
       email: user.email,
@@ -71,7 +77,7 @@ module.exports = {
       created_ip: meta.ip || null,
       user_agent: meta.userAgent || null,
       created_at: new Date(),
-    });
+    }, options);
 
     return { accessToken, refreshToken };
   },
@@ -83,58 +89,28 @@ module.exports = {
       throw err;
     }
 
-    // verify signature + exp
+    // Kiểm tra chữ ký và thời hạn trước khi tra token trong DB.
     decodeToken(refreshToken, "refresh");
 
     const tokenHash = sha256(refreshToken);
-    const row = await refreshRepo.findByHash(tokenHash);
-
-    if (!row) {
-      const err = new Error("Invalid refresh token");
-      err.status = 401;
-      throw err;
-    }
-    if (row.revoked_at) {
-      const revokedAt = new Date(row.revoked_at).getTime();
-      const now = Date.now();
-      const diff = now - revokedAt;
-
-      // Grace period (e.g., 10 seconds) for parallel requests
-      if (diff < 10000) {
-        console.warn(`[AuthService] Refresh token reuse detected within grace period (${diff}ms). Ignoring revocation.`);
-        const err = new Error("Token recently rotated. Please check your latest tokens.");
-        err.status = 401;
-        throw err;
+    const result = await sequelize.transaction(async (transaction) => {
+      const snapshot = await refreshRepo.findByHash(tokenHash, { transaction });
+      if (!snapshot) return { error: httpError(401, "Invalid refresh token") };
+      const user = await User.findByPk(snapshot.user_id, { transaction, lock: transaction.LOCK.UPDATE });
+      const row = await refreshRepo.findByHash(tokenHash, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!row) return { error: httpError(401, "Invalid refresh token") };
+      if (row.revoked_at) {
+        if (Date.now() - new Date(row.revoked_at).getTime() < 10000) return { error: httpError(409, "Token recently rotated") };
+        await refreshRepo.revokeAllByUserId(row.user_id, { transaction });
+        return { error: httpError(401, "Refresh token revoked due to reuse") };
       }
-
-      // Token reuse detected (stolen or old refresh token).
-      console.error(`[AuthService] Refresh token reuse detected after grace period. Revoking all sessions for user ${row.user_id}`);
-      // Revoke ALL active refresh tokens of this user as a safety measure.
-      await refreshRepo.revokeAllByUserId(row.user_id);
-
-      const err = new Error("Refresh token revoked due to reuse");
-      err.status = 401;
-      throw err;
-    }
-
-    if (new Date(row.expires_at).getTime() < Date.now()) {
-      console.warn(`[AuthService] Refresh token expired for user ${row.user_id}`);
-      const err = new Error("Refresh token expired");
-      err.status = 401;
-      throw err;
-    }
-
-    // rotate: revoke old, create new
-    await refreshRepo.revokeByHash(tokenHash);
-
-    const user = await User.findByPk(row.user_id);
-    if (!user || user.status !== "active") {
-      const err = new Error("User invalid");
-      err.status = 401;
-      throw err;
-    }
-
-    return module.exports.issueTokens(user, meta);
+      if (new Date(row.expires_at) <= new Date()) return { error: httpError(401, "Refresh token expired") };
+      if (!user || user.status !== "active") return { error: httpError(401, "User invalid") };
+      await refreshRepo.revokeByHash(tokenHash, { transaction });
+      return { tokens: await module.exports.issueTokens(user, meta, { transaction }) };
+    });
+    if (result.error) throw result.error;
+    return result.tokens;
   },
 
   logout: async (refreshToken) => {
@@ -183,4 +159,29 @@ module.exports = {
   },
 
   sanitizeUser,
+
+  async forgotPassword(email) {
+    await sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({ where: { email, provider: "local", status: "active" }, transaction, lock: transaction.LOCK.UPDATE });
+      if (!user) return;
+      const token = crypto.randomBytes(32).toString("hex");
+      await user.update({ reset_password_token: sha256(token), reset_password_expires: new Date(Date.now() + 3600000) }, { transaction });
+      const url = new URL("/reset-password", process.env.FRONTEND_URL || "http://localhost:3001");
+      url.searchParams.set("token", token);
+      await enqueue("send_email", { to: user.email, subject: "Khôi phục mật khẩu - Booking BnB", html: emails.resetPassword(url.toString()) }, transaction);
+    });
+  },
+
+  async resetPassword(token, newPassword) {
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    await sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: { reset_password_token: sha256(token), reset_password_expires: { [Sequelize.Op.gt]: new Date() }, provider: "local", status: "active" },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!user) throw httpError(400, "Token is invalid or has expired");
+      await user.update({ password_hash, reset_password_token: null, reset_password_expires: null }, { transaction });
+      await refreshRepo.revokeAllByUserId(user.id, { transaction });
+    });
+  },
 };

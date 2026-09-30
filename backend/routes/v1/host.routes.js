@@ -7,30 +7,31 @@ const hostListingImageController = require("../../controllers/api/v1/host_listin
 const authMiddleware = require("../../middlewares/api/auth.middleware");
 const csrfMiddleware = require("../../middlewares/csrf.middleware");
 const requireRole = require("../../middlewares/api/role.middleware");
+const validate = require("../../middlewares/api/validation.middleware");
+const { idParams } = require("../../requests/api/v1/common.schema");
+const { createListingSchema, updateListingSchema, amenitiesSchema, imageSchema } = require("../../requests/api/v1/listing.schema");
+const { contactSchema, imageParams } = require("../../requests/api/v1/host.schema");
+const { contactLimiter } = require("../../middlewares/rateLimit");
 
 const hostOrAdmin = requireRole(["admin", "host"]);
 
-// Dashboard & apply
 router.get("/dashboard", authMiddleware, hostOrAdmin, hostController.getDashboardStats);
 router.post("/apply", authMiddleware, csrfMiddleware, hostController.apply);
 
-// Listings CRUD
 router.get("/listings", authMiddleware, hostOrAdmin, hostListingController.list);
-router.post("/listings", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingController.create);
+router.post("/listings", authMiddleware, hostOrAdmin, csrfMiddleware, validate(createListingSchema), hostListingController.create);
 router.get("/listings/:id", authMiddleware, hostOrAdmin, hostListingController.detail);
-router.patch("/listings/:id", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingController.update);
+router.patch("/listings/:id", authMiddleware, hostOrAdmin, csrfMiddleware, validate(updateListingSchema), hostListingController.update);
 router.delete("/listings/:id", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingController.destroy);
-router.put("/listings/:id/amenities", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingController.setAmenities);
+router.put("/listings/:id/amenities", authMiddleware, hostOrAdmin, csrfMiddleware, validate(amenitiesSchema), hostListingController.setAmenities);
 router.post("/listings/:id/submit", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingController.submit);
 router.post("/listings/:id/pause", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingController.pause);
 router.post("/listings/:id/resume", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingController.resume);
 
-// Listing images
-router.post("/listings/:id/images", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingImageController.attach);
-router.delete("/listings/:id/images/:imageId", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingImageController.remove);
-router.patch("/listings/:id/images/:imageId/cover", authMiddleware, hostOrAdmin, csrfMiddleware, hostListingImageController.setCover);
+router.post("/listings/:id/images", authMiddleware, hostOrAdmin, csrfMiddleware, validate(idParams, "params"), validate(imageSchema), hostListingImageController.attach);
+router.delete("/listings/:id/images/:imageId", authMiddleware, hostOrAdmin, csrfMiddleware, validate(imageParams, "params"), hostListingImageController.remove);
+router.patch("/listings/:id/images/:imageId/cover", authMiddleware, hostOrAdmin, csrfMiddleware, validate(imageParams, "params"), hostListingImageController.setCover);
 
-// Contact host (public)
-router.post("/:id/contact", hostController.contactHost);
+router.post("/:id/contact", contactLimiter, validate(idParams, "params"), validate(contactSchema), hostController.contactHost);
 
 module.exports = router;

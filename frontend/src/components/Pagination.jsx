@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Button from "@/components/atoms/Button";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
 import { getServerTranslator } from "@/i18n/server";
 
@@ -27,48 +27,43 @@ export default async function Pagination({ meta, baseParams }) {
 
   return (
     <nav
-      className="mt-8 flex items-center justify-center gap-2"
+      className="mt-10 flex flex-wrap items-center justify-center gap-2"
       aria-label={t("search.results")}
     >
-      <Link
+      <Button
         href={pageHref(baseParams, Math.max(1, page - 1))}
         aria-label={t("search.previousPage")}
-        aria-disabled={page <= 1}
-        className={"inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink transition hover:bg-muted-surface " + (page <= 1 ? "pointer-events-none opacity-50" : "")}
+        disabled={page <= 1}
+        variant="secondary" size="sm"
       >
         <CaretLeft aria-hidden size={18} />
         <span className="sr-only sm:not-sr-only sm:ml-1">
           {t("common.previous")}
         </span>
-      </Link>
+      </Button>
 
       {pages.map((p) => (
-        <Link
+        <Button
           key={p}
           href={pageHref(baseParams, p)}
-          className={
-            "inline-flex h-11 min-w-11 items-center justify-center rounded-xl border px-3 text-sm font-semibold transition " +
-            (p === page
-              ? "border-brand bg-brand text-white"
-              : "border-line bg-surface text-ink hover:bg-muted-surface")
-          }
+          variant={p === page ? "ink" : "secondary"} size="sm" className="min-w-11 px-3"
           aria-current={p === page ? "page" : undefined}
         >
           {p}
-        </Link>
+        </Button>
       ))}
 
-      <Link
+      <Button
         href={pageHref(baseParams, Math.min(total, page + 1))}
         aria-label={t("search.nextPage")}
-        aria-disabled={page >= total}
-        className={"inline-flex h-11 min-w-11 items-center justify-center rounded-xl border border-line bg-surface px-3 text-sm font-semibold text-ink transition hover:bg-muted-surface " + (page >= total ? "pointer-events-none opacity-50" : "")}
+        disabled={page >= total}
+        variant="secondary" size="sm"
       >
         <span className="sr-only sm:not-sr-only sm:mr-1">
           {t("common.next")}
         </span>
         <CaretRight aria-hidden size={18} />
-      </Link>
+      </Button>
     </nav>
   );
 }

@@ -65,7 +65,8 @@
     "notifications": "Thông báo",
     "hostRole": "Chủ nhà",
     "adminRole": "Quản trị viên",
-    "guestRole": "Khách"
+    "guestRole": "Khách",
+    "skipToContent": "Chuyển đến nội dung chính"
   },
   "footer": {
     "about": "Về Booking BnB",
@@ -96,7 +97,8 @@
       "facebook": "Facebook",
       "x": "X",
       "instagram": "Instagram"
-    }
+    },
+    "tagline": "Một chỗ ở hay. Một chuyến đi đáng nhớ."
   },
   "search": {
     "destination": "Điểm đến",
@@ -109,6 +111,7 @@
     "noSuggestion": "Không tìm thấy điểm đến",
     "allCategories": "Tất cả",
     "checkIn": "Nhận phòng",
+    "chooseCheckIn": "Chọn ngày nhận phòng",
     "city": "Thành phố",
     "cityPlaceholder": "Hồ Chí Minh, Đà Nẵng...",
     "minPrice": "Giá từ",
@@ -142,7 +145,10 @@
     "previousPage": "Trang trước",
     "nextPage": "Trang sau",
     "loadFailed": "Không tải được kết quả tìm kiếm. Vui lòng thử lại.",
-    "loadError": "Không tải được kết quả. Vui lòng thử lại."
+    "loadError": "Không tải được kết quả. Vui lòng thử lại.",
+    "dateHint": "Ngày nhận phòng sẽ được giữ đến bước đặt phòng.",
+    "filterTitle": "Tìm nơi ở hợp với bạn",
+    "showFilters": "Thêm bộ lọc"
   },
   "categories": {
     "apartment": "Căn hộ",
@@ -154,15 +160,23 @@
     "room": "Phòng"
   },
   "home": {
-    "eyebrow": "Kỳ nghỉ bắt đầu từ một nơi đáng nhớ",
-    "title": "Tìm một chỗ ở thật hợp với chuyến đi",
-    "description": "Khám phá căn hộ, villa và homestay được yêu thích tại Việt Nam và nhiều thành phố khác.",
+    "eyebrow": "Mỗi chuyến đi, một cảm hứng mới",
+    "title": "Đi thật xa.\nỞ thật thích.",
+    "description": "Từ căn hộ giữa phố đến villa bên biển. Tìm không gian bạn muốn trở về.",
     "suggested": "Gợi ý dành cho bạn",
     "popularHcm": "Được yêu thích tại Hồ Chí Minh",
     "popularHanoi": "Nổi bật tại Hà Nội",
     "popularDanang": "Kỳ nghỉ biển tại Đà Nẵng",
     "popularVangiang": "Chỗ ở gần Văn Giang",
-    "popularSeoul": "Còn phòng tại Seoul tháng tới"
+    "popularSeoul": "Còn phòng tại Seoul tháng tới",
+    "exteriorAlt": "Không gian nghỉ dưỡng với kiến trúc hiện đại và cây xanh",
+    "interiorAlt": "Phòng khách sáng thoáng cho một kỳ nghỉ thư giãn",
+    "destinationsTitle": "Điểm đến tiếp theo?",
+    "destinationsDescription": "Bắt đầu từ thành phố bạn yêu thích. Khám phá chỗ ở phù hợp cho hành trình của mình.",
+    "hostTitle": "Không gian của bạn.\nCảm hứng của ai đó.",
+    "hostDescription": "Biến chỗ ở của bạn thành điểm dừng chân đáng nhớ. Bắt đầu hành trình làm chủ nhà cùng Booking BnB.",
+    "discoverCities": "Một thành phố, nhiều cách khám phá",
+    "carouselLabel": "Những không gian dành cho chuyến đi của bạn"
   },
   "listing": {
     "fallbackTitle": "Chỗ ở",
@@ -206,7 +220,13 @@
     "galleryLabel": "Bộ sưu tập ảnh của chỗ ở",
     "imageNumber": "{title}, ảnh {number}",
     "previousImage": "Ảnh trước",
-    "nextImage": "Ảnh tiếp theo"
+    "nextImage": "Ảnh tiếp theo",
+    "guestCount": "{count} khách",
+    "bedCount": "{count} giường",
+    "bathCount": "{count} phòng tắm",
+    "share": "Chia sẻ chỗ ở",
+    "linkCopied": "Đã sao chép liên kết chỗ ở",
+    "shareFailed": "Không thể chia sẻ. Vui lòng thử lại."
   },
   "booking": {
     "perNight": "/ đêm",
@@ -697,6 +717,24 @@
     "halong": "Vịnh Hạ Long",
     "quynhon": "Quy Nhơn",
     "cantho": "Cần Thơ",
-    "hue": "Huế"
+    "hue": "Huế",
+    "vangiang": "Văn Giang",
+    "seoul": "Seoul"
+  },
+  "theme": {
+    "label": "Giao diện",
+    "description": "Chọn sáng, tối hoặc tự động theo thiết bị. Lựa chọn được lưu trên trình duyệt này.",
+    "system": "Theo hệ thống",
+    "light": "Sáng",
+    "dark": "Tối"
+  },
+  "carousel": {
+    "role": "trình chiếu ảnh",
+    "slide": "ảnh",
+    "position": "{current} / {total}",
+    "previous": "Ảnh trước",
+    "next": "Ảnh tiếp theo",
+    "pause": "Dừng tự chuyển ảnh",
+    "play": "Bật tự chuyển ảnh"
   }
 }

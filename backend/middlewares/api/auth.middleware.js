@@ -2,9 +2,10 @@ const { decodeToken } = require("../../utils/jwt");
 const { errorResponse } = require("../../utils/response");
 const { User } = require("../../models/index");
 const { accessCookieName } = require("../../utils/cookies");
+const { sanitizeUser } = require("../../services/auth.service");
 
 module.exports = async (req, res, next) => {
-  // Prefer httpOnly access cookie, fallback to Authorization header for dev tools
+  // Ưu tiên cookie httpOnly; hỗ trợ Bearer token cho client API.
   const cookieToken = req.cookies?.[accessCookieName()];
 
   const header = req.get("Authorization") || "";
@@ -20,15 +21,16 @@ module.exports = async (req, res, next) => {
     const { userId, exp } = decodeToken(accessToken, "access");
 
     const user = await User.findByPk(userId, {
-      attributes: { exclude: ["password_hash"] },
+      attributes: { exclude: ["password_hash", "reset_password_token", "reset_password_expires"] },
     });
 
     if (!user) return errorResponse(res, "User not found", 401);
     if (user.status !== "active") return errorResponse(res, "User blocked!", 403);
 
-    req.user = { user, exp };
+    req.user = { user: sanitizeUser(user), exp };
     return next();
   } catch (error) {
-    return errorResponse(res, error.message || "Unauthorized", 401);
+    if (error.status === 401) return errorResponse(res, "Invalid or expired token", 401);
+    return next(error);
   }
 };

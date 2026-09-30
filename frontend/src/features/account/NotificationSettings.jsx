@@ -25,7 +25,7 @@ export default function NotificationSettings() {
     try { localStorage.setItem(storageKey, JSON.stringify(preferences)); window.dispatchEvent(new Event("booking-preferences")); setDraft(null); notifySuccess(t("notificationSettings.saved")); }
     catch { notifyError(t("common.saveFailed")); }
   }
-  return <section className="rounded-2xl border border-line bg-surface p-5 sm:p-8">
+  return <section className="surface-panel p-5 sm:p-8">
     <h2 className="flex items-center gap-2 text-xl font-bold"><Bell aria-hidden size={24} className="text-brand" />{t("notificationSettings.title")}</h2>
     <p className="mt-2 text-sm text-muted-ink">{t("notificationSettings.description")}</p>
     <p className="mt-2 text-xs text-muted-ink">{t("notificationSettings.localNote")}</p>

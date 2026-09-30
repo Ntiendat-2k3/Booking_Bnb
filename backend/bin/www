@@ -3,10 +3,25 @@
 var app = require('../app');
 var debug = require('debug')('airbnb-backend-zipstyle:server');
 var http = require('http');
-const { startBookingCleanup } = require('../utils/bookingCleanup');
+const { startBookingCleanup } = require('../jobs/bookingCleanup');
+const { startBackgroundJobs } = require('../jobs/backgroundJobs');
+const { sequelize } = require('../models');
+const { getRedis } = require('../utils/redis');
 
-// Start background cleanup (default to 5 mins)
-startBookingCleanup();
+// Khởi động tác vụ nền; các timer được dừng khi tiến trình nhận tín hiệu kết thúc.
+const stopBookingCleanup = startBookingCleanup();
+const stopBackgroundJobs = startBackgroundJobs();
+
+async function shutdown() {
+  const backgroundStopped = Promise.allSettled([stopBookingCleanup(), stopBackgroundJobs()]);
+  server.close(async () => {
+    await backgroundStopped;
+    await Promise.allSettled([sequelize.close(), getRedis()?.quit()]);
+    process.exit(0);
+  });
+}
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
 
 var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);

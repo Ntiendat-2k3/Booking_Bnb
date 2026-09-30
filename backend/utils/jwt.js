@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 function accessSecret() {
   return process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
@@ -25,17 +26,24 @@ module.exports = {
   createRefreshToken: () => {
     const secret = refreshSecret();
     const expires = process.env.JWT_REFRESH_TOKEN_EXPIRES || "30d";
-    const data = Math.random().toString(36).substring(2) + new Date().getTime();
+    const data = crypto.randomBytes(32).toString("hex");
     return jwt.sign({ data, type: "refresh" }, secret, { expiresIn: expires });
   },
 
   //: giải mã token --> trả về payload
-  // type: "access" | "refresh"
+
   decodeToken: (token, type = "access") => {
     const secret = type === "refresh" ? refreshSecret() : accessSecret();
-    const decoded = jwt.verify(token, secret);
+    let decoded;
+    try { decoded = jwt.verify(token, secret); }
+    catch (error) {
+      if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError || error instanceof jwt.NotBeforeError) {
+        throw Object.assign(new Error("Invalid or expired token"), { status: 401 });
+      }
+      throw error;
+    }
     if (type === "refresh" && decoded.type !== "refresh") {
-      throw new Error("Invalid refresh token");
+      throw Object.assign(new Error("Invalid refresh token"), { status: 401 });
     }
     return decoded;
   },

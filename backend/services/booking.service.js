@@ -1,451 +1,138 @@
-const { Booking, Listing, Payment, User, Notification, Sequelize } = require("../models");
-const { sendEmail } = require("../utils/mailer");
+const { Booking, Listing, Payment, User, Notification, sequelize } = require("../models");
+const BookingRepository = require("../repositories/booking.repository");
+const { enqueue } = require("./background_job.service");
+const { message } = require("../templates/emails");
 const { Op } = require("sequelize");
-
-const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES || 15);
+const httpError = require("../utils/httpError");
+const bookingRepo = new BookingRepository();
 
 function daysBetween(checkIn, checkOut) {
-  const a = new Date(checkIn + "T00:00:00Z");
-  const b = new Date(checkOut + "T00:00:00Z");
-  const diff = (b - a) / (1000 * 60 * 60 * 24);
-  return Math.floor(diff);
+  const valid = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)
+    && Number.isFinite(Date.parse(`${value}T00:00:00Z`))
+    && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+  if (!valid(checkIn) || !valid(checkOut) || checkIn < new Date().toISOString().slice(0, 10)) {
+    throw httpError(400, "Invalid date range or past check-in");
+  }
+  const nights = (Date.parse(`${checkOut}T00:00:00Z`) - Date.parse(`${checkIn}T00:00:00Z`)) / 86400000;
+  if (nights <= 0) throw httpError(400, "Invalid date range");
+  return nights;
 }
 
-function nowMinusMinutes(min) {
-  return new Date(Date.now() - min * 60 * 1000);
+function guestsForListing(value, listing) {
+  const guests = Number(value ?? 1);
+  if (!Number.isInteger(guests) || guests < 1 || guests > listing.max_guests) throw httpError(400, "Invalid guests_count");
+  return guests;
 }
 
-async function assertAvailability({ listingId, check_in, check_out }) {
-  // Block confirmed bookings and "fresh" pending_payment bookings
-  const holdCutoff = nowMinusMinutes(HOLD_MINUTES);
-  const overlapping = await Booking.findOne({
-    where: {
-      listing_id: listingId,
-      [Op.or]: [
-        { status: "confirmed" },
-        { status: "pending_payment", created_at: { [Op.gte]: holdCutoff } },
-      ],
-      // overlap: NOT (existing.check_out <= check_in OR existing.check_in >= check_out)
-      [Op.and]: [
-        { check_in: { [Op.lt]: check_out } },
-        { check_out: { [Op.gt]: check_in } },
-      ],
-    },
-  });
+function withReviewFlag(booking) {
+  const plain = booking.toJSON();
+  plain.can_review = !plain.review && ["confirmed", "completed"].includes(plain.status)
+    && String(plain.check_out) <= new Date().toISOString().slice(0, 10);
+  return plain;
+}
 
-  if (overlapping) {
-    const err = new Error("Dates are not available");
-    err.status = 409;
-    throw err;
+async function cancelPendingPayments(bookingId, transaction) {
+  const pending = await Payment.findAll({ where: { booking_id: bookingId, status: "pending" }, transaction });
+  for (const payment of pending) {
+    await payment.update({ status: "cancelled" }, { transaction });
+    if (payment.provider_txn_ref) await enqueue("stripe_expire_session", { sessionId: payment.provider_txn_ref }, transaction);
   }
 }
 
 module.exports = {
+  /** Khóa listing từ trước bước kiểm tra lịch cho tới khi booking được ghi thành công. */
   async create({ userId, listingId, check_in, check_out, guests_count }) {
-    if (!listingId) {
-      const err = new Error("listing_id is required");
-      err.status = 400;
-      throw err;
-    }
-    if (!check_in || !check_out) {
-      const err = new Error("check_in and check_out are required");
-      err.status = 400;
-      throw err;
-    }
-
-    // Disallow past check-in (yyyy-mm-dd lexical compare works)
-    const todayStr = new Date().toISOString().slice(0, 10);
-    if (String(check_in) < todayStr) {
-      const err = new Error("check_in must be today or later");
-      err.status = 400;
-      throw err;
-    }
     const nights = daysBetween(check_in, check_out);
-    if (!Number.isFinite(nights) || nights <= 0) {
-      const err = new Error("Invalid date range");
-      err.status = 400;
-      throw err;
-    }
-
-    const listing = await Listing.findOne({
-      where: { id: listingId, deleted_at: null, status: "published" },
-      attributes: ["id", "price_per_night", "max_guests", "host_id", "title"],
+    return sequelize.transaction(async (transaction) => {
+      const listing = await Listing.findOne({
+        where: { id: listingId, deleted_at: null, status: "published" }, transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!listing) throw httpError(404, "Listing not found");
+      if (String(listing.host_id) === String(userId)) throw httpError(400, "Host cannot book own listing");
+      const guests = guestsForListing(guests_count, listing);
+      await bookingRepo.assertAvailability({ listingId, check_in, check_out }, transaction);
+      const total = BigInt(listing.price_per_night) * BigInt(nights);
+      if (total <= 0n || total > BigInt(Number.MAX_SAFE_INTEGER)) throw httpError(400, "Invalid booking amount");
+      const booking = await Booking.create({
+        listing_id: listingId, guest_id: userId, check_in, check_out, guests_count: guests,
+        status: "pending_payment", price_per_night_snapshot: listing.price_per_night,
+        total_amount: total.toString(), currency: "VND",
+      }, { transaction });
+      return { booking, listing };
     });
-
-    if (!listing) {
-      const err = new Error("Listing not found");
-      err.status = 404;
-      throw err;
-    }
-
-    const guests = Number(guests_count || 1);
-    if (!Number.isInteger(guests) || guests <= 0) {
-      const err = new Error("Invalid guests_count");
-      err.status = 400;
-      throw err;
-    }
-    if (guests > listing.max_guests) {
-      const err = new Error("Guests exceed max_guests");
-      err.status = 400;
-      throw err;
-    }
-
-    // prevent self booking
-    if (String(listing.host_id) === String(userId)) {
-      const err = new Error("Host cannot book own listing");
-      err.status = 400;
-      throw err;
-    }
-
-    await assertAvailability({ listingId: listing.id, check_in, check_out });
-
-    const pricePerNight = BigInt(listing.price_per_night);
-    const total = pricePerNight * BigInt(nights);
-
-    const booking = await Booking.create({
-      listing_id: listing.id,
-      guest_id: userId,
-      check_in,
-      check_out,
-      guests_count: guests,
-      status: "pending_payment",
-      price_per_night_snapshot: listing.price_per_night,
-      total_amount: total.toString(),
-      currency: "VND",
-    });
-
-    return { booking, listing };
   },
 
-  async myBookings({ userId }) {
-    const { literal } = Sequelize;
-    const items = await Booking.findAll({
-      where: { guest_id: userId },
-      order: [["created_at", "DESC"]],
-      include: [
-        {
-          association: "listing",
-          attributes: {
-            include: [
-              [
-                literal(`(
-                  SELECT li.url
-                  FROM listing_images li
-                  WHERE li.listing_id = "listing".id
-                  ORDER BY li.is_cover DESC, li.sort_order ASC
-                  LIMIT 1
-                )`),
-                "cover_url",
-              ],
-            ],
-            exclude: ["deleted_at"],
-          },
-        },
-        {
-          association: "payments",
-          attributes: [
-            "id",
-            "provider",
-            "status",
-            "amount",
-            "currency",
-            "provider_txn_ref",
-            "provider_transaction_no",
-            "paid_at",
-            "created_at",
-          ],
-          separate: true,
-          order: [["created_at", "DESC"]],
-        },
-        {
-          association: "review",
-          attributes: ["id", "rating", "comment", "created_at"],
-          required: false,
-        },
-      ],
+  async myBookings({ userId, page, limit }) {
+    const paginated = page !== undefined || limit !== undefined;
+    page ??= 1;
+    limit ??= 50;
+    const { rows, count } = await Booking.findAndCountAll({
+      where: { guest_id: userId }, include: bookingRepo.includeDetails(), distinct: true,
+      order: [["created_at", "DESC"], ["id", "DESC"]], ...(paginated ? { limit, offset: (page - 1) * limit } : {}),
     });
-
-    // Add computed can_review flag for FE.
-    const today = new Date().toISOString().slice(0, 10);
-    return items.map((b) => {
-      const plain = b.toJSON();
-      const canReview =
-        !plain.review &&
-        (
-          plain.status === "completed" ||
-          (plain.status === "confirmed" && String(plain.check_out) <= today)
-        );
-      plain.can_review = !!canReview;
-      return plain;
-    });
+    return { items: rows.map(withReviewFlag), meta: { page, limit: paginated ? limit : count, total: count, total_pages: paginated ? Math.ceil(count / limit) : 1 } };
   },
 
   async detail({ userId, bookingId }) {
-    const { literal } = Sequelize;
-    const booking = await Booking.findOne({
-      where: { id: bookingId, guest_id: userId },
-      include: [
-        {
-          association: "listing",
-          attributes: {
-            include: [
-              [
-                literal(`(
-                  SELECT li.url
-                  FROM listing_images li
-                  WHERE li.listing_id = "listing".id
-                  ORDER BY li.is_cover DESC, li.sort_order ASC
-                  LIMIT 1
-                )`),
-                "cover_url",
-              ],
-            ],
-            exclude: ["deleted_at"],
-          },
-        },
-        {
-          association: "payments",
-          attributes: [
-            "id", "provider", "status", "amount", "currency",
-            "provider_txn_ref", "provider_transaction_no", "paid_at", "created_at",
-          ],
-          separate: true,
-          order: [["created_at", "DESC"]],
-        },
-        {
-          association: "review",
-          attributes: ["id", "rating", "comment", "created_at"],
-          required: false,
-        },
-      ],
-    });
-
-    if (!booking) {
-      const err = new Error("Booking not found");
-      err.status = 404;
-      throw err;
-    }
-
-    const plain = booking.toJSON();
-    const today = new Date().toISOString().slice(0, 10);
-    plain.can_review =
-      !plain.review &&
-      (plain.status === "completed" ||
-        (plain.status === "confirmed" && String(plain.check_out) <= today));
-    return plain;
+    const booking = await bookingRepo.findDetail(bookingId, userId);
+    if (!booking) throw httpError(404, "Booking not found");
+    return withReviewFlag(booking);
   },
 
   async checkout({ userId, bookingId }) {
-    const booking = await Booking.findByPk(bookingId);
-    if (!booking) {
-      const err = new Error("Booking not found");
-      err.status = 404;
-      throw err;
-    }
-    if (String(booking.guest_id) !== String(userId)) {
-      const err = new Error("Forbidden");
-      err.status = 403;
-      throw err;
-    }
-    if (booking.status !== "confirmed") {
-      const err = new Error("Booking is not confirmed");
-      err.status = 400;
-      throw err;
-    }
-
-    const paid = await Payment.findOne({
-      where: { booking_id: booking.id, provider: "stripe", status: "succeeded" },
-      order: [["created_at", "DESC"]],
+    return sequelize.transaction(async (transaction) => {
+      const { booking } = await bookingRepo.lockForMutation(bookingId, transaction, userId);
+      if (booking.status !== "confirmed") throw httpError(409, "Booking is not confirmed");
+      if (String(booking.check_out) > new Date().toISOString().slice(0, 10)) throw httpError(400, "Stay has not ended yet");
+      if (!await bookingRepo.findPaid(booking.id, transaction)) throw httpError(400, "Booking is not paid");
+      return booking.update({ status: "completed" }, { transaction });
     });
-    if (!paid) {
-      const err = new Error("Booking is not paid");
-      err.status = 400;
-      throw err;
-    }
-
-    booking.status = "completed";
-    await booking.save();
-    return booking;
   },
 
   async cancel({ userId, bookingId }) {
-    const booking = await Booking.findByPk(bookingId, {
-      include: [
-        { model: User, as: "guest", attributes: ["full_name"] },
-        { 
-          model: Listing, 
-          as: "listing", 
-          attributes: ["id", "title", "host_id"],
-          include: [{ model: User, as: "host", attributes: ["id", "full_name", "email"] }]
-        }
-      ]
+    return sequelize.transaction(async (transaction) => {
+      const { booking, listing } = await bookingRepo.lockForMutation(bookingId, transaction, userId);
+      if (!["pending_payment", "confirmed"].includes(booking.status)) throw httpError(409, "Booking cannot be cancelled");
+      if (booking.status === "confirmed" && booking.check_in <= new Date().toISOString().slice(0, 10)) throw httpError(400, "Too late to cancel");
+      await booking.update({ status: "cancelled" }, { transaction });
+      await cancelPendingPayments(booking.id, transaction);
+      const host = await User.findByPk(listing.host_id, { attributes: ["email"], transaction });
+      await Notification.create({ user_id: listing.host_id, type: "booking_cancelled", title: "Một đơn đặt phòng đã bị hủy", message: `Đơn đặt phòng cho "${listing.title}" đã bị hủy.` }, { transaction });
+      if (host) await enqueue("send_email", { to: host.email, subject: "Thông báo hủy đơn đặt phòng", html: message("Đơn đặt phòng đã bị hủy", [`Chỗ nghỉ: ${listing.title}`, `Mã đơn: ${booking.id}`, `Ngày nhận phòng: ${booking.check_in}`]) }, transaction);
+      return booking;
     });
-    if (!booking) {
-      const err = new Error("Booking not found");
-      err.status = 404;
-      throw err;
-    }
-    if (String(booking.guest_id) !== String(userId)) {
-      const err = new Error("Forbidden");
-      err.status = 403;
-      throw err;
-    }
-    if (!["pending_payment", "confirmed"].includes(booking.status)) {
-      const err = new Error("Booking cannot be cancelled");
-      err.status = 400;
-      throw err;
-    }
-
-    // Basic policy: allow cancel confirmed only before check_in
-    if (booking.status === "confirmed") {
-      const today = new Date();
-      const checkIn = new Date(String(booking.check_in) + "T00:00:00Z");
-      if (checkIn <= today) {
-        const err = new Error("Too late to cancel");
-        err.status = 400;
-        throw err;
-      }
-    }
-
-    booking.status = "cancelled";
-    await booking.save();
-
-    // --- Thông báo ---
-    try {
-      if (booking.listing?.host) {
-        await Notification.create({
-          user_id: booking.listing.host_id,
-          type: "booking_cancelled",
-          title: "Một đơn đặt phòng đã bị hủy",
-          message: `Khách hàng ${booking.guest?.full_name || "ẩn danh"} vừa hủy đơn đặt phòng cho chỗ nghỉ "${booking.listing.title}".`,
-        });
-
-        const hostHtml = `
-          <h3>Chào ${booking.listing.host.full_name},</h3>
-          <p>Chúng tôi xin thông báo rằng khách hàng đã hủy đơn đặt phòng cho chỗ nghỉ <b>"${booking.listing.title}"</b> của bạn.</p>
-          <p><b>Khách hàng:</b> ${booking.guest?.full_name || "Airbnb User"}</p>
-          <p><b>Ngày nhận phòng dự kiến:</b> ${booking.check_in}</p>
-          <p>Hiện tại lịch trống đã được mở lại cho các khách hàng khác.</p>
-          <br/>
-          <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
-        `;
-        await sendEmail(booking.listing.host.email, "Thông báo hủy đơn đặt phòng", hostHtml);
-      }
-    } catch (msgError) {
-      console.error("[BookingCancel] Notification error:", msgError);
-    }
-
-    return booking;
   },
 
   async update({ userId, bookingId, check_in, check_out, guests_count }) {
-    const booking = await Booking.findByPk(bookingId, {
-      include: [
-        {
-          model: Listing,
-          as: "listing",
-          attributes: ["id", "price_per_night", "max_guests"],
-        },
-      ],
+    await sequelize.transaction(async (transaction) => {
+      const { booking, listing } = await bookingRepo.lockForMutation(bookingId, transaction, userId);
+      bookingRepo.assertPending(booking);
+      if (listing.deleted_at || listing.status !== "published") throw httpError(409, "Listing is no longer available");
+      const newCheckIn = check_in ?? booking.check_in;
+      const newCheckOut = check_out ?? booking.check_out;
+      const nights = daysBetween(newCheckIn, newCheckOut);
+      const guests = guestsForListing(guests_count ?? booking.guests_count, listing);
+      await bookingRepo.assertAvailability({ listingId: listing.id, check_in: newCheckIn, check_out: newCheckOut, excludeBookingId: booking.id }, transaction);
+      const total = BigInt(booking.price_per_night_snapshot) * BigInt(nights);
+      if (total <= 0n || total > BigInt(Number.MAX_SAFE_INTEGER)) throw httpError(400, "Invalid booking amount");
+      await booking.update({ check_in: newCheckIn, check_out: newCheckOut, guests_count: guests, total_amount: total.toString() }, { transaction });
+      await cancelPendingPayments(booking.id, transaction);
     });
+    return this.detail({ userId, bookingId });
+  },
 
-    if (!booking) {
-      const err = new Error("Booking not found");
-      err.status = 404;
-      throw err;
-    }
-    if (String(booking.guest_id) !== String(userId)) {
-      const err = new Error("Forbidden");
-      err.status = 403;
-      throw err;
-    }
-    if (booking.status !== "pending_payment") {
-      const err = new Error("Only pending_payment bookings can be edited");
-      err.status = 400;
-      throw err;
-    }
-
-    const newCheckIn = check_in || booking.check_in;
-    const newCheckOut = check_out || booking.check_out;
-
-    // Validate dates
-    const todayStr = new Date().toISOString().slice(0, 10);
-    if (String(newCheckIn) < todayStr) {
-      const err = new Error("check_in must be today or later");
-      err.status = 400;
-      throw err;
-    }
-    const nights = daysBetween(newCheckIn, newCheckOut);
-    if (!Number.isFinite(nights) || nights <= 0) {
-      const err = new Error("Invalid date range");
-      err.status = 400;
-      throw err;
-    }
-
-    // Validate guests
-    const guests = Number(guests_count ?? booking.guests_count);
-    if (!Number.isInteger(guests) || guests <= 0) {
-      const err = new Error("Invalid guests_count");
-      err.status = 400;
-      throw err;
-    }
-    if (booking.listing && guests > booking.listing.max_guests) {
-      const err = new Error("Guests exceed max_guests");
-      err.status = 400;
-      throw err;
-    }
-
-    // Check availability (exclude current booking)
-    const HOLD_MINUTES_VAL = Number(process.env.BOOKING_HOLD_MINUTES || 15);
-    const holdCutoff = nowMinusMinutes(HOLD_MINUTES_VAL);
-    const overlapping = await Booking.findOne({
-      where: {
-        id: { [Op.ne]: bookingId },
-        listing_id: booking.listing_id,
-        [Op.or]: [
-          { status: "confirmed" },
-          { status: "pending_payment", created_at: { [Op.gte]: holdCutoff } },
-        ],
-        [Op.and]: [
-          { check_in: { [Op.lt]: newCheckOut } },
-          { check_out: { [Op.gt]: newCheckIn } },
-        ],
-      },
+  async cleanupExpiredBookings() {
+    const expired = await Booking.findAll({
+      where: { status: "pending_payment", created_at: { [Op.lte]: new Date(Date.now() - Number(process.env.BOOKING_HOLD_MINUTES || 15) * 60000) } },
+      attributes: ["id"], order: [["created_at", "ASC"], ["id", "ASC"]], limit: 100,
     });
-    if (overlapping) {
-      const err = new Error("Dates are not available");
-      err.status = 409;
-      throw err;
+    for (const snapshot of expired) {
+      await sequelize.transaction(async (transaction) => {
+        const { booking } = await bookingRepo.lockForMutation(snapshot.id, transaction);
+        if (booking.status !== "pending_payment" || bookingRepo.holdExpiresAt(booking) > new Date()) return;
+        await booking.update({ status: "cancelled" }, { transaction });
+        await cancelPendingPayments(booking.id, transaction);
+      });
     }
-
-    // Recalculate total
-    const pricePerNight = BigInt(booking.price_per_night_snapshot);
-    const total = pricePerNight * BigInt(nights);
-
-    booking.check_in = newCheckIn;
-    booking.check_out = newCheckOut;
-    booking.guests_count = guests;
-    booking.total_amount = total.toString();
-    await booking.save();
-
-    // Return updated booking with listing for the frontend
-    const updated = await Booking.findByPk(bookingId, {
-      include: [
-        {
-          model: Listing,
-          as: "listing",
-          attributes: ["id", "title", "price_per_night", "max_guests"],
-          include: [
-            {
-              association: "images",
-              attributes: ["id", "url", "is_cover", "sort_order"],
-            },
-          ],
-        },
-      ],
-    });
-
-    return updated.toJSON();
   },
 };
-

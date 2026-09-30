@@ -11,6 +11,8 @@ export default function InputField({
   inputClassName,
   suffix,
   id,
+  inputRef,
+  variant = "default",
   ...props
 }) {
   const generatedId = useId();
@@ -24,11 +26,13 @@ export default function InputField({
       </label>
       <div className="relative">
       <input
+        ref={inputRef}
         id={inputId}
         aria-invalid={Boolean(error)}
         aria-describedby={error || hint ? messageId : undefined}
         className={clsx(
-          "min-h-11 w-full rounded-xl border bg-surface px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-muted-ink/70 focus:border-ink focus:ring-4 focus:ring-ink/10 disabled:cursor-not-allowed disabled:bg-muted-surface disabled:text-muted-ink motion-reduce:transition-none",
+          variant === "integrated" ? "field-integrated" : "field-control",
+          "motion-reduce:transition-none",
           error ? "border-danger focus:border-danger focus:ring-danger/10" : "border-line",
           inputClassName,
         )}

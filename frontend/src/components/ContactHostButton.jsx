@@ -8,6 +8,7 @@ import { notifyError } from "@/lib/notify";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
+import IconButton from "@/components/atoms/IconButton";
 
 export default function ContactHostButton({ hostId }) {
   const t = useTranslations();
@@ -58,14 +59,13 @@ export default function ContactHostButton({ hostId }) {
 
   return (
     <>
-      <button
-        type="button"
+      <Button
         onClick={() => { if (!email) setEmail(currentUser?.email || ""); if (!phone) setPhone(currentUser?.phone || ""); setSuccess(false); setIsOpen(true); }}
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-ink bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface"
+        variant="secondary"
       >
         <ChatCircleDots aria-hidden size={18} />
         {t("contact.host")}
-      </button>
+      </Button>
 
       {isOpen && (
         <dialog ref={dialogRef} onCancel={() => setIsOpen(false)}
@@ -74,7 +74,7 @@ export default function ContactHostButton({ hostId }) {
           aria-modal="true"
           aria-labelledby="contact-host-title"
         >
-          <div className="max-h-[85dvh] w-full max-w-md overflow-y-auto rounded-[20px] bg-surface p-6 shadow-float">
+          <div className="surface-panel max-h-[85dvh] w-full max-w-md overflow-y-auto p-6 shadow-float">
             {success ? (
               <div className="py-6 text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-positive/10 text-positive">
@@ -93,14 +93,12 @@ export default function ContactHostButton({ hostId }) {
                   <h3 id="contact-host-title" className="text-xl font-bold text-ink">
                     {t("contact.title")}
                   </h3>
-                  <button
-                    type="button"
+                  <IconButton
                     onClick={() => setIsOpen(false)}
-                    className="grid h-11 w-11 place-items-center rounded-full bg-muted-surface text-muted-ink transition hover:text-ink"
-                    aria-label={t("common.close")}
+                    label={t("common.close")}
                   >
                     <X aria-hidden size={20} />
-                  </button>
+                  </IconButton>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -130,7 +128,7 @@ export default function ContactHostButton({ hostId }) {
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       placeholder={t("contact.messagePlaceholder")}
-                      className="w-full resize-none rounded-xl border border-line bg-surface px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-muted-ink/70 focus:border-ink focus:ring-4 focus:ring-ink/10"
+                      className="field-control resize-none"
                     />
                   </div>
                   <Button

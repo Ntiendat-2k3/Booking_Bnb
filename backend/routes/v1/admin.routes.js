@@ -12,40 +12,36 @@ const authMiddleware = require("../../middlewares/api/auth.middleware");
 const csrfMiddleware = require("../../middlewares/csrf.middleware");
 const requireRole = require("../../middlewares/api/role.middleware");
 const { cache } = require("../../core/cache");
+const validate = require("../../middlewares/api/validation.middleware");
+const { bookingQuerySchema, paymentQuerySchema, reviewQuerySchema } = require("../../requests/api/v1/admin.schema");
+const { idParams } = require("../../requests/api/v1/common.schema");
 
 const adminOnly = [authMiddleware, requireRole(["admin"])];
 const adminWrite = [...adminOnly, csrfMiddleware];
 
-// Dashboard
 router.get("/dashboard/stats", ...adminOnly, cache(60), adminDashboardController.getStats);
 
-// Listings moderation
 router.get("/listings", ...adminOnly, adminListingController.list);
 router.post("/listings/:id/approve", ...adminWrite, adminListingController.approve);
 router.post("/listings/:id/reject", ...adminWrite, adminListingController.reject);
 router.post("/listings/bulk-approve", ...adminWrite, adminListingController.bulkApprove);
 router.post("/listings/bulk-reject", ...adminWrite, adminListingController.bulkReject);
 
-// Users
 router.get("/users", ...adminOnly, adminUserController.list);
 router.patch("/users/:id/role", ...adminWrite, adminUserController.setRole);
 
-// Amenities
 router.get("/amenities", ...adminOnly, adminAmenityController.list);
 router.post("/amenities", ...adminWrite, adminAmenityController.create);
 router.patch("/amenities/:id", ...adminWrite, adminAmenityController.update);
 router.post("/amenities/:id/active", ...adminWrite, adminAmenityController.setActive);
 
-// Bookings
-router.get("/bookings", ...adminOnly, adminBookingController.list);
-router.get("/bookings/:id", ...adminOnly, adminBookingController.detail);
+router.get("/bookings", ...adminOnly, validate(bookingQuerySchema, "query"), adminBookingController.list);
+router.get("/bookings/:id", ...adminOnly, validate(idParams, "params"), adminBookingController.detail);
 
-// Payments
-router.get("/payments", ...adminOnly, adminPaymentController.list);
-router.get("/payments/:id", ...adminOnly, adminPaymentController.detail);
+router.get("/payments", ...adminOnly, validate(paymentQuerySchema, "query"), adminPaymentController.list);
+router.get("/payments/:id", ...adminOnly, validate(idParams, "params"), adminPaymentController.detail);
 
-// Reviews
-router.get("/reviews", ...adminOnly, adminReviewController.list);
+router.get("/reviews", ...adminOnly, validate(reviewQuerySchema, "query"), adminReviewController.list);
 router.post("/reviews/:id/hide", ...adminWrite, adminReviewController.hide);
 router.post("/reviews/:id/unhide", ...adminWrite, adminReviewController.unhide);
 router.delete("/reviews/:id", ...adminWrite, adminReviewController.remove);

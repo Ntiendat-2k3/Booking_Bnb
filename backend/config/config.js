@@ -16,6 +16,7 @@ module.exports = {
   },
   test: {
     ...baseConfig,
+    database: process.env.DB_TEST_NAME || `${process.env.DB_NAME || "booking_bnb"}_test`,
   },
   production: {
     ...baseConfig,

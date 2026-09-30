@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import Container from "@/components/layout/Container";
 import dynamic from "next/dynamic";
-import Image from "next/image";
+import Avatar from "@/components/atoms/Avatar";
 import { useLocale } from "@/i18n/LocaleProvider";
 const RevenueChart = dynamic(() => import("@/components/organisms/RevenueChart"), { ssr: false });
 
@@ -41,55 +41,47 @@ export default function HostDashboardPage() {
   if (!stats) return <Container className="py-12 text-center text-muted-ink">{t("common.loadFailed")}</Container>;
 
   return (
-    <Container className="py-10 space-y-10">
+    <Container className="space-y-8 py-4 sm:py-6">
       <div>
-        <h1 className="text-3xl font-bold text-ink">{t("host.revenueTitle")}</h1>
+        <h1 className="page-heading">{t("host.revenueTitle")}</h1>
         <p className="text-muted-ink mt-2">{t("host.revenueDescription")}</p>
       </div>
 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
-          <div className="text-muted-ink text-sm font-semibold uppercase mb-1">{t("host.totalRevenue")}</div>
-          <div className="text-3xl font-bold text-ink">{formatVND(stats.totalRevenue, locale === "en" ? "en-US" : "vi-VN")}</div>
+        <div className="rounded-panel bg-ink p-6 text-on-ink sm:p-8">
+          <div className="mb-4 text-sm font-medium text-on-ink/75">{t("host.totalRevenue")}</div>
+          <div className="break-words text-3xl font-bold tracking-tight">{formatVND(stats.totalRevenue, locale === "en" ? "en-US" : "vi-VN")}</div>
         </div>
-        <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
-          <div className="text-muted-ink text-sm font-semibold uppercase mb-1">{t("host.bookings")}</div>
+        <div className="surface-panel p-6 sm:p-8">
+          <div className="mb-4 text-sm font-medium text-muted-ink">{t("host.bookings")}</div>
           <div className="text-3xl font-bold text-ink">{stats.totalBookings}</div>
         </div>
-        <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
-          <div className="text-muted-ink text-sm font-semibold uppercase mb-1">{t("host.pendingPayment")}</div>
+        <div className="surface-panel p-6 sm:p-8">
+          <div className="mb-4 text-sm font-medium text-muted-ink">{t("host.pendingPayment")}</div>
           <div className="text-3xl font-bold text-ink">{stats.pendingBookings}</div>
         </div>
       </div>
 
 
-      <div className="bg-surface border border-line p-6 rounded-2xl shadow-sm">
+      <div className="surface-panel p-6 sm:p-8">
         <h3 className="text-lg font-bold text-ink mb-6">{t("host.chartTitle")}</h3>
         <RevenueChart labels={stats.chartLabels} values={stats.chartValues} />
       </div>
 
 
-      <div className="bg-surface border border-line rounded-2xl shadow-sm overflow-hidden">
+      <div className="surface-panel overflow-hidden">
          <div className="p-6 border-b border-line bg-muted-surface">
             <h3 className="text-lg font-bold text-ink">{t("host.recent")}</h3>
          </div>
-         <div className="divide-y divide-slate-200">
+         <div className="divide-y divide-line">
            {stats.recentBookings.length === 0 ? (
              <div className="p-6 text-center text-muted-ink">{t("host.noTransactions")}</div>
            ) : (
              stats.recentBookings.map((b) => (
                <div key={b.id} className="p-6 flex flex-wrap items-center justify-between gap-4 hover:bg-muted-surface transition">
                  <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 relative rounded-full overflow-hidden bg-slate-200 border">
-                     {b.guest?.avatar_url ? (
-                       <Image src={b.guest.avatar_url} alt={t("host.guestAlt")} fill className="object-cover" />
-                     ) : (
-                       <div className="w-full h-full flex items-center justify-center font-bold text-muted-ink">
-                         {b.guest?.full_name?.charAt(0)}
-                       </div>
-                     )}
-                   </div>
+                   <Avatar src={b.guest?.avatar_url} name={b.guest?.full_name || t("host.guestAlt")} size={48} />
                    <div>
                      <div className="font-semibold text-ink">{b.listing?.title}</div>
                      <div className="text-sm text-muted-ink">{t("host.guestLabel")}{b.guest?.full_name}</div>

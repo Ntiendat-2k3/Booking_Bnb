@@ -11,7 +11,6 @@ import {
   Warehouse,
 } from "@phosphor-icons/react";
 import { useTranslations } from "@/i18n/LocaleProvider";
-import Container from "./layout/Container";
 import { CATEGORIES } from "@/lib/constants";
 
 const CATEGORY_ICONS = {
@@ -29,11 +28,12 @@ function Chip({ active, children, icon: Icon, onClick }) {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={
-        "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 " +
+        "inline-flex min-h-12 shrink-0 items-center gap-2 rounded-control border px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 " +
         (active
-          ? "border-brand text-ink"
-          : "border-transparent text-muted-ink hover:border-line hover:text-ink")
+          ? "border-ink bg-ink text-on-ink shadow-sm"
+          : "border-line bg-surface text-muted-ink hover:border-ink/30 hover:text-ink")
       }
     >
       {Icon ? <Icon aria-hidden size={20} weight={active ? "fill" : "regular"} /> : null}
@@ -63,11 +63,10 @@ export default function CategoryTabs() {
   }
 
   return (
-    <div className="border-b border-line bg-surface">
-      <Container>
+    <div>
         <nav
           aria-label={t("search.allCategories")}
-          className="flex gap-4 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="no-scrollbar flex gap-2 overflow-x-auto pb-1"
         >
           <Chip active={!current} onClick={() => go("")}>
             {t("search.allCategories")}
@@ -83,7 +82,6 @@ export default function CategoryTabs() {
             </Chip>
           ))}
         </nav>
-      </Container>
     </div>
   );
 }

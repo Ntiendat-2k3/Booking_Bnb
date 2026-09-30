@@ -1,83 +1,67 @@
+const asyncHandler = require("../../../utils/asyncHandler");
 const reviewService = require("../../../services/review.service");
-const { successResponse, errorResponse } = require("../../../utils/response");
+const { successResponse } = require("../../../utils/response");
 const { invalidateReviews } = require("../../../core/cache");
 const { toInt } = require("../../../utils/validators");
-
-
 module.exports = {
-  async listByListing(req, res) {
-    try {
-      const listingId = req.params.id;
-      const page = toInt(req.query.page, 1);
-      const limit = toInt(req.query.limit, 10);
+  listByListing: asyncHandler(async (req, res) => {
+    const listingId = req.params.id;
+    const page = toInt(req.query.page, 1);
+    const limit = toInt(req.query.limit, 10);
+    const data = await reviewService.listPublicByListing({
+      listingId,
+      page,
+      limit
+    });
+    return successResponse(res, data, "OK", 200);
+  }),
+  mineForListing: asyncHandler(async (req, res) => {
+    const userId = req.user.user.id;
+    const listingId = req.params.id;
+    const data = await reviewService.mineForListing({
+      userId,
+      listingId
+    });
+    return successResponse(res, data, "OK", 200);
+  }),
+  createForListing: asyncHandler(async (req, res) => {
+    const userId = req.user.user.id;
+    const listingId = req.params.id;
+    const review = await reviewService.createForListing({
+      userId,
+      listingId,
+      rating: req.body?.rating,
+      comment: req.body?.comment
+    });
 
-      const data = await reviewService.listPublicByListing({ listingId, page, limit });
-      return successResponse(res, data, "OK", 200);
-    } catch (e) {
-      return errorResponse(res, e.message || "Fetch reviews failed", e.status || 500);
-    }
-  },
-
-  async mineForListing(req, res) {
-    try {
-      const userId = req.user.user.id;
-      const listingId = req.params.id;
-      const data = await reviewService.mineForListing({ userId, listingId });
-      return successResponse(res, data, "OK", 200);
-    } catch (e) {
-      return errorResponse(res, e.message || "Fetch my review failed", e.status || 500);
-    }
-  },
-
-  async createForListing(req, res) {
-    try {
-      const userId = req.user.user.id;
-      const listingId = req.params.id;
-      const review = await reviewService.createForListing({
-        userId,
-        listingId,
-        rating: req.body?.rating,
-        comment: req.body?.comment,
-      });
-
-      // A new review can affect listing detail, review list, and rating-based sorts
-      invalidateReviews(listingId);
-      return successResponse(res, review, "Created", 201);
-    } catch (e) {
-      return errorResponse(res, e.message || "Create review failed", e.status || 500);
-    }
-  },
-
-  async update(req, res) {
-    try {
-      const userId = req.user.user.id;
-      const reviewId = req.params.id;
-      const review = await reviewService.update({
-        userId,
-        reviewId,
-        rating: req.body?.rating,
-        comment: req.body?.comment,
-      });
-
-      const listingId = review?.listing_id;
-      invalidateReviews(listingId);
-      return successResponse(res, review, "Updated", 200);
-    } catch (e) {
-      return errorResponse(res, e.message || "Update review failed", e.status || 500);
-    }
-  },
-
-  async remove(req, res) {
-    try {
-      const userId = req.user.user.id;
-      const reviewId = req.params.id;
-      const result = await reviewService.remove({ userId, reviewId });
-
-      const listingId = result?.listing_id;
-      invalidateReviews(listingId);
-      return successResponse(res, { ok: true }, "Deleted", 200);
-    } catch (e) {
-      return errorResponse(res, e.message || "Delete review failed", e.status || 500);
-    }
-  },
+    // Review mới làm thay đổi danh sách review và thứ tự listing theo rating.
+    await invalidateReviews(listingId);
+    return successResponse(res, review, "Created", 201);
+  }),
+  update: asyncHandler(async (req, res) => {
+    const userId = req.user.user.id;
+    const reviewId = req.params.id;
+    const review = await reviewService.update({
+      userId,
+      reviewId,
+      rating: req.body?.rating,
+      comment: req.body?.comment
+    });
+    const listingId = review?.listing_id;
+    await invalidateReviews(listingId);
+    return successResponse(res, review, "Updated", 200);
+  }),
+  remove: asyncHandler(async (req, res) => {
+    const userId = req.user.user.id;
+    const reviewId = req.params.id;
+    const result = await reviewService.remove({
+      userId,
+      reviewId
+    });
+    const listingId = result?.listing_id;
+    await invalidateReviews(listingId);
+    return successResponse(res, {
+      ok: true
+    }, "Deleted", 200);
+  })
 };

@@ -4,6 +4,7 @@ import { asNum, geocodeReverse, pickFromContext } from "@/hooks/useMapboxLocatio
 import { useLocale } from "@/i18n/LocaleProvider";
 import AddressAutocomplete from "./AddressAutocomplete";
 import CoordinatesInputs from "./CoordinatesInputs";
+import "mapbox-gl/dist/mapbox-gl.css";
 const DEFAULT_CENTER = { lng: 106.700987, lat: 10.776889 };
 
 /** Đồng bộ marker với form; dùng giá trị mới nhất khi người dùng kéo marker hoặc chọn trên bản đồ. */

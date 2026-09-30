@@ -2,7 +2,7 @@
 
 import { User, Shield, CreditCard, Lock, Bell, GearSix as SettingsIcon } from "@phosphor-icons/react";
 import { useTranslations } from "@/i18n/LocaleProvider";
-import { clsx } from "clsx";
+import Button from "@/components/atoms/Button";
 
 const getMenuItems = (role) => {
   const items = [
@@ -21,27 +21,23 @@ export default function SettingsNavigation({ activeTab, onTabChange, role }) {
   const t = useTranslations();
   const menuItems = getMenuItems(role);
   return (
-    <nav className="w-full lg:w-64 shrink-0 lg:sticky lg:top-24">
-      <div className="flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-4 lg:pb-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav aria-label={t("account.title")} className="w-full shrink-0 lg:sticky lg:top-28 lg:w-64">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
 
           return (
-            <button
+            <Button
               key={item.id}
               onClick={() => onTabChange(item.id)}
               aria-current={isActive ? "page" : undefined}
-              className={clsx(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 shrink-0 lg:shrink w-auto lg:w-full",
-                isActive
-                  ? "bg-brand text-white shadow-lg shadow-brand/10"
-                  : "text-muted-ink hover:bg-muted-surface hover:text-ink"
-              )}
+              variant={isActive ? "ink" : "ghost"}
+              className="shrink-0 justify-start gap-3 lg:w-full"
             >
-              <Icon size={18} className={isActive ? "text-white" : "text-muted-ink"} />
+              <Icon aria-hidden size={18} />
               <span className="font-semibold text-sm whitespace-nowrap">{t(item.labelKey)}</span>
-            </button>
+            </Button>
           )
         })}
       </div>

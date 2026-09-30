@@ -1,13 +1,12 @@
 import { Suspense } from "react";
 import localFont from "next/font/local";
 import "./globals.css";
-import "mapbox-gl/dist/mapbox-gl.css";
 import Providers from "@/components/Providers";
 import Navbar from "@/components/organisms/Navbar";
-import CategoryTabs from "@/components/CategoryTabs";
 import BootstrapClient from "./bootstrap-client";
 import Container from "@/components/layout/Container";
-import { Toaster } from "sonner";
+import { ThemeProvider } from "next-themes";
+import { DEFAULT_THEME } from "@/lib/constants";
 import Footer from "@/components/organisms/Footer";
 import { getServerTranslator } from "@/i18n/server";
 
@@ -91,22 +90,28 @@ export default async function RootLayout({ children }) {
       lang={locale === "en" ? "en" : "vi"}
       data-scroll-behavior="smooth"
       className={beVietnamPro.variable}
+      suppressHydrationWarning
     >
       <body className="bg-canvas font-sans text-ink antialiased">
-        <Providers locale={locale} messages={messages}>
-          <Toaster richColors position="top-right" />
-          <BootstrapClient />
-          <Suspense fallback={null}>
-            <Navbar />
-          </Suspense>
-          <Suspense fallback={null}>
-            <CategoryTabs />
-          </Suspense>
-          <main className="min-h-[calc(100dvh-140px)] py-6">
-            <Container>{children}</Container>
-          </main>
-          <Footer />
-        </Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme={DEFAULT_THEME}
+          enableSystem
+          enableColorScheme
+          disableTransitionOnChange
+          storageKey="booking-theme"
+        >
+          <Providers locale={locale} messages={messages}>
+            <BootstrapClient />
+            <Suspense fallback={null}>
+              <Navbar />
+            </Suspense>
+            <main id="main-content" className="min-h-[calc(100dvh-140px)] py-6 sm:py-8">
+              <Container>{children}</Container>
+            </main>
+            <Footer />
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -78,7 +78,7 @@ export default function PaymentMethods({ user }) {
     finally { setBusy(false); }
   }
 
-  return <section className="rounded-[20px] border border-line bg-surface p-5 sm:p-8" aria-busy={loading || busy}>
+  return <section className="surface-panel p-5 sm:p-8" aria-busy={loading || busy}>
     <div className="flex items-start justify-between gap-3">
       <div><h2 className="text-xl font-bold">{t("payments.title")}</h2>
         <p className="mt-2 text-sm text-muted-ink">{t("payments.description")}</p></div>
@@ -106,9 +106,9 @@ export default function PaymentMethods({ user }) {
       <h3 className="font-semibold">{t("payments.addTitle")}</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <div><label htmlFor="payment-provider" className="text-sm font-medium">{t("payments.provider")}</label>
-          <select id="payment-provider" value={provider} disabled={busy} onChange={event => setProvider(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-surface px-3 py-2">{PROVIDERS.map(value => <option key={value} value={value}>{t(`payments.providers.${value}`)}</option>)}</select></div>
+          <select id="payment-provider" value={provider} disabled={busy} onChange={event => setProvider(event.target.value)} className="field-control mt-2">{PROVIDERS.map(value => <option key={value} value={value}>{t(`payments.providers.${value}`)}</option>)}</select></div>
         <div><label htmlFor="payment-type" className="text-sm font-medium">{t("payments.type")}</label>
-          <select id="payment-type" value={type} disabled={busy} onChange={event => setType(event.target.value)} className="mt-2 w-full rounded-xl border border-line bg-surface px-3 py-2">{TYPES.map(value => <option key={value} value={value}>{t(`payments.types.${value}`)}</option>)}</select></div>
+          <select id="payment-type" value={type} disabled={busy} onChange={event => setType(event.target.value)} className="field-control mt-2">{TYPES.map(value => <option key={value} value={value}>{t(`payments.types.${value}`)}</option>)}</select></div>
       </div>
       <InputField id="payment-label" label={t("payments.label")} placeholder={t("payments.labelHint")} value={label} onChange={event => setLabel(event.target.value)} required disabled={busy} />
       <div className="flex flex-wrap gap-3"><Button type="submit" disabled={busy}>{busy ? t("common.processing") : t("payments.confirmAdd")}</Button>

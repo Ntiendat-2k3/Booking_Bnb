@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle, CreditCard, Star } from "@phosphor-icons/react";
 import { formatVND } from "@/lib/format";
@@ -52,34 +51,32 @@ export default function TripCard({
   const isPaid = lastPayment?.status === "succeeded";
 
   return (
-    <article className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative h-40 w-full overflow-hidden rounded-xl sm:h-32 sm:w-48">
+    <article className="surface-panel overflow-hidden p-3 sm:p-4">
+      <div className="grid gap-5 sm:grid-cols-[220px_minmax(0,1fr)] lg:grid-cols-[260px_minmax(0,1fr)]">
+        <div className="relative min-h-52 w-full overflow-hidden rounded-control bg-muted-surface sm:h-full">
           <Image
-            src={cover || "https://picsum.photos/seed/trip/600/400"}
+            src={cover || "/placeholder-room.svg"}
             alt={listing?.title || t("trips.stayFallback")}
             fill
-            sizes="(max-width: 640px) 100vw, 192px"
+            sizes="(max-width: 640px) 90vw, 260px"
             className="object-cover"
           />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="truncate text-lg font-semibold text-ink">
-              {listing?.title || t("trips.stayFallback")}
-            </h2>
+        <div className="min-w-0 p-2 sm:py-3 sm:pr-4">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <Badge tone={badge(booking.status)}>
               {statusLabel(booking.status, t)}
             </Badge>
           </div>
-          <div className="mt-1 text-sm text-muted-ink">
+          <h2 className="line-clamp-2 text-2xl font-bold tracking-tight text-ink">{listing?.title || t("trips.stayFallback")}</h2>
+          <div className="mt-3 text-sm leading-6 text-muted-ink">
             {t("trips.dateGuests", {
               checkIn: booking.check_in,
               checkOut: booking.check_out,
               guests: booking.guests_count,
             })}
           </div>
-          <div className="mt-1 text-sm text-ink">
+          <div className="mt-3 text-sm text-ink">
             {t("trips.total")}:{" "}
             <span className="font-semibold">
               {formatVND(
@@ -104,32 +101,30 @@ export default function TripCard({
               {t("trips.reviewed", { rating: booking.review.rating })}
             </div>
           )}
-        </div>
-
-        <div className="flex shrink-0 flex-wrap gap-2">
-          <Link
+        <div className="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+          <Button
             href={`/rooms/${listing?.id}`}
-            className="inline-flex min-h-10 items-center rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface"
+            variant="secondary" size="sm"
           >
             {t("trips.viewStay")}
-          </Link>
+          </Button>
 
           {!booking.can_review && booking.review && (
-            <Link
+            <Button
               href={`/rooms/${listing?.id}#reviews`}
-              className="inline-flex min-h-10 items-center rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface"
+              variant="secondary" size="sm"
             >
               {t("trips.viewReview")}
-            </Link>
+            </Button>
           )}
 
           {booking.can_review && (
-            <Link
+            <Button
               href={`/rooms/${listing?.id}?review=1#reviews`}
-              className="inline-flex min-h-10 items-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
+              size="sm"
             >
               {t("trips.review")}
-            </Link>
+            </Button>
           )}
 
           {booking.status === "confirmed" && isPaid && (
@@ -168,6 +163,7 @@ export default function TripCard({
               </Button>
             </>
           )}
+        </div>
         </div>
       </div>
     </article>

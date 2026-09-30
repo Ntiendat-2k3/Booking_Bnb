@@ -1,21 +1,9 @@
 const passport = require("passport");
 const authService = require("../../../services/auth.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
-const {
-  refreshCookieName,
-  accessCookieName,
-  csrfCookieName,
-  refreshCookieOptions,
-  accessCookieOptions,
-  csrfCookieOptions,
-} = require("../../../utils/cookies");
+const { refreshCookieName, accessCookieName, csrfCookieName, refreshCookieOptions, accessCookieOptions, csrfCookieOptions,  } = require("../../../utils/cookies");
 const { generateCsrfToken } = require("../../../utils/csrf");
 const asyncHandler = require("../../../utils/asyncHandler");
-const crypto = require("crypto");
-const bcrypt = require("bcrypt");
-const { User } = require("../../../models/index");
-const { Op } = require("sequelize");
-const { sendEmail } = require("../../../utils/mailer");
 
 function ensureCsrfCookie(res, req) {
   const existing = req.cookies?.[csrfCookieName()];
@@ -71,7 +59,7 @@ module.exports = {
           200
         );
       } catch (e) {
-        return errorResponse(res, e.message || "Internal server error", e.status || 500);
+        return next(e);
       }
     })(req, res, next);
   },
@@ -104,7 +92,7 @@ module.exports = {
         url.searchParams.set("success", "1");
         return res.redirect(url.toString());
       } catch (e) {
-        return errorResponse(res, e.message || "Internal server error", e.status || 500);
+        return next(e);
       }
     })(req, res, next);
   },
@@ -113,7 +101,7 @@ module.exports = {
     return successResponse(res, req.user.user, "User profile fetched", 200);
   }),
 
-  refresh: async (req, res) => {
+  refresh: async (req, res, next) => {
     const refreshToken = req.cookies?.[refreshCookieName()];
     try {
       const tokens = await authService.refresh(refreshToken, {
@@ -125,10 +113,12 @@ module.exports = {
 
       return successResponse(res, { ok: true, csrfToken }, "Refreshed", 200);
     } catch (e) {
-      // clear cookies if invalid/revoked
-      res.clearCookie(refreshCookieName(), { path: "/api/v1/auth" });
-      res.clearCookie(accessCookieName(), { path: "/" });
-      return errorResponse(res, e.message || "Invalid refresh token", e.status || 401);
+      // Chỉ xóa cookie khi token không hợp lệ; lỗi DB tạm thời vẫn cho phép thử lại.
+      if ([400, 401, 403].includes(e.status)) {
+        res.clearCookie(refreshCookieName(), { path: "/api/v1/auth" });
+        res.clearCookie(accessCookieName(), { path: "/" });
+      }
+      return next(e);
     }
   },
 
@@ -143,52 +133,12 @@ module.exports = {
   }),
 
   forgotPassword: asyncHandler(async (req, res) => {
-    const { email } = req.body;
-    if (!email) return errorResponse(res, "Email is required", 400);
-
-    const user = await User.findOne({ where: { email, provider: "local" } });
-    if (!user) return errorResponse(res, "Cannot find user with this email or user logged in via Google.", 404);
-
-    const token = crypto.randomBytes(32).toString("hex");
-    user.reset_password_token = token;
-    user.reset_password_expires = new Date(Date.now() + 3600000); // 1 hour
-    await user.save();
-
-    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3001"}/reset-password?token=${token}`;
-
-    const html = `
-      <h3>Xin chào,</h3>
-      <p>Bạn đã yêu cầu khôi phục mật khẩu. Vui lòng nhấn vào đường dẫn bên dưới để đặt lại mật khẩu:</p>
-      <p><a href="${resetUrl}">${resetUrl}</a></p>
-      <p>Link này có hiệu lực trong 1 giờ.</p>
-      <p>Nếu bạn không yêu cầu, vui lòng bỏ qua email này.</p>
-      <br/>
-      <p>Trân trọng,<br/>Đội ngũ Booking BnB</p>
-    `;
-    await sendEmail(email, "Khôi phục mật khẩu - Booking BnB", html);
-
-    return successResponse(res, { message: "Reset link has been sent to your email." }, "Email sent", 200);
+    await authService.forgotPassword(req.body.email);
+    return successResponse(res, null, "If the account exists, a reset link will be sent", 200);
   }),
 
   resetPassword: asyncHandler(async (req, res) => {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) return errorResponse(res, "Token and new password are required", 400);
-
-    const user = await User.findOne({
-      where: {
-        reset_password_token: token,
-        reset_password_expires: { [Op.gt]: new Date() },
-      },
-    });
-
-    if (!user) return errorResponse(res, "Token is invalid or has expired.", 400);
-
-    const password_hash = await bcrypt.hash(newPassword, 10);
-    user.password_hash = password_hash;
-    user.reset_password_token = null;
-    user.reset_password_expires = null;
-    await user.save();
-
-    return successResponse(res, null, "Mật khẩu đã được thay đổi thành công.", 200);
+    await authService.resetPassword(req.body.token, req.body.newPassword);
+    return successResponse(res, null, "Mật khẩu đã được thay đổi thành công", 200);
   }),
 };

@@ -4,7 +4,7 @@ import { useTranslations } from "@/i18n/LocaleProvider";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
 import { useDispatch } from "react-redux";
 import { ensureCsrf, fetchProfile } from "@/store/authThunks";
@@ -186,7 +186,7 @@ export default function HostListingManagePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">{t("host.manageTitle")}</h1>
+          <h1 className="page-heading">{t("host.manageTitle")}</h1>
           <div className="flex items-center gap-2 text-sm text-muted-ink">
             <span>{t("common.identifier")}{listing.id}</span>
             <Badge tone={status === "published" ? "success" : status === "pending" ? "warning" : status === "rejected" ? "danger" : "neutral"}>{t(`host.${status}`)}</Badge>
@@ -194,24 +194,23 @@ export default function HostListingManagePage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link
+          <Button
             href="/host/listings"
-            className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted-surface"
-          >{t("common.back")}</Link>
+            variant="secondary"
+          >{t("common.back")}</Button>
 
-          <button
+          <Button
             onClick={onSave}
-            disabled={saving}
-            className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted-surface disabled:opacity-60"
+            loading={saving}
+            variant="secondary"
           >
             {saving ? t("common.saving") : t("common.save")}
-          </button>
+          </Button>
 
           {(status === "draft" || status === "rejected") ? (
-            <button
+            <Button
               onClick={onSubmit} disabled={saving}
-              className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
-            >{t("host.submit")}</button>
+            >{t("host.submit")}</Button>
           ) : null}
         </div>
       </div>
@@ -222,14 +221,14 @@ export default function HostListingManagePage() {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-2xl border bg-surface p-6">
+          <div className="surface-panel p-6">
             <div className="mb-3 text-sm font-semibold">{t("host.images")}</div>
             <ListingImageUploader listingId={listing.id} />
           </div>
 
           <AmenitiesPickerCard grouped={grouped} picked={picked} onToggle={toggleAmenity} loading={loadingAmenities} error={amenitiesError} onRetry={retryAmenities} disabled={saving} />
 
-          <div className="rounded-2xl border bg-surface p-6 space-y-2">
+          <div className="surface-panel space-y-2 p-6">
             <div className="text-sm font-semibold">{t("host.status")}</div>
             <div className="text-sm text-muted-ink">
               {status === "published" ? t("host.visible") : t("host.hidden")}
@@ -237,14 +236,14 @@ export default function HostListingManagePage() {
 
             <div className="pt-2 flex flex-wrap gap-2">
               {status === "published" ? (
-                <button onClick={onPause} disabled={saving} className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted-surface">{t("host.paused")}</button>
+                <Button onClick={onPause} disabled={saving} variant="secondary" size="sm">{t("host.paused")}</Button>
               ) : null}
 
               {status === "paused" ? (
-                <button onClick={onResume} disabled={saving} className="rounded-xl border px-4 py-2 text-sm font-semibold hover:bg-muted-surface">{t("host.resume")}</button>
+                <Button onClick={onResume} disabled={saving} variant="secondary" size="sm">{t("host.resume")}</Button>
               ) : null}
 
-              <button onClick={onDelete} disabled={saving} className="rounded-xl border px-4 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-50">{t("common.delete")}</button>
+              <Button onClick={onDelete} disabled={saving} variant="danger" size="sm">{t("common.delete")}</Button>
             </div>
           </div>
         </div>

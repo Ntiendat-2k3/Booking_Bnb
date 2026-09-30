@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class",
   content: [
     "./src/app/**/*.{js,jsx}",
     "./src/components/**/*.{js,jsx}",
@@ -13,6 +14,9 @@ module.exports = {
           dark: "rgb(var(--color-accent-strong) / <alpha-value>)",
         },
         ink: "rgb(var(--color-ink) / <alpha-value>)",
+        "on-ink": "rgb(var(--color-on-ink) / <alpha-value>)",
+        "on-brand": "rgb(var(--color-on-accent) / <alpha-value>)",
+        "on-danger": "rgb(var(--color-on-danger) / <alpha-value>)",
         "muted-ink": "rgb(var(--color-muted-ink) / <alpha-value>)",
         canvas: "rgb(var(--color-canvas) / <alpha-value>)",
         surface: "rgb(var(--color-surface) / <alpha-value>)",
@@ -31,8 +35,16 @@ module.exports = {
         ],
       },
       boxShadow: {
-        soft: "0 12px 36px rgb(65 54 43 / 0.08)",
-        float: "0 18px 52px rgb(65 54 43 / 0.14)",
+        soft: "var(--shadow-soft)",
+        float: "var(--shadow-float)",
+      },
+      borderRadius: {
+        xl: "var(--radius-control)",
+        "2xl": "var(--radius-panel)",
+        "3xl": "var(--radius-feature)",
+        control: "var(--radius-control)",
+        panel: "var(--radius-panel)",
+        feature: "var(--radius-feature)",
       },
     },
   },

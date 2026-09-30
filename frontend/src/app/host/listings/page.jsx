@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
 import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
@@ -63,11 +63,11 @@ export default function HostListingsPage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
-        <div className="rounded-2xl border bg-surface p-6">
-          <h1 className="text-xl font-semibold">{t("host.listingsTitle")}</h1>
+        <div className="surface-panel p-6">
+          <h1 className="page-heading">{t("host.listingsTitle")}</h1>
           <p className="mt-2 text-muted-ink">{t("host.loginPrompt")}</p>
           <div className="mt-4 flex gap-3">
-            <Link href="/login" className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">{t("auth.loginTitle")}</Link>
+            <Button href="/login">{t("auth.loginTitle")}</Button>
           </div>
         </div>
       </div>
@@ -77,11 +77,11 @@ export default function HostListingsPage() {
   if (user.role !== "host" && user.role !== "admin") {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
-        <div className="rounded-2xl border bg-surface p-6">
-          <h1 className="text-xl font-semibold">{t("host.notHost")}</h1>
+        <div className="surface-panel p-6">
+          <h1 className="page-heading">{t("host.notHost")}</h1>
           <p className="mt-2 text-muted-ink">{t("host.upgradeDescription")}</p>
           <div className="mt-4">
-            <Link href="/host" className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">{t("host.become")}</Link>
+            <Button href="/host">{t("host.become")}</Button>
           </div>
         </div>
       </div>
@@ -92,49 +92,49 @@ export default function HostListingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">{t("host.listingsTitle")}</h1>
-          <p className="text-muted-ink">
+          <h1 className="page-heading">{t("host.listingsTitle")}</h1>
+          <p className="mt-2 text-muted-ink">
             {t("host.listingsDescription")}
           </p>
         </div>
 
-        <Link href="/host/listings/new" className="inline-flex w-fit rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">{t("host.newListing")}</Link>
+        <Button href="/host/listings/new" className="w-fit">{t("host.newListing")}</Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-2">
         {STATUS_TABS.map((item) => (
-          <button
+          <Button
             key={item.key}
             onClick={() => { if (tab !== item.key) { setLoading(true); setTab(item.key); } }} disabled={loading} aria-pressed={tab === item.key}
-            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${tab === item.key ? "bg-slate-900 text-white" : "bg-surface hover:bg-muted-surface"}`}
+            variant={tab === item.key ? "ink" : "secondary"} size="sm" className="shrink-0"
           >
             {t(item.labelKey)}
-          </button>
+          </Button>
         ))}
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border bg-surface p-6 text-muted-ink">{t("common.loading")}</div>
-      ) : loadError ? (<div role="alert" className="rounded-2xl border border-line bg-surface p-6"><p>{t("host.loadFailed")}</p><button className="mt-3 min-h-11 rounded-xl border px-4" onClick={() => { setLoading(true); setAttempt((value) => value + 1); }}>{t("common.retry")}</button></div>) : filtered.length ? (
-        <div className="grid gap-3">
+        <div className="surface-panel p-6 text-muted-ink">{t("common.loading")}</div>
+      ) : loadError ? (<div role="alert" className="surface-panel p-6"><p>{t("host.loadFailed")}</p><Button variant="secondary" className="mt-3" onClick={() => { setLoading(true); setAttempt((value) => value + 1); }}>{t("common.retry")}</Button></div>) : filtered.length ? (
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((x) => (
-            <div key={x.id} className="flex flex-col gap-3 rounded-2xl border bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative h-16 w-24 overflow-hidden rounded-xl bg-muted-surface">
+            <article key={x.id} className="surface-panel flex flex-col gap-4 p-3">
+              <div className="flex flex-col gap-4">
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-control bg-muted-surface">
                   <Image
-                    src={x.cover_url || "https://picsum.photos/seed/cover/400/300"}
+                    src={x.cover_url || "/placeholder-room.svg"}
                     alt={x.title || t("images.cover")}
                     fill
-                    sizes="96px"
+                    sizes="(max-width: 768px) 90vw, (max-width: 1280px) 45vw, 420px"
                     className="object-cover"
                   />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="font-semibold">{x.title}</div>
+                <div className="px-2">
+                  <div className="flex flex-wrap items-start gap-2">
+                    <h2 className="w-full text-xl font-bold tracking-tight">{x.title}</h2>
                     <Badge tone={x.status === "published" ? "success" : x.status === "pending" ? "warning" : x.status === "rejected" ? "danger" : "neutral"}>{t(`host.${x.status}`)}</Badge>
                   </div>
-                  <div className="text-sm text-muted-ink">
+                  <div className="mt-3 text-sm leading-6 text-muted-ink">
                     {x.city}, {x.country} • {formatVND(x.price_per_night, locale === "en" ? "en-US" : "vi-VN")} {t("listing.perNight")} · {t("checkout.guestCount", { count: x.max_guests })}
                   </div>
                   <div className="mt-1 text-xs text-muted-ink">
@@ -143,17 +143,17 @@ export default function HostListingsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
-                <Link href={`/host/listings/${x.id}`} className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-muted-surface">{t("host.manage")}</Link>
+              <div className="mt-auto flex flex-wrap gap-2 border-t border-line px-2 pt-4">
+                <Button href={`/host/listings/${x.id}`} variant="ink" size="sm">{t("host.manage")}</Button>
                 {x.status === "published" ? (
-                  <Link href={`/rooms/${x.id}`} className="rounded-xl border px-3 py-2 text-sm font-semibold hover:bg-muted-surface">{t("host.viewPublic")}</Link>
+                  <Button href={`/rooms/${x.id}`} variant="secondary" size="sm">{t("host.viewPublic")}</Button>
                 ) : null}
               </div>
-            </div>
+            </article>
           ))}
         </div>
       ) : (
-        <div className="rounded-2xl border bg-surface p-6 text-muted-ink">{t("host.empty")}</div>
+        <div className="surface-panel p-6 text-muted-ink">{t("host.empty")}</div>
       )}
     </div>
   );

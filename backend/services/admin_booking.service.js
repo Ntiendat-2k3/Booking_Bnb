@@ -1,12 +1,12 @@
+const Repository = require("../core/repository");
 const { Booking, Listing, User, Sequelize } = require("../models");
 const { literal } = Sequelize;
 
 module.exports = {
-  async list({ status = null, q = null, limit = 200 } = {}) {
-    const where = {};
+  async list({ status = null, q = null, limit = 200, page = 1 } = {}) {
+    const where = Repository.searchWhere(q, ["Booking.id","Booking.status","guest.email","guest.full_name","listing.title"]);
     if (status && status !== "all") where.status = status;
 
-    // NOTE: We keep search simple and safe: search by booking id (uuid) or guest email/name or listing title.
     const include = [
       { model: Listing, as: "listing", attributes: ["id", "title", "city", "country"] },
       { model: User, as: "guest", attributes: ["id", "full_name", "email"] },
@@ -47,30 +47,15 @@ module.exports = {
       ],
     };
 
-    const rows = await Booking.findAll({
+    const { rows, count } = await Booking.findAndCountAll({
       where,
       attributes: attrs,
       include,
       order: [["created_at", "DESC"]],
-      limit: Math.min(500, Math.max(1, Number(limit || 200))),
+      limit, offset: (page - 1) * limit, distinct: true,
     });
 
-    let items = rows.map((x) => (x.toJSON ? x.toJSON() : x));
-
-    const s = String(q || "").trim().toLowerCase();
-    if (s) {
-      items = items.filter((b) => {
-        return (
-          String(b.id || "").toLowerCase().includes(s) ||
-          String(b.status || "").toLowerCase().includes(s) ||
-          String(b.guest?.email || "").toLowerCase().includes(s) ||
-          String(b.guest?.full_name || "").toLowerCase().includes(s) ||
-          String(b.listing?.title || "").toLowerCase().includes(s)
-        );
-      });
-    }
-
-    return { items };
+    return { items: rows, meta: { page, limit, total: count, total_pages: Math.ceil(count / limit) } };
   },
 
   async detail(id) {

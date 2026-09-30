@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/i18n/LocaleProvider";
 import MapPopupCard from "./MapPopupCard";
+import { useInViewport } from "@/hooks/useInViewport";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 const DEFAULT_CENTER = { lng: 106.700987, lat: 10.776889 };
 
@@ -34,6 +36,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
   const markersRef = useRef([]);
   const markerElsRef = useRef(new Map());
   const userMarkerRef = useRef(null);
+  const { viewportRef, visible } = useInViewport(containerRef);
 
   const [ready, setReady] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -64,7 +67,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
 
   // Khởi tạo bản đồ đúng một lần cho mỗi token.
   useEffect(() => {
-    if (!token) return;
+    if (!token || !visible) return;
     if (!containerRef.current) return;
     if (mapRef.current) return;
 
@@ -100,7 +103,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
       setReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, visible]);
 
   // Đồng bộ trạng thái trực quan của ghim đang được chọn.
   useEffect(() => {
@@ -108,10 +111,10 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
     markerElsRef.current.forEach((el, id) => {
       if (!el) return;
       const isActive = selectedId != null && String(id) === String(selectedId);
-      el.classList.toggle("bg-black", isActive);
-      el.classList.toggle("text-white", isActive);
-      el.classList.toggle("bg-white", !isActive);
-      el.classList.toggle("text-slate-900", !isActive);
+      el.classList.toggle("bg-ink", isActive);
+      el.classList.toggle("text-on-ink", isActive);
+      el.classList.toggle("bg-surface", !isActive);
+      el.classList.toggle("text-ink", !isActive);
     });
   }, [selected]);
 
@@ -132,7 +135,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
       if (mapRef.current !== map) return;
       const el = document.createElement("div");
       el.className =
-        "w-3 h-3 bg-blue-600 rounded-full shadow ring-4 ring-blue-200";
+        "w-3 h-3 bg-brand rounded-full shadow ring-4 ring-brand/20";
       try {
         userMarkerRef.current?.remove();
       } catch {}
@@ -167,7 +170,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
         const pill = document.createElement("button");
         pill.type = "button";
         pill.className =
-          "min-h-11 px-3 py-1 text-sm font-semibold bg-white border rounded-full shadow-sm text-slate-900 hover:shadow";
+          "min-h-11 px-3 py-1 text-sm font-semibold bg-surface border border-line rounded-control shadow-sm text-ink hover:shadow-soft";
         pill.setAttribute("aria-label", `${it.title}: ${formatVndPill(it.price_per_night, locale === "en" ? "en-US" : "vi-VN")}`);
         pill.textContent = formatVndPill(
           it?.price_per_night,
@@ -206,7 +209,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng }) {
 
   return (
     <div className="relative h-[520px] w-full">
-      <div ref={containerRef} className="w-full h-full" />
+      <div ref={viewportRef} className="w-full h-full" />
       {failed ? <p role="alert" className="absolute inset-x-3 top-3 rounded-xl bg-surface p-3 text-sm">{t("address.mapError")}</p> : null}
       <MapPopupCard listing={selected} onClose={() => setSelected(null)} />
     </div>

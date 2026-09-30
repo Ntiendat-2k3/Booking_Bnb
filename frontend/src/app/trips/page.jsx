@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Lightbulb, SuitcaseRolling } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
 import { getMyBookings } from "@/services/bookingService";
-import Link from "next/link";
+import Button from "@/components/atoms/Button";
 import { useRouter, useSearchParams } from "next/navigation";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { useSelector } from "react-redux";
@@ -198,9 +198,9 @@ function TripsContent() {
   }
 
   return (
-    <Container className="w-full py-12">
+    <Container className="w-full py-4 sm:py-6">
       <div className="mb-8 w-full">
-        <h1 className="text-3xl font-bold tracking-[-0.035em] text-ink">
+        <h1 className="page-heading">
           {t("trips.title")}
         </h1>
         <p className="mt-2 text-base text-muted-ink">
@@ -210,25 +210,24 @@ function TripsContent() {
 
       <div className="w-full min-h-[600px] flex flex-col">
         {loading ? (
-          <div className="flex w-full flex-1 items-center justify-center rounded-2xl border border-line bg-surface p-20 shadow-sm">
+          <div className="surface-panel flex w-full flex-1 items-center justify-center p-10 sm:p-20">
             <div className="flex flex-col items-center gap-4">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
               <p className="font-medium text-muted-ink">{t("trips.loading")}</p>
             </div>
           </div>
-        ) : loadError ? (<EmptyState title={t("trips.loadFailed")} action={<button className="min-h-11 rounded-xl border border-line px-4" onClick={() => { setLoading(true); setAttempt(value => value + 1); }}>{t("common.retry")}</button>} />) : items.length === 0 ? (
+        ) : loadError ? (<EmptyState title={t("trips.loadFailed")} action={<Button variant="secondary" onClick={() => { setLoading(true); setAttempt(value => value + 1); }}>{t("common.retry")}</Button>} />) : items.length === 0 ? (
           <EmptyState
             className="flex-1 justify-center"
             icon={<SuitcaseRolling aria-hidden size={30} />}
             title={t("trips.emptyTitle")}
             description={t("trips.emptyDescription")}
             action={
-              <Link
+              <Button
                 href="/"
-                className="inline-flex min-h-11 items-center rounded-xl bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark"
               >
                 {t("trips.explore")}
-              </Link>
+              </Button>
             }
           />
         ) : (

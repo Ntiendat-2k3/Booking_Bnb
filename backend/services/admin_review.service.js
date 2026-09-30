@@ -1,14 +1,15 @@
-const { Review, Listing, User, Booking, Sequelize } = require("../models");
-const { Op } = Sequelize;
+const Repository = require("../core/repository");
+const { Review, Listing, User, Booking } = require("../models");
+
 const { isUuid } = require("../utils/validators");
 
 module.exports = {
-  async list({ visibility = "all", q = null, limit = 200 } = {}) {
-    const where = {};
+  async list({ visibility = "all", q = null, limit = 200, page = 1 } = {}) {
+    const where = Repository.searchWhere(q, ["Review.id","Review.comment","listing.title","reviewer.email","reviewer.full_name"]);
     if (visibility === "visible") where.is_hidden = false;
     if (visibility === "hidden") where.is_hidden = true;
 
-    const rows = await Review.findAll({
+    const { rows, count } = await Review.findAndCountAll({
       where,
       include: [
         { model: Listing, as: "listing", attributes: ["id", "title"] },
@@ -16,25 +17,10 @@ module.exports = {
         { model: Booking, as: "booking", attributes: ["id", "status", "check_in", "check_out"] },
       ],
       order: [["created_at", "DESC"]],
-      limit: Math.min(500, Math.max(1, Number(limit || 200))),
+      limit, offset: (page - 1) * limit, distinct: true,
     });
 
-    let items = rows.map((x) => (x.toJSON ? x.toJSON() : x));
-
-    const s = String(q || "").trim().toLowerCase();
-    if (s) {
-      items = items.filter((r) => {
-        return (
-          String(r.id || "").toLowerCase().includes(s) ||
-          String(r.listing?.title || "").toLowerCase().includes(s) ||
-          String(r.reviewer?.email || "").toLowerCase().includes(s) ||
-          String(r.reviewer?.full_name || "").toLowerCase().includes(s) ||
-          String(r.comment || "").toLowerCase().includes(s)
-        );
-      });
-    }
-
-    return { items };
+    return { items: rows, meta: { page, limit, total: count, total_pages: Math.ceil(count / limit) } };
   },
 
   async setHidden(id, hidden) {

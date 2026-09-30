@@ -42,7 +42,7 @@ export default function ProfileForm() {
     finally { setUploading(false); }
   }
   if (!user) return null;
-  return <section className="rounded-2xl border border-line bg-surface p-5 sm:p-8">
+  return <section className="surface-panel p-5 sm:p-8">
     <h2 className="text-xl font-bold">{t("profile.title")}</h2><p className="mt-2 text-sm text-muted-ink">{t("profile.description")}</p>
     <div className="mt-6 flex flex-wrap items-center gap-5"><Avatar src={user.avatar_url} name={user.full_name || t("common.account")} size={96} />
       <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-line px-4 py-2 hover:bg-muted-surface"><Camera aria-hidden size={20} /><span>{t("common.avatar")}</span>
@@ -54,7 +54,7 @@ export default function ProfileForm() {
         <InputField label={t("auth.fullName")} value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required />
         <InputField label={t("profile.phone")} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
         <InputField label={t("profile.address")} value={location} onChange={(e) => setLocation(e.target.value)} className="sm:col-span-2" placeholder={t("profile.locationHint")} />
-        <div className="sm:col-span-2"><label htmlFor="profile-about" className="mb-2 block text-sm font-semibold">{t("profile.introduction")}</label><textarea id="profile-about" value={about} onChange={(e) => setAbout(e.target.value)} rows={4} placeholder={t("profile.aboutHint")} className="w-full rounded-xl border border-line bg-surface px-4 py-3" /></div>
+        <div className="sm:col-span-2"><label htmlFor="profile-about" className="mb-2 block text-sm font-semibold">{t("profile.introduction")}</label><textarea id="profile-about" value={about} onChange={(e) => setAbout(e.target.value)} rows={4} placeholder={t("profile.aboutHint")} className="field-control" /></div>
       </fieldset>
       <Button type="submit" loading={isSaving} disabled={uploading}>{t("profile.save")}</Button>
     </form>

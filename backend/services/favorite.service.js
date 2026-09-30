@@ -1,13 +1,18 @@
 const { Listing, Sequelize, User } = require("../models");
+const ListingRepository = require("../repositories/listing.repository");
+const listingRepo = new ListingRepository();
 const FavoriteRepository = require("../repositories/favorite.repository");
 
 const favoriteRepo = new FavoriteRepository();
 const { literal } = Sequelize;
 
 module.exports = {
-  async list(userId) {
-    // return listings favorited by user
-    const items = await Listing.findAll({
+  async list(userId, { page, limit } = {}) {
+    const paginated = page !== undefined || limit !== undefined;
+    page ??= 1;
+    limit ??= 50;
+
+    const { rows: items, count } = await Listing.findAndCountAll({
       include: [
         {
           model: User,
@@ -31,29 +36,16 @@ module.exports = {
             )`),
             "cover_url",
           ],
-          [
-            literal(`(
-              SELECT COALESCE(AVG(r.rating), 0)
-              FROM reviews r
-              WHERE r.listing_id = "Listing".id
-            )`),
-            "avg_rating",
-          ],
-          [
-            literal(`(
-              SELECT COUNT(1)
-              FROM reviews r
-              WHERE r.listing_id = "Listing".id
-            )`),
-            "review_count",
-          ],
+          ...listingRepo.publicReviewAttributes(),
         ],
       },
       where: { deleted_at: null, status: "published" },
       order: [[literal('"avg_rating"'), "DESC"], ["created_at", "DESC"]],
+      distinct: true,
+      ...(paginated ? { limit, offset: (page - 1) * limit } : {}),
     });
 
-    return items;
+    return { items, meta: { page, limit: paginated ? limit : count, total: count, total_pages: paginated ? Math.ceil(count / limit) : 1 } };
   },
 
   async toggle(userId, listingId) {

@@ -10,9 +10,9 @@ export default function ListingFieldsCard({ form, setField, setForm, disabled = 
     if (typeof setForm === "function") { setForm((previous) => ({ ...previous, ...patch })); return; }
     Object.entries(patch || {}).forEach(([key, value]) => setField(key, value));
   };
-  return <fieldset disabled={disabled} className="min-w-0 space-y-5 rounded-2xl border border-line bg-surface p-5 sm:p-6">
+  return <fieldset disabled={disabled} className="surface-panel min-w-0 space-y-5 p-5 sm:p-8">
     <InputField label={t("host.listingTitle")} value={form.title} onChange={(e) => setField("title", e.target.value)} />
-    <div><label htmlFor="listing-description" className="mb-2 block text-sm font-semibold">{t("host.description")}</label><textarea id="listing-description" value={form.description} onChange={(e) => setField("description", e.target.value)} rows={5} className="w-full rounded-xl border border-line px-4 py-3" /></div>
+    <div><label htmlFor="listing-description" className="mb-2 block text-sm font-semibold">{t("host.description")}</label><textarea id="listing-description" value={form.description} onChange={(e) => setField("description", e.target.value)} rows={5} className="field-control" /></div>
     <MapboxAddressPicker address={form.address} city={form.city} country={form.country} lat={form.lat} lng={form.lng} onChange={applyPatch} />
     <div className="grid gap-4 sm:grid-cols-2">
       <InputField label={t("host.price")} type="number" value={form.price_per_night} onChange={(e) => setField("price_per_night", e.target.value)} />

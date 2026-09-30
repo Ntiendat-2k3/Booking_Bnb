@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { getReviews, getMyReview, createReview, updateReview, deleteReview } from "@/services/reviewService";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { useTranslations } from "@/i18n/LocaleProvider";
-import Button from "@/components/atoms/Button";
 import { toInt } from "./Stars";
 import ReviewComposer from "./ReviewComposer";
 import ReviewList from "./ReviewList";
@@ -31,6 +30,7 @@ export default function ReviewsSection({
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const avg = useMemo(() => {
     if (typeof initialAvg === "number") return initialAvg;
@@ -74,15 +74,26 @@ export default function ReviewsSection({
   async function submit() {
     setSaving(true);
     try {
+      let savedReview;
       if (mine?.id) {
-        await updateReview(mine.id, rating, comment);
+        const res = await updateReview(mine.id, rating, comment);
+        savedReview = res?.data;
         notifySuccess(t("reviews.updated"));
       } else {
-        await createReview(listingId, rating, comment);
+        const res = await createReview(listingId, rating, comment);
+        savedReview = res?.data;
         notifySuccess(t("reviews.created"));
       }
+      if (savedReview?.id) {
+        setMine(savedReview);
+        setCanReview(false);
+        setRating(toInt(savedReview.rating, 5));
+        setComment(savedReview.comment || "");
+      } else {
+        await loadMine();
+      }
+      setEditing(false);
       await load(1);
-      await loadMine();
     } catch (e) {
       if (e?.status === 401) {
         notifyInfo(t("reviews.loginRequired"));
@@ -104,6 +115,7 @@ export default function ReviewsSection({
       setCanReview(false);
       setRating(5);
       setComment("");
+      setEditing(false);
       await load(1);
       await loadMine();
     } catch (e) {
@@ -123,23 +135,15 @@ export default function ReviewsSection({
               <span>
                 <span className="font-semibold text-ink">{avg.toFixed(1)}</span>
                 {" · "}
-                {t("reviews.count", { count: initialCount ?? meta.total })}
+                {t("reviews.count", { count: meta.total })}
               </span>
             ) : (
               <span>
-                {t("reviews.count", { count: initialCount ?? meta.total })}
+                {t("reviews.count", { count: meta.total })}
               </span>
             )}
           </div>
         </div>
-        <Button
-          onClick={() => load(meta.page)}
-          variant="secondary"
-          size="sm"
-          disabled={loading}
-        >
-          {t("reviews.reload")}
-        </Button>
       </div>
 
       <ReviewComposer
@@ -153,14 +157,27 @@ export default function ReviewsSection({
         remove={remove}
         saving={saving}
         autoFocusComposer={autoFocusComposer}
+        editing={editing}
+        onEdit={() => {
+          setRating(toInt(mine.rating, 5));
+          setComment(mine.comment || "");
+          setEditing(true);
+        }}
+        onCancel={() => {
+          setRating(toInt(mine.rating, 5));
+          setComment(mine.comment || "");
+          setEditing(false);
+        }}
       />
 
-      <ReviewList
-        loading={loading}
-        items={items}
-        meta={meta}
-        load={load}
-      />
+      {(loading || items.some((item) => item.id !== mine?.id) || !mine) && (
+        <ReviewList
+          loading={loading}
+          items={mine ? items.filter((item) => item.id !== mine.id) : items}
+          meta={meta}
+          load={load}
+        />
+      )}
     </section>
   );
 }

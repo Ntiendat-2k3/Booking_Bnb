@@ -83,7 +83,7 @@ export default function MapPopupCard({ listing, onClose }) {
           {id ? (
             <Link
               href={`/rooms/${id}`}
-              className="rounded-xl bg-ink px-3 py-2 text-sm font-semibold text-white transition hover:bg-ink/85"
+              className="rounded-xl bg-ink px-3 py-2 text-sm font-semibold text-on-ink transition hover:bg-ink/85"
             >
               {t("common.viewDetails")}
             </Link>

@@ -1,25 +1,19 @@
+const asyncHandler = require("../../../utils/asyncHandler");
 const favoriteService = require("../../../services/favorite.service");
-const { successResponse, errorResponse } = require("../../../utils/response");
-
+const { successResponse } = require("../../../utils/response");
 module.exports = {
-  list: async (req, res) => {
-    try {
-      const userId = req.user.user.id;
-      const items = await favoriteService.list(userId);
-      return successResponse(res, items, "Favorites fetched", 200);
-    } catch (e) {
-      return errorResponse(res, e.message || "Internal server error", e.status || 500);
-    }
-  },
-
-  toggle: async (req, res) => {
-    try {
-      const userId = req.user.user.id;
-      const listingId = req.params.listingId;
-      const result = await favoriteService.toggle(userId, listingId);
-      return successResponse(res, result, "Favorite updated", 200);
-    } catch (e) {
-      return errorResponse(res, e.message || "Internal server error", e.status || 500);
-    }
-  },
+  list: asyncHandler(async (req, res) => {
+    const userId = req.user.user.id;
+    const {
+      items,
+      meta
+    } = await favoriteService.list(userId, req.query);
+    return successResponse(res, items, "Favorites fetched", 200, meta);
+  }),
+  toggle: asyncHandler(async (req, res) => {
+    const userId = req.user.user.id;
+    const listingId = req.params.listingId;
+    const result = await favoriteService.toggle(userId, listingId);
+    return successResponse(res, result, "Favorite updated", 200);
+  })
 };

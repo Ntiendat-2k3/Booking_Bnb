@@ -2,7 +2,7 @@
 import { useTranslations } from "@/i18n/LocaleProvider";
 
 
-import Link from "next/link";
+import Button from "@/components/atoms/Button";
 import { ArrowLeft as ArrowLeftIcon, ArrowRight as ArrowRightIcon, Check as CheckIcon, Sparkle as SparklesIcon, BuildingApartment, HouseLine, Bed, House, User, Users, UsersThree, Buildings, WifiHigh, CookingPot, Snowflake, Car, SwimmingPool, WashingMachine, Television, Laptop, Plant, ClipboardText, Star } from "@phosphor-icons/react";
 import { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -76,11 +76,11 @@ function OptionCard({ option, selected, onClick }) {
       onClick={onClick}
       aria-pressed={selected}
       className={`
-        group relative w-full text-left rounded-2xl border-2 p-4 sm:p-5
-        transition-all duration-200 ease-out
+        group relative w-full rounded-panel border-2 p-5 text-left sm:p-6
+        transition duration-200 ease-out focus-visible:ring-4 focus-visible:ring-brand/20
         ${selected
-          ? "border-brand bg-brand/[0.04] shadow-md shadow-brand/10"
-          : "border-line bg-surface hover:border-line hover:shadow-sm"
+          ? "border-ink bg-muted-surface shadow-soft"
+          : "border-line bg-surface hover:border-ink/30"
         }
       `}
     >
@@ -89,8 +89,8 @@ function OptionCard({ option, selected, onClick }) {
         absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-full
         transition-all duration-200
         ${selected
-          ? "bg-brand text-white scale-100"
-          : "border-2 border-line scale-90 group-hover:border-slate-400"
+          ? "bg-ink text-on-ink scale-100"
+          : "border-2 border-line scale-90 group-hover:border-ink/40"
         }
       `}>
         {selected && <CheckIcon className="h-3.5 w-3.5" />}
@@ -206,17 +206,13 @@ export default function HostOnboardingPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
         <div className="relative w-full max-w-lg mx-auto">
-          <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-brand/20 via-pink-200/30 to-rose-200/20 blur-2xl" />
-          <div className="relative rounded-2xl border border-line/80 bg-surface p-8 shadow-lg text-center">
+          <div className="surface-panel p-8 text-center">
             <span className="text-5xl block mb-4"><HouseLine aria-hidden size={40} className="mx-auto" /></span>
-            <h1 className="text-2xl font-bold text-ink">{t("host.title")}</h1>
+            <h1 className="page-heading">{t("host.title")}</h1>
             <p className="mt-2 text-muted-ink text-sm leading-relaxed">{t("host.loginDescription")}</p>
             <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-              <Link
-                href="/login"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand hover:bg-brand-dark px-6 py-3 text-sm font-semibold text-white shadow-md shadow-brand/25 hover:shadow-lg hover:-translate-y-0.5 transition-all"
-              >{t("auth.loginTitle")}</Link>
-              <Link href="/" className="inline-flex items-center justify-center rounded-xl border px-6 py-3 text-sm font-semibold text-muted-ink hover:bg-muted-surface transition-all">{t("common.backHome")}</Link>
+              <Button href="/login">{t("auth.loginTitle")}</Button>
+              <Button href="/" variant="secondary">{t("common.backHome")}</Button>
             </div>
           </div>
         </div>
@@ -226,7 +222,7 @@ export default function HostOnboardingPage() {
 
 
   return (
-    <div className="max-w-2xl mx-auto pb-10">
+    <div className="mx-auto max-w-3xl pb-10 sm:pt-4">
 
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
@@ -234,11 +230,11 @@ export default function HostOnboardingPage() {
             {t("host.step", { step: step + 1, total: TOTAL_STEPS })}
           </span>
           {step > 0 && (
-            <button
+            <Button
               onClick={goBack} disabled={busy}
-              className="inline-flex items-center gap-1 text-xs font-medium text-muted-ink hover:text-slate-800 transition-colors"
+              variant="ghost" size="sm"
             >
-              <ArrowLeftIcon className="h-3.5 w-3.5" />{t("common.back")}</button>
+              <ArrowLeftIcon aria-hidden className="h-3.5 w-3.5" />{t("common.back")}</Button>
           )}
         </div>
         <ProgressBar current={step} total={TOTAL_STEPS} />
@@ -249,7 +245,7 @@ export default function HostOnboardingPage() {
         <div key={currentStep.id} className="animate-fadeIn">
 
           <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-ink leading-tight">
+            <h1 className="page-heading">
               {t(currentStep.questionKey)}
             </h1>
             <p className="mt-2 text-sm sm:text-base text-muted-ink">
@@ -284,28 +280,27 @@ export default function HostOnboardingPage() {
 
 
           <div className="mt-8 flex justify-end">
-            <button
+            <Button
               onClick={goNext}
               disabled={!canProceed()}
-              className="inline-flex items-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-lg"
+              variant="ink" size="lg"
             >
               {isLastQuestion ? t("host.continueConfirm") : t("common.next")}
-              <ArrowRightIcon className="h-4 w-4" />
-            </button>
+              <ArrowRightIcon aria-hidden className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       ) : (
 
         <div key="confirm" className="animate-fadeIn">
           <div className="relative">
-            <div className="absolute -inset-2 rounded-2xl bg-gradient-to-br from-brand/10 via-rose-100/30 to-pink-50/20 blur-xl pointer-events-none" />
-            <div className="relative rounded-2xl border border-line/80 bg-surface p-6 sm:p-8 shadow-sm">
+            <div className="surface-panel p-6 sm:p-8">
 
               <div className="text-center mb-8">
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-brand shadow-lg shadow-brand/25 mb-4">
-                  <SparklesIcon className="h-8 w-8 text-white" />
+                <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-control bg-ink">
+                  <SparklesIcon className="h-8 w-8 text-on-ink" />
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-ink">{t("host.ready")}</h1>
+                <h1 className="page-heading">{t("host.ready")}</h1>
                 <p className="mt-2 text-sm text-muted-ink max-w-md mx-auto leading-relaxed">{t("host.confirmDescription")}</p>
               </div>
 
@@ -328,24 +323,23 @@ export default function HostOnboardingPage() {
 
 
               <div className="flex flex-col gap-3">
-                <button
+                <Button
                   id="btn-confirm-host"
                   onClick={onConfirm}
-                  disabled={busy}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-brand hover:bg-brand-dark px-6 py-4 text-sm font-semibold text-white shadow-lg shadow-brand/25 transition-all hover:shadow-xl hover:shadow-brand/30 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                  loading={busy} size="lg" className="w-full"
                 >
                   {busy ? (
                     <>
-                      <div className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />{t("common.processing")}</>
+                      {t("common.processing")}</>
                   ) : (
                     <>
                       <SparklesIcon className="h-5 w-5" />{t("host.confirm")}</>
                   )}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={goBack} disabled={busy}
-                  className="w-full rounded-xl border border-line bg-surface px-6 py-3.5 text-sm font-semibold text-muted-ink transition-all hover:bg-muted-surface"
-                >{t("host.backEdit")}</button>
+                  variant="secondary" className="w-full"
+                >{t("host.backEdit")}</Button>
               </div>
             </div>
           </div>

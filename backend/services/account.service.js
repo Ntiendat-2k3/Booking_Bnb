@@ -1,21 +1,24 @@
 const bcrypt = require("bcrypt");
-const { User, UserSetting, PaymentMethod } = require("../models");
+const { User, UserSetting, PaymentMethod, RefreshToken, sequelize } = require("../models");
+const { sanitizeUser } = require("./auth.service");
+const { invalidateListings } = require("../core/cache");
+const httpError = require("../utils/httpError");
 
 function toPlain(v) {
   return v?.toJSON ? v.toJSON() : v;
 }
 
 async function ensureSettingRow(userId) {
-  let row = await UserSetting.findByPk(userId);
-  if (!row) {
-    row = await UserSetting.create({
+  const [row] = await UserSetting.findOrCreate({
+    where: { user_id: userId },
+    defaults: {
       user_id: userId,
       show_profile: true,
       show_reviews: true,
       marketing_emails: false,
       updated_at: new Date(),
-    });
-  }
+    },
+  });
   return row;
 }
 
@@ -27,9 +30,7 @@ module.exports = {
       err.status = 404;
       throw err;
     }
-    const plain = toPlain(user);
-    delete plain.password_hash;
-    return plain;
+    return sanitizeUser(user);
   },
 
   async updateProfile(userId, { full_name, phone, about, location }) {
@@ -46,9 +47,8 @@ module.exports = {
     user.location = location || null;
 
     await user.save();
-    const plain = toPlain(user);
-    delete plain.password_hash;
-    return plain;
+    await invalidateListings();
+    return sanitizeUser(user);
   },
 
   async setAvatarUrl(userId, avatar_url) {
@@ -60,34 +60,20 @@ module.exports = {
     }
     user.avatar_url = avatar_url || null;
     await user.save();
-    const plain = toPlain(user);
-    delete plain.password_hash;
-    return plain;
+    await invalidateListings();
+    return sanitizeUser(user);
   },
 
   async changePassword(userId, { current_password, new_password }) {
-    const user = await User.findByPk(userId);
-    if (!user) {
-      const err = new Error("User not found");
-      err.status = 404;
-      throw err;
-    }
-    if (user.provider !== "local" || !user.password_hash) {
-      const err = new Error("Password change is only available for local accounts");
-      err.status = 400;
-      throw err;
-    }
-
-    const ok = await bcrypt.compare(String(current_password), String(user.password_hash));
-    if (!ok) {
-      const err = new Error("Current password is incorrect");
-      err.status = 400;
-      throw err;
-    }
-
-    user.password_hash = await bcrypt.hash(String(new_password), 10);
-    await user.save();
-    return true;
+    return sequelize.transaction(async (transaction) => {
+      const user = await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE });
+      if (!user) throw httpError(404, "User not found");
+      if (user.provider !== "local" || !user.password_hash) throw httpError(400, "Password change is only available for local accounts");
+      if (!await bcrypt.compare(current_password, user.password_hash)) throw httpError(400, "Current password is incorrect");
+      await user.update({ password_hash: await bcrypt.hash(new_password, 10), reset_password_token: null, reset_password_expires: null }, { transaction });
+      await RefreshToken.update({ revoked_at: new Date() }, { where: { user_id: userId, revoked_at: null }, transaction });
+      return true;
+    });
   },
 
   async getSettings(userId) {
@@ -101,6 +87,7 @@ module.exports = {
     Object.assign(row, patch);
     row.updated_at = new Date();
     await row.save();
+    await invalidateListings();
     return toPlain(row);
   },
 
@@ -113,74 +100,39 @@ module.exports = {
   },
 
   async createPaymentMethod(userId, body) {
-    const provider = String(body?.provider || "").trim();
-    const type = String(body?.type || "").trim();
-    const label = String(body?.label || "").trim();
-    const isDefaultRequested = body?.is_default === true;
-
-    if (!provider || !type || !label) {
-      const err = new Error("provider, type, label are required");
-      err.status = 400;
-      throw err;
-    }
-
-    const existing = await PaymentMethod.count({ where: { user_id: userId } });
-    const is_default = existing === 0 || isDefaultRequested;
-
-    if (is_default) {
-      await PaymentMethod.update(
-        { is_default: false },
-        { where: { user_id: userId } },
-      );
-    }
-
-    const row = await PaymentMethod.create({
-      user_id: userId,
-      provider,
-      type,
-      label,
-      is_default,
-      meta: body?.meta || null,
+    return sequelize.transaction(async (transaction) => {
+      if (!await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE })) throw httpError(404, "User not found");
+      const count = await PaymentMethod.count({ where: { user_id: userId }, transaction });
+      const is_default = count === 0 || body.is_default === true;
+      if (is_default) await PaymentMethod.update({ is_default: false }, { where: { user_id: userId }, transaction });
+      const row = await PaymentMethod.create({ user_id: userId, provider: body.provider, type: body.type, label: body.label, is_default, meta: body.meta || null }, { transaction });
+      return toPlain(row);
     });
-    return toPlain(row);
   },
 
   async setDefaultPaymentMethod(userId, id) {
-    const row = await PaymentMethod.findOne({ where: { id, user_id: userId } });
-    if (!row) {
-      const err = new Error("Payment method not found");
-      err.status = 404;
-      throw err;
-    }
-    await PaymentMethod.update(
-      { is_default: false },
-      { where: { user_id: userId } },
-    );
-    row.is_default = true;
-    await row.save();
-    return toPlain(row);
+    return sequelize.transaction(async (transaction) => {
+      if (!await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE })) throw httpError(404, "User not found");
+      const row = await PaymentMethod.findOne({ where: { id, user_id: userId }, transaction });
+      if (!row) throw httpError(404, "Payment method not found");
+      await PaymentMethod.update({ is_default: false }, { where: { user_id: userId }, transaction });
+      await row.update({ is_default: true }, { transaction });
+      return toPlain(row);
+    });
   },
 
   async deletePaymentMethod(userId, id) {
-    const row = await PaymentMethod.findOne({ where: { id, user_id: userId } });
-    if (!row) {
-      const err = new Error("Payment method not found");
-      err.status = 404;
-      throw err;
-    }
-    const wasDefault = row.is_default;
-    await row.destroy();
-
-    if (wasDefault) {
-      const next = await PaymentMethod.findOne({
-        where: { user_id: userId },
-        order: [["created_at", "DESC"]],
-      });
-      if (next) {
-        next.is_default = true;
-        await next.save();
+    return sequelize.transaction(async (transaction) => {
+      if (!await User.findByPk(userId, { transaction, lock: transaction.LOCK.UPDATE })) throw httpError(404, "User not found");
+      const row = await PaymentMethod.findOne({ where: { id, user_id: userId }, transaction });
+      if (!row) throw httpError(404, "Payment method not found");
+      const wasDefault = row.is_default;
+      await row.destroy({ transaction });
+      if (wasDefault) {
+        const next = await PaymentMethod.findOne({ where: { user_id: userId }, order: [["created_at", "DESC"], ["id", "DESC"]], transaction });
+        if (next) await next.update({ is_default: true }, { transaction });
       }
-    }
-    return true;
+      return true;
+    });
   },
 };

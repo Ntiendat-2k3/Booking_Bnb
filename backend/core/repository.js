@@ -1,6 +1,12 @@
-// : "định nghĩa" phương thức chung cho các repository của Sequelize
-//: Tác dụng: giả sử sau này chuyển sang Mongoose hoặc ORM khác thì chỉ cần sửa ở file này k phải vào từng file service sửa nữa
+const { Op, where, cast, col } = require("sequelize");
+
 module.exports = class Repository {
+  static searchWhere(query, columns) {
+    const term = String(query || "").trim();
+    if (!term) return {};
+    const pattern = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+    return { [Op.or]: columns.map((column) => where(cast(col(column), "text"), { [Op.iLike]: pattern })) };
+  }
   constructor() {
     this.model = this.getModel();
   }
@@ -10,8 +16,8 @@ module.exports = class Repository {
     throw new Error("getModel() must be implemented");
   }
 
-  create(data) {
-    return this.model.create(data);
+  create(data, options = {}) {
+    return this.model.create(data, options);
   }
   update(data, condition) {
     return this.model.update(data, { where: condition });

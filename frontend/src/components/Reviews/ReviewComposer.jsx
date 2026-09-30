@@ -5,6 +5,7 @@ import { notifyInfo } from "@/lib/notify";
 import { useEffect, useRef } from "react";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
+import Stars from "./Stars";
 
 export default function ReviewComposer({
   mine,
@@ -16,7 +17,10 @@ export default function ReviewComposer({
   submit,
   remove,
   saving,
-  autoFocusComposer
+  autoFocusComposer,
+  editing,
+  onEdit,
+  onCancel,
 }) {
   const t = useTranslations();
   const commentRef = useRef(null);
@@ -36,6 +40,20 @@ export default function ReviewComposer({
   }, [autoFocusComposer, mine, canReview]);
 
   const disabled = !mine && !canReview;
+
+  if (mine && !editing) {
+    return (
+      <div className="mt-5 rounded-2xl bg-muted-surface p-5">
+        <div className="font-semibold text-ink">{t("reviews.yourReview")}</div>
+        <div className="mt-3"><Stars value={mine.rating} /></div>
+        {mine.comment && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-ink">{mine.comment}</p>}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={onEdit} variant="secondary" size="sm">{t("common.edit")}</Button>
+          <Button onClick={remove} disabled={saving} variant="secondary" size="sm">{t("common.delete")}</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-5 rounded-2xl bg-muted-surface p-5">
@@ -108,12 +126,12 @@ export default function ReviewComposer({
           </Button>
           {mine && (
             <Button
-              onClick={remove}
+              onClick={onCancel}
               disabled={saving}
               variant="secondary"
               size="sm"
             >
-              {t("common.delete")}
+              {t("common.cancel")}
             </Button>
           )}
         </div>

@@ -16,6 +16,7 @@ import PaymentMethods from "@/features/account/PaymentMethods";
 import SecuritySettings from "@/features/account/SecuritySettings";
 import NotificationSettings from "@/features/account/NotificationSettings";
 import AppPreferences from "@/features/account/AppPreferences";
+import Button from "@/components/atoms/Button";
 
 export default function AccountSettingsPage() {
   const t = useTranslations();
@@ -57,13 +58,10 @@ export default function AccountSettingsPage() {
 
   if (!user) {
     return (
-      <div className="max-w-3xl px-4 py-10 mx-auto">
-        <div className="p-8 text-center bg-surface shadow-xl border rounded-2xl">
+      <div className="mx-auto max-w-3xl py-10">
+        <div className="surface-panel p-8 text-center">
           <p className="text-muted-ink">{t("account.loginPrompt")}</p>
-          <button 
-            onClick={() => router.push("/login")}
-            className="mt-4 px-6 py-2 bg-brand text-white rounded-xl font-medium"
-          >{t("auth.loginNow")}</button>
+          <Button href="/login" className="mt-4">{t("auth.loginNow")}</Button>
         </div>
       </div>
     );
@@ -82,9 +80,9 @@ export default function AccountSettingsPage() {
   };
 
   return (
-    <div className="max-w-6xl px-4 py-12 mx-auto">
+    <div className="mx-auto max-w-6xl py-4 sm:py-6">
       <div className="mb-10">
-        <h1 className="text-4xl font-bold tracking-tight text-ink">{t("account.title")}</h1>
+        <h1 className="page-heading">{t("account.title")}</h1>
         <p className="mt-2 text-lg text-muted-ink">{t("account.description")}</p>
       </div>
 
@@ -94,7 +92,7 @@ export default function AccountSettingsPage() {
             activeTab={activeTab} 
             onTabChange={(id) => {
               setActiveTab(id);
-              window.scrollTo({ top: 0, behavior: "smooth" });
+              window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
             }} 
             role={user?.role} 
           />
@@ -110,7 +108,7 @@ export default function AccountSettingsPage() {
                 </div>
               </div>
             ) : (
-              <div className="w-full animate-in fade-in duration-500 overflow-visible">
+              <div className="reveal w-full overflow-visible">
                 {renderContent()}
               </div>
             )}

@@ -32,7 +32,7 @@ export default function PrivacySettings({ user }) {
   if (failed) return <div role="alert" className="p-6"><p>{t("privacy.loadFailed")}</p><Button className="mt-4" onClick={() => { setFailed(false); setAttempt((value) => value + 1); }}>{t("common.retry")}</Button></div>;
   if (!settings) return <p role="status" className="p-6 text-muted-ink">{t("privacy.loading")}</p>;
   const items = [{ id: "show_profile", label: "privacy.showProfile", description: "privacy.profileDescription" }, { id: "show_reviews", label: "privacy.showReviews", description: "privacy.reviewsDescription" }, { id: "marketing_emails", label: "privacy.marketing", description: "privacy.marketingDescription" }];
-  return <section className="rounded-2xl border border-line bg-surface p-5 sm:p-8">
+  return <section className="surface-panel p-5 sm:p-8">
     <h2 className="flex items-center gap-2 text-xl font-bold"><Shield aria-hidden size={24} className="text-brand" />{t("privacy.title")}</h2><p className="mt-2 text-sm text-muted-ink">{t("privacy.description")}</p>
     <div className="mt-6 space-y-6">{items.map((item) => <label key={item.id} className="flex min-h-11 cursor-pointer items-start justify-between gap-4">
       <span className="min-w-0"><span className="block font-semibold">{t(item.label)}</span><span className="mt-1 block text-sm leading-6 text-muted-ink">{t(item.description)}</span></span>

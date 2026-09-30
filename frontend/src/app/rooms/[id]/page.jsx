@@ -2,11 +2,16 @@ import { serverGetJson } from "@/lib/serverApi";
 import { cache } from "react";
 import {
   ArrowLeft,
-  Check,
+  Bathtub,
+  Bed,
+  MapPin,
   Star,
+  Users,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import Image from "next/image";
+import Avatar from "@/components/atoms/Avatar";
+import AmenityIcon from "@/components/AmenityIcon";
+import Button from "@/components/atoms/Button";
 import { notFound } from "next/navigation";
 import RoomTabs from "@/components/RoomTabs";
 import Container from "@/components/layout/Container";
@@ -65,7 +70,7 @@ export default async function RoomDetailPage({ params, searchParams }) {
   if (fetchError || !ok) {
     return (
       <Container className="py-12">
-        <div className="mx-auto max-w-2xl rounded-2xl border border-line bg-surface p-6 shadow-sm">
+        <div className="surface-panel mx-auto max-w-2xl p-6">
           <h1 className="text-xl font-bold text-danger">
             {t("room.loadFailed")}
           </h1>
@@ -78,18 +83,17 @@ export default async function RoomDetailPage({ params, searchParams }) {
             })}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
+            <Button
               href="/"
-              className="inline-flex min-h-11 items-center rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark"
             >
               {t("room.backHome")}
-            </Link>
-            <Link
+            </Button>
+            <Button
               href="/search"
-              className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface"
+              variant="secondary"
             >
               {t("room.goSearch")}
-            </Link>
+            </Button>
           </div>
         </div>
       </Container>
@@ -111,167 +115,158 @@ export default async function RoomDetailPage({ params, searchParams }) {
   const jsonLd = buildListingJsonLd(listing, reviews);
 
   return (
-    <div className="pb-10">
+    <div className="nature-page room-page pb-10">
       {jsonLd && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
       )}
-      <Container className="pt-6">
-        <Link
-          href="/search"
-          className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-muted-ink transition hover:text-ink"
-        >
-          <ArrowLeft aria-hidden size={18} />
-          {t("room.backSearch")}
-        </Link>
+      <section className="room-photos">
+        <ImageGallery images={listing.images} title={listing.title} listingId={listing.id} />
+      </section>
 
-        <div className="mt-3 space-y-2">
-          <h1 className="max-w-4xl text-3xl font-bold tracking-[-0.035em] text-ink sm:text-4xl">
-            {listing.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-muted-ink">
-            <div className="flex items-center gap-1">
-              <Star aria-hidden size={16} weight="fill" className="text-brand" />
-              <span>{rating > 0 ? rating.toFixed(1) : t("common.new")}</span>
+      <div className="room-layout relative grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-x-14">
+        <Container className="room-heading min-w-0 pt-8">
+          <Link
+            href="/search"
+            className="room-back-link inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-muted-ink transition hover:text-ink"
+          >
+            <ArrowLeft aria-hidden size={18} />
+            {t("room.backSearch")}
+          </Link>
+
+          <div className="room-title-block mt-3 space-y-2">
+            <h1 className="page-heading max-w-4xl">
+              {listing.title}
+            </h1>
+            <div className="room-title-meta flex flex-wrap items-center gap-2 text-sm font-medium text-muted-ink">
+              <div className="room-rating flex items-center gap-1">
+                <Star aria-hidden size={16} weight="fill" className="text-brand" />
+                <span>{rating > 0 ? rating.toFixed(1) : t("common.new")}</span>
+              </div>
+              <span className="text-line">·</span>
+              <span className="room-review-count underline">
+                {t("room.reviewCount", { count: reviewCount })}
+              </span>
+              <span className="text-line">·</span>
+              <span className="room-city inline-flex items-center gap-1 underline">
+                <MapPin aria-hidden size={17} className="hidden" />
+                {listing.city}, {listing.country}
+              </span>
             </div>
-            <span className="text-line">·</span>
-            <span className="underline">
-              {t("room.reviewCount", { count: reviewCount })}
-            </span>
-            <span className="text-line">·</span>
-            <span className="underline">
-              {listing.city}, {listing.country}
-            </span>
           </div>
-        </div>
-      </Container>
+          <section className="room-summary border-b border-line pb-8">
+            <div className="room-host-intro flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold tracking-[-0.02em] text-ink">
+                  {t("room.entireHomeHostedBy", {
+                    host: listing.host?.full_name || "",
+                  })}
+                </h2>
+                <div className="mt-2 text-sm leading-6 text-muted-ink">
+                  {t("room.staySummary", {
+                    guests: listing.max_guests,
+                    bedrooms: listing.bedrooms,
+                    beds: listing.beds,
+                    bathrooms: listing.bathrooms,
+                  })}
+                </div>
+              </div>
+              <Avatar src={listing.host?.avatar_url} name={listing.host?.full_name || t("contact.host")} size={56} />
+            </div>
+            <div className="room-capacity flex">
+              <span><Users aria-hidden size={25} />{t("room.guestCount", { count: listing.max_guests })}</span>
+              <span><Bed aria-hidden size={25} />{t("room.bedCount", { count: listing.beds })}</span>
+              <span><Bathtub aria-hidden size={25} />{t("room.bathCount", { count: listing.bathrooms })}</span>
+            </div>
+          </section>
+        </Container>
 
-      <RoomTabs />
+        <BookingCard listing={listing} initialCheckIn={sp?.check_in} initialCheckOut={sp?.check_out} />
 
-      <Container>
-        <section id="photos" className="pt-6 scroll-mt-28">
-          <ImageGallery images={listing.images} title={listing.title} />
-        </section>
+        <div className="room-main min-w-0 space-y-8">
+          <RoomTabs />
+          <section className="room-description border-b border-line pb-8">
+            <h2 className="mb-4 text-2xl font-bold tracking-[-0.025em] text-ink">
+              {t("room.description")}
+            </h2>
+            <p className="whitespace-pre-line leading-7 text-muted-ink">
+              {listing.description}
+            </p>
+          </section>
 
-        <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-8">
-            <section className="border-b border-line pb-8">
-              <div className="flex items-center justify-between gap-3">
+          <section id="amenities" className="room-amenities scroll-mt-32 border-b border-line pb-8">
+            <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
+              {t("room.amenities")}
+            </h2>
+            <div className="room-amenity-list grid gap-4 mt-4 sm:grid-cols-2" tabIndex={0} role="region" aria-label={t("room.amenities")}>
+              {(listing.amenities || []).map((a) => (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 text-muted-ink"
+                >
+                  <AmenityIcon amenity={a} size={22} className="shrink-0 text-brand" />
+                  <span>{a.name}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <ReviewsSection
+            listingId={listing.id}
+            initialAvg={rating}
+            initialCount={reviewCount}
+            initialItems={reviews}
+            autoFocusComposer={String(sp?.review || "") === "1"}
+          />
+
+          <section id="host" className="scroll-mt-32 border-b border-line py-8">
+            <h2 className="mb-6 text-2xl font-bold tracking-[-0.025em] text-ink">
+              {t("room.meetHost")}
+            </h2>
+            <div className="surface-panel flex flex-col items-center gap-8 p-6 text-center sm:p-8 md:flex-row md:items-start md:text-left">
+              <div className="flex flex-col items-center gap-4 min-w-[200px]">
+                <Avatar src={listing.host?.avatar_url} name={listing.host?.full_name || t("contact.host")} size={96} />
+                <div className="text-center">
+                  <h3 className="text-lg font-bold text-ink">{listing.host?.full_name}</h3>
+                  <p className="text-sm text-muted-ink">
+                    {listing.host?.location || t("room.hostLocationMissing")}
+                  </p>
+                </div>
+                <div className="mt-2">
+                  <ContactHostButton hostId={listing.host?.id} />
+                </div>
+              </div>
+              <div className="flex-1 space-y-4">
                 <div>
-                  <h2 className="text-xl font-bold tracking-[-0.02em] text-ink">
-                    {t("room.entireHomeHostedBy", {
-                      host: listing.host?.full_name || "",
-                    })}
-                  </h2>
-                  <div className="mt-2 text-sm leading-6 text-muted-ink">
-                    {t("room.staySummary", {
-                      guests: listing.max_guests,
-                      bedrooms: listing.bedrooms,
-                      beds: listing.beds,
-                      bathrooms: listing.bathrooms,
-                    })}
-                  </div>
-                </div>
-                <Image
-                  src={listing.host?.avatar_url || "https://i.pravatar.cc/150"}
-                  alt={listing.host?.full_name || t("contact.host")}
-                  width={56}
-                  height={56}
-                  className="h-14 w-14 rounded-full border border-line object-cover shadow-sm"
-                />
-              </div>
-            </section>
-
-            <section className="border-b border-line pb-8">
-              <h2 className="mb-4 text-2xl font-bold tracking-[-0.025em] text-ink">
-                {t("room.description")}
-              </h2>
-              <p className="whitespace-pre-line leading-7 text-muted-ink">
-                {listing.description}
-              </p>
-            </section>
-
-            <section id="amenities" className="scroll-mt-32 border-b border-line pb-8">
-              <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
-                {t("room.amenities")}
-              </h2>
-              <div className="grid gap-4 mt-4 sm:grid-cols-2">
-                {(listing.amenities || []).map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex items-center gap-3 text-muted-ink"
-                  >
-                    <Check aria-hidden size={20} className="text-positive" />
-                    <span>{a.name}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <ReviewsSection
-              listingId={listing.id}
-              initialAvg={rating}
-              initialCount={reviewCount}
-              initialItems={reviews}
-              autoFocusComposer={String(sp?.review || "") === "1"}
-            />
-
-            <section id="host" className="scroll-mt-32 border-b border-line py-8">
-              <h2 className="mb-6 text-2xl font-bold tracking-[-0.025em] text-ink">
-                {t("room.meetHost")}
-              </h2>
-              <div className="flex flex-col items-start gap-8 rounded-[20px] bg-muted-surface p-6 md:flex-row">
-                <div className="flex flex-col items-center gap-4 min-w-[200px]">
-                  <Image
-                    src={listing.host?.avatar_url || "https://i.pravatar.cc/150"}
-                    alt={listing.host?.full_name}
-                    width={100}
-                    height={100}
-                    className="h-24 w-24 rounded-full object-cover shadow-sm"
-                  />
-                  <div className="text-center">
-                    <h3 className="text-lg font-bold text-ink">{listing.host?.full_name}</h3>
-                    <p className="text-sm text-muted-ink">
-                      {listing.host?.location || t("room.hostLocationMissing")}
-                    </p>
-                  </div>
-                  <div className="mt-2">
-                    <ContactHostButton hostId={listing.host?.id} />
-                  </div>
-                </div>
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <h3 className="mb-2 font-semibold text-ink">
-                      {t("room.hostAbout")}
-                    </h3>
-                    <p className="leading-7 text-muted-ink">
-                      {listing.host?.about || t("room.hostAboutMissing")}
-                    </p>
-                  </div>
+                  <h3 className="mb-2 font-semibold text-ink">
+                    {t("room.hostAbout")}
+                  </h3>
+                  <p className="leading-7 text-muted-ink">
+                    {listing.host?.about || t("room.hostAboutMissing")}
+                  </p>
                 </div>
               </div>
-            </section>
+            </div>
+          </section>
 
-            <section id="location" className="scroll-mt-32 pt-8">
-              <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
-                {t("room.location")}
-              </h2>
-              <p className="mb-4 mt-2 text-muted-ink">
-                {listing.address} · {listing.city}, {listing.country}
-              </p>
-              <MapboxStaticMap
-                lat={listing.lat}
-                lng={listing.lng}
-                heightClass="h-[400px]"
-              />
-            </section>
-          </div>
-
-          <BookingCard listing={listing} />
+          <section id="location" className="room-location scroll-mt-32 pt-8">
+            <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
+              {t("room.location")}
+            </h2>
+            <p className="mb-4 mt-2 text-muted-ink">
+              {listing.address} · {listing.city}, {listing.country}
+            </p>
+            <Button href={"https://www.google.com/maps/search/?" + new URLSearchParams({ api: "1", query: [listing.address, listing.city, listing.country].filter(Boolean).join(", ") })} target="_blank" rel="noopener noreferrer" variant="secondary" size="sm" className="room-map-link mb-4"><MapPin aria-hidden size={18} />{t("search.map")}</Button>
+            <div className="room-location-map"><MapboxStaticMap
+              lat={listing.lat}
+              lng={listing.lng}
+              heightClass="h-[240px] md:h-[400px]"
+            /></div>
+          </section>
         </div>
-      </Container>
+      </div>
     </div>
   );
 }

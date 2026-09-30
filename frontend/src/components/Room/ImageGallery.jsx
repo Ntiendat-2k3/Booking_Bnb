@@ -6,15 +6,41 @@ import {
   CaretLeft,
   CaretRight,
   ImagesSquare,
+  UploadSimple,
   X,
 } from "@phosphor-icons/react";
 import { useTranslations } from "@/i18n/LocaleProvider";
+import Button from "@/components/atoms/Button";
+import IconButton from "@/components/atoms/IconButton";
+import FavoriteButton from "@/components/FavoriteButton";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
-export default function ImageGallery({ images, title }) {
+export default function ImageGallery({ images, title, listingId }) {
   const t = useTranslations();
   const dialogRef = useRef(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const cover = images?.find((image) => image.is_cover) || images?.[0];
+  // Đưa ảnh bìa lên đầu và bỏ URL trùng để mỗi lần chuyển hiển thị ảnh mới.
+  const seenUrls = new Set();
+  const allImages = [cover, ...(images || [])].filter((image) => {
+    if (!image?.url || seenUrls.has(image.url)) return false;
+    seenUrls.add(image.url);
+    return true;
+  });
+  const thumbnails = allImages.slice(1, 5);
+
+  async function shareListing() {
+    try {
+      if (navigator.share) await navigator.share({ title, url: window.location.href });
+      else {
+        await navigator.clipboard.writeText(window.location.href);
+        notifySuccess(t("room.linkCopied"));
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") notifyError(t("room.shareFailed"));
+    }
+  }
 
   const openLightbox = (index) => {
     setCurrentIndex(index);
@@ -27,12 +53,12 @@ export default function ImageGallery({ images, title }) {
 
   const nextImage = (e) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev + 1) % images.length);
+    setCurrentIndex((prev) => (prev + 1) % allImages.length);
   };
 
   const prevImage = (e) => {
     e.stopPropagation();
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+    setCurrentIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
   useEffect(() => {
@@ -46,8 +72,8 @@ export default function ImageGallery({ images, title }) {
 
     function handleKeyDown(event) {
       if (event.key === "Escape") closeLightbox();
-      if (event.key === "ArrowRight") setCurrentIndex((index) => (index + 1) % images.length);
-      if (event.key === "ArrowLeft") setCurrentIndex((index) => (index - 1 + images.length) % images.length);
+      if (event.key === "ArrowRight") setCurrentIndex((index) => (index + 1) % allImages.length);
+      if (event.key === "ArrowLeft") setCurrentIndex((index) => (index - 1 + allImages.length) % allImages.length);
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -57,37 +83,38 @@ export default function ImageGallery({ images, title }) {
       dialog?.close();
       trigger?.focus();
     };
-  }, [lightboxOpen, images?.length]);
+  }, [lightboxOpen, allImages.length]);
 
-  if (!images?.length) return null;
-
-  const cover = images.find((image) => image.is_cover) || images[0];
-  const gridImages = images.filter((image) => image.id !== cover?.id);
-  const allImages = [cover, ...gridImages];
+  if (!allImages.length) return null;
 
   return (
     <>
-      <div className="group relative grid grid-cols-1 gap-2 overflow-hidden rounded-2xl md:grid-cols-4">
+      <div id="photos" className="room-gallery-hero group relative scroll-mt-28">
         <button
           type="button"
-          className="relative h-[300px] overflow-hidden text-left md:col-span-2 md:h-[410px]"
+          className="room-cover relative block h-[420px] w-full overflow-hidden rounded-feature text-left lg:h-[580px]"
           onClick={() => openLightbox(0)}
           aria-label={t("room.imageNumber", { title, number: 1 })}
         >
           <Image
-            src={cover?.url || "https://picsum.photos/seed/cover/1200/800"}
+            src={cover?.url || "/placeholder-room.svg"}
             alt={title}
             fill
-            sizes="(max-width: 768px) 100vw, 50vw"
+            priority
+            sizes="100vw"
             className="object-cover transition duration-300 hover:brightness-90 motion-reduce:transition-none"
           />
         </button>
-        <div className="hidden grid-cols-2 gap-2 md:grid md:col-span-2">
-          {gridImages.slice(0, 4).map((im, idx) => (
+        {listingId && <div className="room-hero-actions absolute bottom-6 right-6 flex gap-2">
+          <FavoriteButton listingId={listingId} variant="inverse" />
+          <IconButton variant="inverse" label={t("room.share")} onClick={shareListing}><UploadSimple aria-hidden size={21} /></IconButton>
+        </div>}
+        {thumbnails.length ? <div className="room-gallery-thumbnails absolute left-6 top-24 grid gap-3">
+          {thumbnails.map((im, idx) => (
             <button
               type="button"
               key={im.id}
-              className="relative h-[201px] overflow-hidden text-left"
+              className="relative h-20 w-20 overflow-hidden rounded-control border-2 border-white/60 text-left shadow-sm"
               onClick={() => openLightbox(idx + 1)}
               aria-label={t("room.imageNumber", {
                 title,
@@ -98,23 +125,16 @@ export default function ImageGallery({ images, title }) {
                 src={im.url}
                 alt={title}
                 fill
-                sizes="25vw"
+                sizes="80px"
                 className="object-cover transition duration-300 hover:brightness-90 motion-reduce:transition-none"
               />
             </button>
           ))}
-        </div>
+        </div> : null}
 
-        {allImages.length > 5 && (
-          <button
-            type="button"
-            onClick={() => openLightbox(0)}
-            className="absolute bottom-4 right-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink shadow-sm transition hover:bg-muted-surface"
-          >
-            <ImagesSquare aria-hidden size={18} />
-            {t("room.showAllPhotos")}
-          </button>
-        )}
+        <Button variant="secondary" size="sm" className="gallery-count absolute bottom-6 left-6" onClick={() => openLightbox(0)}>
+          <ImagesSquare aria-hidden size={18} />{t("room.showAllPhotos")} ({allImages.length})
+        </Button>
       </div>
 
       {lightboxOpen && (
@@ -124,44 +144,51 @@ export default function ImageGallery({ images, title }) {
           aria-modal="true"
           aria-label={t("room.galleryLabel")}
         >
-          <button
-            type="button"
+          <IconButton
             onClick={closeLightbox}
-            className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full text-white transition hover:bg-white/10"
-            aria-label={t("common.close")}
+            variant="inverse" className="absolute right-4 top-4"
+            label={t("common.close")}
           >
             <X aria-hidden size={24} weight="bold" />
-          </button>
+          </IconButton>
 
-          <button
-            type="button"
+          <IconButton
             onClick={prevImage}
-            className="absolute left-3 z-10 grid h-12 w-12 place-items-center rounded-full text-white transition hover:bg-white/10 lg:left-12"
-            aria-label={t("room.previousImage")}
+            variant="inverse" className="absolute left-3 z-10 lg:left-12"
+            label={t("room.previousImage")}
           >
             <CaretLeft aria-hidden size={30} weight="bold" />
-          </button>
+          </IconButton>
 
-          <button
-            type="button"
+          <IconButton
             onClick={nextImage}
-            className="absolute right-3 z-10 grid h-12 w-12 place-items-center rounded-full text-white transition hover:bg-white/10 lg:right-12"
-            aria-label={t("room.nextImage")}
+            variant="inverse" className="absolute right-3 z-10 lg:right-12"
+            label={t("room.nextImage")}
           >
             <CaretRight aria-hidden size={30} weight="bold" />
-          </button>
+          </IconButton>
 
           <div className="relative h-[70vh] w-full max-w-5xl select-none px-12">
             <Image
-              src={allImages[currentIndex]?.url || "https://picsum.photos/seed/full/1200/800"}
+              src={allImages[currentIndex]?.url || "/placeholder-room.svg"}
               alt={t("room.imageNumber", {
                 title,
                 number: currentIndex + 1,
               })}
               fill
-              sizes="100vw"
+              sizes="(min-width: 1024px) 1024px, 100vw"
+              loading="eager"
               className="object-contain"
             />
+            {allImages.length > 1 && <Image
+              src={allImages[(currentIndex + 1) % allImages.length].url}
+              alt=""
+              fill
+              sizes="(min-width: 1024px) 1024px, 100vw"
+              loading="eager"
+              aria-hidden="true"
+              className="pointer-events-none invisible object-contain"
+            />}
           </div>
 
           <div className="absolute bottom-4 text-sm text-white/80">

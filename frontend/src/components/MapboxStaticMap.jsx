@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "@/i18n/LocaleProvider";
+import { useInViewport } from "@/hooks/useInViewport";
+import "mapbox-gl/dist/mapbox-gl.css";
 
 function asNum(v) {
   if (v === null || v === undefined || String(v).trim() === "") return null;
@@ -15,6 +17,7 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const { viewportRef, visible } = useInViewport(containerRef);
 
   const latNum = useMemo(() => asNum(lat), [lat]);
   const lngNum = useMemo(() => asNum(lng), [lng]);
@@ -22,7 +25,7 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !visible) return;
     if (!containerRef.current) return;
     if (mapRef.current) return;
 
@@ -66,7 +69,7 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
       markerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, visible]);
 
   useEffect(() => {
     if (!ready) return;
@@ -107,7 +110,7 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
     <div
       className={`overflow-hidden rounded-2xl border border-line bg-muted-surface ${heightClass}`}
     >
-      <div ref={containerRef} className="w-full h-full" />
+      <div ref={viewportRef} className="w-full h-full" />
     </div>
   );
 }

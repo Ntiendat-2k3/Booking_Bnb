@@ -23,7 +23,7 @@ export default function SecuritySettings({ user }) {
     } catch (error) { notifyError(error?.message || t("security.incorrect")); }
     finally { setChangingPw(false); }
   }
-  return <section className="rounded-2xl border border-line bg-surface p-5 sm:p-8">
+  return <section className="surface-panel p-5 sm:p-8">
     <h2 className="flex items-center gap-2 text-xl font-bold"><Lock aria-hidden size={24} className="text-brand" />{t("security.title")}</h2>
     <p className="mt-2 text-sm text-muted-ink">{t("security.description")}</p>
     {!canChangePassword ? <div className="mt-6 flex gap-3 rounded-xl bg-caution/10 p-5 text-caution"><WarningCircle aria-hidden size={24} className="shrink-0" /><div><p className="font-semibold">{t("security.thirdParty")}</p><p className="mt-2 text-sm leading-6">{t("security.connected", { provider: user?.provider })}</p></div></div> :

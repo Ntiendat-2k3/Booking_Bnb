@@ -1,148 +1,90 @@
 const { getRedis, redisReady } = require("../utils/redis");
-
 const DEFAULT_PREFIX = process.env.CACHE_PREFIX || "cache";
 
-function buildCacheKey(
-  req,
-  { prefix = DEFAULT_PREFIX, varyByUser = false } = {},
-) {
+function buildCacheKey(req, { prefix = DEFAULT_PREFIX, varyByUser = false } = {}) {
   const url = req.originalUrl || req.url;
   const method = (req.method || "GET").toUpperCase();
-
   const userPart = varyByUser ? `:u:${req.user?.user?.id || "anon"}` : "";
-
   return `${prefix}:${method}:${url}${userPart}`;
 }
 
 async function invalidate(patterns = [], { prefix = DEFAULT_PREFIX } = {}) {
   const client = getRedis();
   if (!redisReady() || !client) return 0;
-
   let deleted = 0;
-  const toPatterns = Array.isArray(patterns) ? patterns : [patterns];
-
-  for (const p of toPatterns) {
-    if (!p) continue;
-    const match = p.startsWith(prefix + ":") ? p : `${prefix}:${p}`;
-
+  // Tăng phiên bản trước khi xóa để response đang xử lý không ghi lại dữ liệu cũ sau invalidation.
+  try { await client.incr(`${prefix}:revision`); }
+  catch (error) { console.warn("[cache] Không thể tăng phiên bản:", error.name); }
+  for (const pattern of Array.isArray(patterns) ? patterns : [patterns]) {
+    if (!pattern) continue;
+    const match = pattern.startsWith(`${prefix}:`) ? pattern : `${prefix}:${pattern}`;
     try {
-      for await (const key of client.scanIterator({
-        MATCH: match,
-        COUNT: 200,
-      })) {
-        await client.del(key);
-        deleted += 1;
+      let batch = [];
+      for await (const key of client.scanIterator({ MATCH: match, COUNT: 200 })) {
+        batch.push(key);
+        if (batch.length >= 100) { deleted += await client.del(batch); batch = []; }
       }
-    } catch (e) {
-      console.warn("[cache] invalidate failed:", e?.message || e);
-    }
+      if (batch.length) deleted += await client.del(batch);
+    } catch (error) { console.warn("[cache] Xóa cache thất bại:", error.name); }
   }
-
   return deleted;
 }
 
 function cache(ttlSeconds = 60, opts = {}) {
-  const options = {
-    prefix: DEFAULT_PREFIX,
-    varyByUser: false,
-    onlyStatusCodes: [200],
-    ...opts,
-  };
-
+  const options = { prefix: DEFAULT_PREFIX, varyByUser: false, onlyStatusCodes: [200], ...opts };
   return async function cacheMiddleware(req, res, next) {
-    // Cache GET only
-    if ((req.method || "").toUpperCase() !== "GET") return next();
-
+    if (req.method !== "GET" || !Number.isInteger(ttlSeconds) || ttlSeconds < 1) return next();
     const client = getRedis();
     if (!redisReady() || !client) return next();
-
     const key = buildCacheKey(req, options);
-
-    // Try read
+    let revision;
     try {
+      revision = await client.get(`${options.prefix}:revision`) || "0";
       const cached = await client.get(key);
       if (cached) {
         const payload = JSON.parse(cached);
         res.set("X-Cache", "HIT");
-        if (payload?.headers && typeof payload.headers === "object") {
-          for (const [h, v] of Object.entries(payload.headers)) {
-            if (v !== undefined) res.set(h, String(v));
-          }
-        }
+        res.set("Content-Type", payload.contentType || payload.headers?.["Content-Type"] || "application/json; charset=utf-8");
         return res.status(payload.statusCode || 200).send(payload.body);
       }
-    } catch (e) {
-      // If redis fails, just continue (no caching)
-      console.warn("[cache] get failed:", e?.message || e);
-    }
-
-    // Hook response writers to save
-    const originalJson = res.json.bind(res);
+    } catch (error) { console.warn("[cache] Đọc cache thất bại:", error.name); }
     const originalSend = res.send.bind(res);
-
+    let saved = false;
     async function saveToCache(body) {
       try {
         if (!options.onlyStatusCodes.includes(res.statusCode)) return;
-
-        const maxBytes = Number(process.env.CACHE_MAX_BYTES || 1024 * 1024);
-        const raw = typeof body === "string" ? body : JSON.stringify(body);
-        if (Buffer.byteLength(raw, "utf8") > maxBytes) return;
-
-        const payload = {
-          statusCode: res.statusCode,
-          body: raw,
-          headers: {
-            "Content-Type":
-              res.get("Content-Type") || "application/json; charset=utf-8",
-          },
-        };
-
-        await client.set(key, JSON.stringify(payload), { EX: ttlSeconds });
-      } catch (e) {
-        console.warn("[cache] set failed:", e?.message || e);
-      }
+        const raw = Buffer.isBuffer(body) ? body.toString("utf8") : body;
+        if (Buffer.byteLength(raw, "utf8") > Number(process.env.CACHE_MAX_BYTES || 1048576)) return;
+        if (revision === undefined) return;
+        await client.eval("if (redis.call('GET', KEYS[2]) or '0') == ARGV[1] then return redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3]) end return nil", {
+          keys: [key, `${options.prefix}:revision`],
+          arguments: [revision, JSON.stringify({ statusCode: res.statusCode, body: raw, contentType: res.get("Content-Type") }), String(ttlSeconds)],
+        });
+      } catch (error) { console.warn("[cache] Ghi cache thất bại:", error.name); }
     }
-
-    res.json = (body) => {
-      res.set("X-Cache", "MISS");
-      saveToCache(body);
-      return originalJson(body);
-    };
-
+    // Express json gọi send; chỉ lưu lần send chứa nội dung đã serialize.
     res.send = (body) => {
       res.set("X-Cache", "MISS");
-      saveToCache(body);
-      return originalSend(body);
+      const result = originalSend(body);
+      if (!saved && (typeof body === "string" || Buffer.isBuffer(body))) { saved = true; void saveToCache(body); }
+      return result;
     };
-
     return next();
   };
 }
 
-// ── Convenience helpers (DRY the 20+ invalidate calls) ──
-
-/** Invalidate listing list + optional single listing detail cache. */
 function invalidateListings(listingId) {
-  const patterns = ["GET:/api/v1/listings*"];
-  if (listingId) patterns.push(`GET:/api/v1/listings/${listingId}*`);
-  return invalidate(patterns).catch(() => {});
+  const patterns = listingId ? [
+    "GET:/api/v1/listings", "GET:/api/v1/listings\\?*",
+    `GET:/api/v1/listings/${listingId}`, `GET:/api/v1/listings/${listingId}\\?*`, `GET:/api/v1/listings/${listingId}/reviews*`,
+  ] : ["GET:/api/v1/listings*"];
+  return invalidate(patterns);
 }
 
-/** Invalidate amenities + listing caches (amenities affect listing display). */
 function invalidateAmenities() {
-  return invalidate(["GET:/api/v1/amenities*", "GET:/api/v1/listings*"]).catch(() => {});
+  return invalidate(["GET:/api/v1/amenities*", "GET:/api/v1/listings*"]);
 }
 
-/** Invalidate listing caches affected by review changes. */
-function invalidateReviews(listingId) {
-  return invalidateListings(listingId);
-}
+function invalidateReviews(listingId) { return invalidateListings(listingId); }
 
-module.exports = {
-  cache,
-  invalidate,
-  buildCacheKey,
-  invalidateListings,
-  invalidateAmenities,
-  invalidateReviews,
-};
+module.exports = { cache, invalidate, buildCacheKey, invalidateListings, invalidateAmenities, invalidateReviews };

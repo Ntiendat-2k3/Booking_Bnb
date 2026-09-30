@@ -16,25 +16,25 @@ export default function ProfilePage() {
   const { user, isInitialized } = useSelector((s) => s.auth);
   const [busy, setBusy] = useState(false);
   if (!isInitialized) return <p role="status" className="py-12 text-center text-muted-ink">{t("common.loading")}</p>;
-  if (!user) return <EmptyState icon={<User aria-hidden size={30} />} title={t("profile.welcome")} description={t("profile.loginDescription")} action={<Link href="/login" className="inline-flex min-h-11 items-center rounded-xl bg-brand px-5 py-3 font-semibold text-white">{t("auth.loginNow")}</Link>} />;
+  if (!user) return <EmptyState icon={<User aria-hidden size={30} />} title={t("profile.welcome")} description={t("profile.loginDescription")} action={<Button href="/login">{t("auth.loginNow")}</Button>} />;
   const joinDate = user.created_at ? new Date(user.created_at).toLocaleDateString(locale === "en" ? "en-US" : "vi-VN", { month: "long", year: "numeric" }) : t("profile.newMember");
-  return <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+  return <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-10">
     <aside className="space-y-6">
-      <section className="rounded-2xl border border-line bg-surface p-6 text-center">
+      <section className="surface-panel p-8 text-center">
         <Avatar src={user.avatar_url} name={user.full_name || t("common.account")} size={112} className="mx-auto" />
         <h1 className="mt-5 break-words text-2xl font-bold tracking-tight text-ink">{user.full_name}</h1>
         <div className="mt-3"><Badge tone="brand">{t(user.role === "host" ? "navigation.hostRole" : user.role === "admin" ? "navigation.adminRole" : "navigation.guestRole")}</Badge></div>
-        <Link href="/account/settings?tab=profile" className="mt-6 inline-flex min-h-11 items-center rounded-xl border border-line px-4 py-2 text-sm font-semibold hover:bg-muted-surface">{t("profile.edit")}</Link>
+        <Button href="/account/settings?tab=profile" variant="secondary" className="mt-6">{t("profile.edit")}</Button>
       </section>
-      <section className="space-y-4 rounded-2xl border border-line bg-surface p-6">
+      <section className="surface-panel space-y-4 p-6">
         <h2 className="font-semibold">{t("profile.verification")}</h2>
         <p className="flex min-w-0 items-center gap-3 text-sm text-muted-ink"><Envelope aria-hidden size={20} className="shrink-0" /><span className="break-all">{user.email || t("profile.emailMissing")}</span></p>
         <p className="flex items-center gap-3 text-sm text-muted-ink"><Phone aria-hidden size={20} className="shrink-0" />{user.phone || t("profile.phoneMissing")}</p>
       </section>
     </aside>
     <div className="space-y-6">
-      <section className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
-        <h2 className="text-2xl font-bold tracking-tight">{t("profile.about")}</h2>
+      <section className="surface-panel p-6 sm:p-10">
+        <h2 className="text-3xl font-bold tracking-[-0.04em]">{t("profile.about")}</h2>
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <div className="flex gap-3"><CalendarBlank aria-hidden size={24} className="shrink-0 text-muted-ink" /><div><p className="text-sm text-muted-ink">{t("profile.joinedSince")}</p><p className="mt-1 font-semibold">{joinDate}</p></div></div>
           <div className="flex gap-3"><MapPin aria-hidden size={24} className="shrink-0 text-muted-ink" /><div><p className="text-sm text-muted-ink">{t("profile.location")}</p><p className="mt-1 font-semibold">{user.location || t("profile.notUpdated")}</p></div></div>

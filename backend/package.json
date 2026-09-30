@@ -4,8 +4,12 @@
   "private": true,
   "scripts": {
     "start": "node ./bin/www",
-    "dev": "nodemon ./bin/www"
+    "dev": "nodemon ./bin/www",
+    "test": "node --test tests/http.test.js tests/queries.test.js tests/transactions.test.js",
+    "check": "node scripts/check.js",
+    "db:migrate": "sequelize-cli db:migrate"
   },
+  "engines": { "node": ">=20" },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.9.0",

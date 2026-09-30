@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo } from "react";
-import { translate } from "./config";
+import { translate } from "./translate";
 
 const LocaleContext = createContext(null);
 

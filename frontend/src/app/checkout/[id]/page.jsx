@@ -17,6 +17,8 @@ import { apiFetch } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import Container from "@/components/layout/Container";
 import Button from "@/components/atoms/Button";
+import IconButton from "@/components/atoms/IconButton";
+import InputField from "@/components/atoms/InputField";
 import { useLocale } from "@/i18n/LocaleProvider";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -152,21 +154,19 @@ export default function CheckoutPage() {
 
   return (
     <Container>
-      <div className="py-10 lg:py-16">
-        <h1 className="mb-8 flex items-center gap-3 text-3xl font-bold tracking-[-0.035em] text-ink">
-          <button
-            type="button"
+      <div className="py-4 sm:py-6">
+        <h1 className="page-heading mb-8 flex items-center gap-3">
+          <IconButton
             onClick={() => router.back()}
-            className="-ml-2 grid h-11 w-11 place-items-center rounded-full transition hover:bg-muted-surface"
-            aria-label={t("common.back")}
+            label={t("common.back")}
           >
             <ArrowLeft aria-hidden size={24} weight="bold" />
-          </button>
+          </IconButton>
           {t("checkout.title")}
         </h1>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_360px] xl:gap-12">
-          <div className="space-y-10">
+          <div className="surface-panel space-y-8 p-6 sm:p-8">
             <section className="space-y-5 border-b border-line pb-10">
               <h2 className="text-2xl font-bold tracking-[-0.025em] text-ink">
                 {t("checkout.trip")}
@@ -178,31 +178,19 @@ export default function CheckoutPage() {
                   {editingDates ? (
                     <div className="mt-2 space-y-3">
                       <div className="flex flex-wrap gap-3">
-                        <div className="flex flex-col">
-                          <label htmlFor="field-[id]-page-177" className="mb-1 text-xs font-medium text-muted-ink">
-                            {t("checkout.checkIn")}
-                          </label>
-                          <input id="field-[id]-page-177"
+                          <InputField label={t("checkout.checkIn")}
                             type="date"
                             value={draftCheckIn}
                             min={todayStr}
                             max={draftCheckOut}
                             onChange={(e) => setDraftCheckIn(e.target.value)}
-                            className="min-h-11 rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-ink focus:ring-4 focus:ring-ink/10"
                           />
-                        </div>
-                        <div className="flex flex-col">
-                          <label htmlFor="field-[id]-page-190" className="mb-1 text-xs font-medium text-muted-ink">
-                            {t("checkout.checkOut")}
-                          </label>
-                          <input id="field-[id]-page-190"
+                          <InputField label={t("checkout.checkOut")}
                             type="date"
                             value={draftCheckOut}
                             min={draftCheckIn || todayStr}
                             onChange={(e) => setDraftCheckOut(e.target.value)}
-                            className="min-h-11 rounded-xl border border-line bg-surface px-3 py-2 text-sm outline-none transition focus:border-ink focus:ring-4 focus:ring-ink/10"
                           />
-                        </div>
                       </div>
                       <div className="flex gap-2">
                         <Button
@@ -229,12 +217,12 @@ export default function CheckoutPage() {
                   )}
                 </div>
                 {!editingDates && (
-                  <button
+                  <Button variant="ghost" size="sm"
                     onClick={startEditDates}
-                    className="ml-4 min-h-11 shrink-0 text-sm font-semibold text-brand hover:underline"
+                    className="ml-4 shrink-0 text-brand"
                   >
                     {t("common.edit")}
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -244,25 +232,23 @@ export default function CheckoutPage() {
                   {editingGuests ? (
                     <div className="mt-2 space-y-3">
                       <div className="flex items-center gap-3">
-                        <button
-                          type="button"
+                        <IconButton
                           onClick={() => setDraftGuests((g) => Math.max(1, g - 1))}
-                          className="grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-ink transition hover:bg-muted-surface"
-                          aria-label={t("common.previous")}
+                          disabled={saving || draftGuests <= 1}
+                          label={t("common.previous")}
                         >
                           <Minus aria-hidden size={18} weight="bold" />
-                        </button>
+                        </IconButton>
                         <span className="min-w-[3ch] text-center text-lg font-semibold text-ink">
                           {draftGuests}
                         </span>
-                        <button
-                          type="button"
+                        <IconButton
                           onClick={() => setDraftGuests((g) => Math.min(maxGuests, g + 1))}
-                          className="grid h-11 w-11 place-items-center rounded-full border border-line bg-surface text-ink transition hover:bg-muted-surface"
-                          aria-label={t("common.next")}
+                          disabled={saving || draftGuests >= maxGuests}
+                          label={t("common.next")}
                         >
                           <Plus aria-hidden size={18} weight="bold" />
-                        </button>
+                        </IconButton>
                         <span className="ml-1 text-xs text-muted-ink">
                           {t("checkout.maxGuests", { count: maxGuests })}
                         </span>
@@ -294,12 +280,12 @@ export default function CheckoutPage() {
                   )}
                 </div>
                 {!editingGuests && (
-                  <button
+                  <Button variant="ghost" size="sm"
                     onClick={startEditGuests}
-                    className="ml-4 min-h-11 shrink-0 text-sm font-semibold text-brand hover:underline"
+                    className="ml-4 shrink-0 text-brand"
                   >
                     {t("common.edit")}
-                  </button>
+                  </Button>
                 )}
               </div>
             </section>
@@ -349,13 +335,14 @@ export default function CheckoutPage() {
           </div>
 
           <div className="relative">
-            <div className="sticky top-28 rounded-2xl border border-line bg-surface p-6 shadow-soft">
+            <div className="surface-panel sticky top-28 p-6">
               <div className="flex gap-4 border-b border-line pb-6">
                 <div className="relative h-[106px] w-[124px] shrink-0 overflow-hidden rounded-xl">
                   <Image
-                    src={cover?.url || "https://picsum.photos/seed/room/800/600"}
+                    src={cover?.url || "/placeholder-room.svg"}
                     alt={listing?.title || t("listing.fallbackTitle")}
                     fill
+                    sizes="124px"
                     className="object-cover"
                   />
                 </div>
@@ -368,7 +355,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="mt-auto flex items-center gap-1 text-xs text-muted-ink">
                     <Star aria-hidden size={14} weight="fill" className="text-brand" />
-                    <span>{t("common.new")}</span>
+                    <span>{Number(listing?.avg_rating) > 0 ? Number(listing.avg_rating).toFixed(1) : t("common.new")}</span>
                   </div>
                 </div>
               </div>

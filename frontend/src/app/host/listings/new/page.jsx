@@ -3,7 +3,7 @@ import { useTranslations } from "@/i18n/LocaleProvider";
 
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import Button from "@/components/atoms/Button";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { ensureCsrf, fetchProfile } from "@/store/authThunks";
@@ -96,12 +96,12 @@ export default function HostListingNewPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{t("host.createTitle")}</h1>
+          <h1 className="page-heading">{t("host.createTitle")}</h1>
         </div>
-        <Link
+        <Button
           href="/host/listings"
-          className="px-4 py-2 text-sm font-semibold border rounded-xl hover:bg-muted-surface"
-        >{t("common.back")}</Link>
+          variant="secondary"
+        >{t("common.back")}</Button>
       </div>
 
       <form onSubmit={onCreate} className="grid gap-6 lg:grid-cols-3">
@@ -114,13 +114,13 @@ export default function HostListingNewPage() {
         <div className="space-y-4">
           <AmenitiesPickerCard grouped={grouped} picked={picked} onToggle={toggleAmenity} loading={loadingAmenities} error={amenitiesError} onRetry={retryAmenities} disabled={busy} />
 
-          <button
+          <Button
             type="submit"
-            disabled={busy}
-            className="w-full px-4 py-3 text-base font-bold text-white transition-all rounded-xl bg-brand hover:bg-brand-dark disabled:opacity-60"
+            loading={busy} size="lg"
+            className="w-full"
           >
             {busy ? t("common.processing") : t("host.create")}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

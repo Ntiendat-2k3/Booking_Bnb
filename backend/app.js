@@ -6,7 +6,6 @@ const passport = require("passport");
 const cors = require("cors");
 require("dotenv").config();
 
-// Optional Redis connection (used by caching middleware)
 const { connectRedis } = require("./utils/redis");
 
 const apiRouter = require("./routes/api");
@@ -21,7 +20,6 @@ connectRedis().catch(() => {});
 
 const helmet = require("helmet");
 
-// CORS (support FE + Admin + credentials)
 const allowedOrigins = (
   process.env.CORS_ORIGINS ||
   process.env.FRONTEND_URL ||
@@ -34,21 +32,20 @@ const allowedOrigins = (
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow server-to-server / Postman (no origin)
+      // Cho phép client API không gửi Origin.
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.length === 0) return callback(null, true);
+      if (allowedOrigins.length === 0) return callback(null, false);
 
       if (allowedOrigins.includes(origin)) return callback(null, true);
 
-      return callback(new Error("Not allowed by CORS"));
+      return callback(Object.assign(new Error("Not allowed by CORS"), { status: 403 }));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
   }),
 );
-app.options("*", cors({ origin: true, credentials: true }));
 
 app.use(
   helmet({
@@ -56,29 +53,21 @@ app.use(
   }),
 );
 
-app.use(logger("dev"));
-// Special: Stripe Webhook needs the raw body for signature verification before other parsers
+app.use(logger(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+// Stripe cần raw body để kiểm tra chữ ký trước các parser JSON.
 app.use("/api/v1/payments/stripe/webhook", express.raw({ type: 'application/json' }));
 
-app.use(express.json({
-  verify: (req, res, buf) => {
-    // Also keeping this for extra safety on existing code
-    req.rawBody = buf;
-  }
-}));
+app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use(cookieParser());
 
-// Passport (API only => no session)
 app.use(passport.initialize());
 passport.use("local", passportLocal);
 passport.use("google", passportGoogle);
 
-// Root path (Render health-check hits GET / and HEAD /)
 app.get("/", (_req, res) => res.json({ status: "ok" }));
 
-// Health + API
 app.get("/health", async (_req, res) => {
   try {
     await sequelize.authenticate();
@@ -89,18 +78,10 @@ app.get("/health", async (_req, res) => {
 });
 app.use("/api", apiRouter);
 
-// catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));
 });
 
-// error handler (API-friendly)
-app.use(function (err, req, res, next) {
-  res.status(err.status || 500);
-  res.json({
-    status: "error",
-    message: err.message || "Server error",
-  });
-});
+app.use(require("./middlewares/error.middleware"));
 
 module.exports = app;

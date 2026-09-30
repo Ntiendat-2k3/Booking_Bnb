@@ -1,10 +1,14 @@
 import { MapTrifold } from "@phosphor-icons/react/dist/ssr";
+import { Suspense } from "react";
+import CategoryTabs from "@/components/CategoryTabs";
+import Button from "@/components/atoms/Button";
 import SearchFilters from "@/components/Search/SearchFilters";
 import ListingCard from "@/components/ListingCard";
 import Pagination from "@/components/Pagination";
 import SearchResultsMap from "@/components/Search/SearchResultsMap";
 import EmptyState from "@/components/molecules/EmptyState";
 import { serverGetJson } from "@/lib/serverApi";
+import { getListingCardData } from "@/lib/listings";
 import { buildSearchMetadata } from "@/lib/seo";
 import { SEARCH_PARAM_KEYS } from "@/lib/constants";
 import { getServerTranslator } from "@/i18n/server";
@@ -27,9 +31,9 @@ export default async function SearchPage({ searchParams }) {
 
   let res;
   try { res = await serverGetJson("/api/v1/listings?" + q.toString()); } catch {
-    return <div role="alert" className="space-y-6"><SearchFilters /><EmptyState title={t("common.loadFailed")} description={t("search.loadError")} /><a href={`/search?${q}`} className="inline-flex min-h-11 items-center rounded-xl border border-line px-4">{t("common.retry")}</a></div>;
+    return <div role="alert" className="space-y-6"><SearchFilters /><EmptyState title={t("common.loadFailed")} description={t("search.loadError")} action={<Button href={`/search?${new URLSearchParams(sp)}`} variant="secondary">{t("common.retry")}</Button>} /></div>;
   }
-  const items = res.data?.items || [];
+  const items = (res.data?.items || []).map(getListingCardData);
   const meta = res.data?.meta;
 
   const baseParams = { ...sp };
@@ -37,11 +41,9 @@ export default async function SearchPage({ searchParams }) {
 
   return (
     <div className="space-y-8">
-      <SearchFilters />
-
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-[-0.035em] text-ink">
+          <h1 className="page-heading">
             {t("search.results")}
           </h1>
           <p className="mt-1 text-sm text-muted-ink">
@@ -50,11 +52,14 @@ export default async function SearchPage({ searchParams }) {
         </div>
       </div>
 
+      <SearchFilters />
+      <Suspense fallback={null}><CategoryTabs /></Suspense>
+
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div>
-          <div className="grid gap-x-5 gap-y-7 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((it) => (
-              <ListingCard key={it.id} listing={it} />
+              <ListingCard key={it.id} listing={it} checkIn={sp?.check_in} checkOut={sp?.check_out} />
             ))}
           </div>
 
@@ -71,12 +76,12 @@ export default async function SearchPage({ searchParams }) {
         </div>
 
         <aside className="block">
-          <div className="sticky top-24 overflow-hidden rounded-2xl border border-line bg-surface p-3 shadow-sm">
+          <div className="surface-panel sticky top-24 overflow-hidden p-3">
             <div className="flex items-center gap-2 px-2 pb-3 text-sm font-semibold text-ink">
               <MapTrifold aria-hidden size={18} />
               {t("search.map")}
             </div>
-            <div className="mt-4 overflow-hidden rounded-xl bg-slate-100">
+            <div className="overflow-hidden rounded-control bg-muted-surface">
               <SearchResultsMap
                 items={items}
                 userLat={sp?.lat}

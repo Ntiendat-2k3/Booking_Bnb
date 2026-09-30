@@ -1,9 +1,9 @@
 const { errorResponse } = require("../../utils/response");
 
 /**
- * Generic Joi validation middleware
+ * Chuẩn hóa dữ liệu tại ranh giới HTTP và trả lỗi từng trường trước khi gọi nghiệp vụ.
  * @param {import("joi").Schema} schema
- * @param {string} source - 'body', 'query', or 'params'
+ * @param {string} source Vị trí dữ liệu: body, query hoặc params.
  */
 const validate = (schema, source = "body") => {
   return (req, res, next) => {
@@ -25,7 +25,7 @@ const validate = (schema, source = "body") => {
       return errorResponse(res, "Validation failed", 400, errors);
     }
 
-    // Replace request data with validated/sanitized value
+    // Chỉ truyền dữ liệu đã được kiểm tra tới tầng nghiệp vụ.
     req[source] = value;
     next();
   };

@@ -1,3 +1,4 @@
 .history
 .env
 .env.example
+tmp/

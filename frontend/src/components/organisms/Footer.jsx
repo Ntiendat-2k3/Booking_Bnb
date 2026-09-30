@@ -20,9 +20,13 @@ export default async function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-16 border-t border-line bg-muted-surface/70">
+    <footer className="site-footer mt-20 border-t border-line bg-surface">
       <Container>
-        <div className="grid grid-cols-1 gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex flex-col gap-3 border-b border-line py-8 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="site-wordmark w-fit text-2xl tracking-[-0.05em] text-ink">{t("seo.siteName")}</Link>
+          <p className="text-sm text-muted-ink">{t("footer.tagline")}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 py-10 lg:grid-cols-4">
           {FOOTER_LINKS.map((section) => (
             <section key={section.titleKey}>
               <h2 className="mb-4 text-sm font-bold text-ink">

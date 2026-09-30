@@ -1,12 +1,13 @@
+const Repository = require("../core/repository");
 const { Payment, Booking, Listing, User } = require("../models");
 
 module.exports = {
-  async list({ status = null, provider = null, q = null, limit = 200 } = {}) {
-    const where = {};
+  async list({ status = null, provider = null, q = null, limit = 200, page = 1 } = {}) {
+    const where = Repository.searchWhere(q, ["Payment.id","Payment.booking_id","Payment.provider_txn_ref","Payment.provider_transaction_no","Payment.status","booking->guest.email","booking->listing.title"]);
     if (status && status !== "all") where.status = status;
     if (provider && provider !== "all") where.provider = provider;
 
-    const rows = await Payment.findAll({
+    const { rows, count } = await Payment.findAndCountAll({
       where,
       include: [
         {
@@ -20,27 +21,10 @@ module.exports = {
         },
       ],
       order: [["created_at", "DESC"]],
-      limit: Math.min(500, Math.max(1, Number(limit || 200))),
+      limit, offset: (page - 1) * limit, distinct: true,
     });
 
-    let items = rows.map((x) => (x.toJSON ? x.toJSON() : x));
-
-    const s = String(q || "").trim().toLowerCase();
-    if (s) {
-      items = items.filter((p) => {
-        return (
-          String(p.id || "").toLowerCase().includes(s) ||
-          String(p.booking_id || "").toLowerCase().includes(s) ||
-          String(p.provider_txn_ref || "").toLowerCase().includes(s) ||
-          String(p.provider_transaction_no || "").toLowerCase().includes(s) ||
-          String(p.status || "").toLowerCase().includes(s) ||
-          String(p.booking?.guest?.email || "").toLowerCase().includes(s) ||
-          String(p.booking?.listing?.title || "").toLowerCase().includes(s)
-        );
-      });
-    }
-
-    return { items };
+    return { items: rows, meta: { page, limit, total: count, total_pages: Math.ceil(count / limit) } };
   },
 
   async detail(id) {

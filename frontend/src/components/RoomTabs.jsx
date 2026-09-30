@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import Container from "./layout/Container";
+import Button from "./atoms/Button";
 
 const SECTIONS = [
   { id: "photos", labelKey: "room.photos" },
@@ -44,34 +45,25 @@ export default function RoomTabs() {
   function onGo(id) {
     const el = document.getElementById(id);
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" });
   }
 
   return (
-    <div className="sticky top-[72px] z-30 border-b border-line bg-surface/95 backdrop-blur-xl">
+    <div className="room-tabs sticky top-[var(--header-height)] z-30 border-b border-line bg-surface/95 backdrop-blur-xl">
       <Container>
         <nav
-          className="flex items-center gap-6 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="no-scrollbar flex items-center gap-2 overflow-x-auto py-3"
           aria-label={t("room.detailTitle")}
         >
         {SECTIONS.map((s) => (
-          <button
-            type="button"
+          <Button
             key={s.id}
             onClick={() => onGo(s.id)}
-            aria-current={active === s.id ? "location" : undefined}
-            className={
-              "relative min-h-11 shrink-0 py-3 text-sm font-semibold transition " +
-              (active === s.id
-                ? "text-ink"
-                : "text-muted-ink hover:text-ink")
-            }
+            aria-current={active === s.id ? "true" : undefined}
+            variant={active === s.id ? "ink" : "ghost"} size="sm" className="shrink-0"
           >
             {t(s.labelKey)}
-            {active === s.id ? (
-              <span className="absolute inset-x-0 -bottom-px h-0.5 bg-brand" />
-            ) : null}
-          </button>
+          </Button>
         ))}
         </nav>
       </Container>

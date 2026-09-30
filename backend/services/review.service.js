@@ -2,7 +2,7 @@ const { Op } = require("sequelize");
 const { Review, Booking, User, UserSetting, Sequelize } = require("../models");
 
 function todayDateOnlyUtc() {
-  // DATEONLY columns are stored as YYYY-MM-DD. Compare in UTC to avoid timezone surprises.
+  // So sánh DATEONLY theo ngày UTC để thống nhất với luồng checkout.
   return new Date().toISOString().slice(0, 10);
 }
 
@@ -15,12 +15,13 @@ function applyPrivacyOnReview(row) {
   const reviewer = rv.reviewer ? toPlain(rv.reviewer) : null;
   const setting = reviewer?.setting ? toPlain(reviewer.setting) : null;
 
-  // If setting missing: default to show.
+  // Chưa có cài đặt thì dùng mặc định cho phép hiển thị.
   const showReviews = setting?.show_reviews !== false;
   if (!showReviews) return null;
 
   const showProfile = setting?.show_profile !== false;
   if (!showProfile && reviewer) {
+    rv.reviewer_id = null;
     reviewer.id = null;
     reviewer.full_name = "Người dùng ẩn danh";
     reviewer.avatar_url = null;
@@ -31,19 +32,16 @@ function applyPrivacyOnReview(row) {
   return rv;
 }
 
+/** Chỉ cho đánh giá kỳ lưu trú đã kết thúc và booking chưa có review, kể cả khi status đã completed. */
 async function getUserReviewableBooking({ userId, listingId }) {
   const today = todayDateOnlyUtc();
 
-  // Review rules:
-  // - If user has checked out via our "Checkout" button -> booking.status becomes "completed" and can review immediately.
-  // - If booking still "confirmed", only allow review after the stay ends (check_out <= today).
-  // - Booking must not already have a review.
   const booking = await Booking.findOne({
     where: {
       guest_id: userId,
       listing_id: listingId,
       [Op.or]: [
-        { status: "completed" },
+        { status: "completed", check_out: { [Op.lte]: today } },
         { status: "confirmed", check_out: { [Op.lte]: today } },
       ],
     },
@@ -80,6 +78,7 @@ module.exports = {
         {
           model: User,
           as: "reviewer",
+          required: true,
           attributes: ["id", "full_name", "avatar_url"],
           include: [
             {
@@ -111,7 +110,7 @@ module.exports = {
   },
 
   async mineForListing({ userId, listingId }) {
-    // If already reviewed (any booking for this listing), return it; else tell FE if can_review.
+
     const existing = await Review.findOne({
       where: { listing_id: listingId, reviewer_id: userId },
       order: [["created_at", "DESC"]],
@@ -198,7 +197,7 @@ module.exports = {
       throw err;
     }
     await review.destroy();
-    // Return listing_id so callers can invalidate caches
+    // Trả listing_id để controller xóa cache liên quan.
     return { ok: true, listing_id: review.listing_id };
   },
 };

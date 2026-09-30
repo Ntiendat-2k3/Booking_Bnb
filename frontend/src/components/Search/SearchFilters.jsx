@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { NavigationArrow } from "@phosphor-icons/react";
+import { NavigationArrow, SlidersHorizontal, MagnifyingGlass } from "@phosphor-icons/react";
 import { useState } from "react";
 import { notifyError, notifyInfo } from "@/lib/notify";
 import { SORT_OPTIONS } from "@/lib/constants";
@@ -92,105 +92,41 @@ function SearchFiltersForm({ params }) {
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-5">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <InputField
-          label={t("search.city")}
-          value={form.city}
-          onChange={(e) => setField("city", e.target.value)}
-          placeholder={t("search.cityPlaceholder")}
-          className="xl:col-span-2"
-        />
-        <InputField
-          label={t("search.minPrice")}
-          type="number"
-          min="0"
-          value={form.min_price}
-          onChange={(e) => setField("min_price", e.target.value)}
-          placeholder="500000"
-        />
-        <InputField
-          label={t("search.maxPrice")}
-          type="number"
-          min="0"
-          value={form.max_price}
-          onChange={(e) => setField("max_price", e.target.value)}
-          placeholder="2000000"
-        />
-        <InputField
-          label={t("search.guests")}
-          type="number"
-          min="1"
-          value={form.guests}
-          onChange={(e) => setField("guests", e.target.value)}
-          placeholder="2"
-        />
-        <InputField
-          label={t("search.bedrooms")}
-          type="number"
-          min="1"
-          value={form.bedrooms}
-          onChange={(e) => setField("bedrooms", e.target.value)}
-          placeholder="1"
-        />
-
-        <div className="flex flex-wrap items-center gap-2 md:col-span-2 xl:col-span-6">
-          <select
-            aria-label={t("search.sortRating")}
-            value={form.sort}
-            onChange={(e) => setField("sort", e.target.value)}
-            className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm font-medium text-ink outline-none focus:border-ink focus:ring-4 focus:ring-ink/10"
-          >
-            {SORT_OPTIONS
-              .filter((o) => !o.requiresLocation || (form.lat && form.lng))
-              .map((o) => (
-                <option key={o.value} value={o.value}>
-                  {t(o.labelKey)}
-                </option>
-              ))}
-          </select>
-
-          <Button
-            onClick={useMyLocation}
-            variant="secondary"
-            title={t("search.nearMeTitle")}
-          >
-            <NavigationArrow aria-hidden size={18} />
-            {t("search.nearMe")}
-          </Button>
-          <Button onClick={apply}>{t("search.apply")}</Button>
-          <Button onClick={clear} variant="ghost">
-            {t("search.clearFilters")}
-          </Button>
-        </div>
+    <form onSubmit={(event) => { event.preventDefault(); apply(); }} aria-label={t("search.filterTitle")} className="surface-panel p-4 sm:p-6">
+      <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
+        <InputField label={t("search.city")} value={form.city} onChange={(event) => setField("city", event.target.value)} placeholder={t("search.cityPlaceholder")} />
+        <InputField label={t("search.guests")} type="number" min="1" step="1" value={form.guests} onChange={(event) => setField("guests", event.target.value)} placeholder={t("search.guestsPlaceholder")} />
+        <Button type="submit" className="sm:col-span-2 lg:col-span-1"><MagnifyingGlass aria-hidden size={18} />{t("search.apply")}</Button>
       </div>
+
+      <details className="mt-5 border-t border-line pt-4" open={Boolean(params.get("min_price") || params.get("max_price") || params.get("bedrooms") || params.get("lat"))}>
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+          <SlidersHorizontal aria-hidden size={20} />{t("search.showFilters")}
+        </summary>
+        <div className="grid gap-4 pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <InputField label={t("search.minPrice")} type="number" min="0" value={form.min_price} onChange={(event) => setField("min_price", event.target.value)} placeholder={t("search.minPrice")} />
+          <InputField label={t("search.maxPrice")} type="number" min="0" value={form.max_price} onChange={(event) => setField("max_price", event.target.value)} placeholder={t("search.maxPrice")} />
+          <InputField label={t("search.bedrooms")} type="number" min="1" step="1" value={form.bedrooms} onChange={(event) => setField("bedrooms", event.target.value)} />
+          <div className="space-y-2">
+            <label htmlFor="search-sort" className="block text-sm font-semibold text-ink">{t("search.sortRating")}</label>
+            <select id="search-sort" value={form.sort} onChange={(event) => setField("sort", event.target.value)} className="field-control">
+              {SORT_OPTIONS.filter((option) => !option.requiresLocation || (form.lat && form.lng)).map((option) => <option key={option.value} value={option.value}>{t(option.labelKey)}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button onClick={useMyLocation} variant="secondary" title={t("search.nearMeTitle")}><NavigationArrow aria-hidden size={18} />{t("search.nearMe")}</Button>
+          <Button onClick={clear} variant="ghost">{t("search.clearFilters")}</Button>
+        </div>
+      </details>
 
       {form.lat && form.lng ? (
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4 text-sm text-muted-ink">
-          <div className="rounded-full bg-muted-surface px-3 py-1.5 font-medium">
-            {t("search.nearMeActive")}
-          </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="search-radius">{t("search.radius")}</label>
-            <input
-              id="search-radius"
-              type="number"
-              min="1"
-              value={form.radius_km}
-              onChange={(e) => setField("radius_km", e.target.value)}
-              className="min-h-10 w-24 rounded-xl border border-line bg-surface px-3 outline-none focus:border-ink focus:ring-4 focus:ring-ink/10"
-              placeholder="20"
-            />
-          </div>
-          <Button
-            onClick={() => setForm((s) => ({ ...s, lat: "", lng: "", radius_km: "", sort: "rating_desc" }))}
-            variant="ghost"
-            size="sm"
-          >
-            {t("search.disableNearMe")}
-          </Button>
+          <span className="rounded-full bg-muted-surface px-3 py-2 font-medium">{t("search.nearMeActive")}</span>
+          <InputField id="search-radius" label={t("search.radius")} type="number" min="1" value={form.radius_km} onChange={(event) => setField("radius_km", event.target.value)} className="max-w-32" />
+          <Button onClick={() => setForm((previous) => ({ ...previous, lat: "", lng: "", radius_km: "", sort: "rating_desc" }))} variant="ghost" size="sm">{t("search.disableNearMe")}</Button>
         </div>
       ) : null}
-    </section>
+    </form>
   );
 }

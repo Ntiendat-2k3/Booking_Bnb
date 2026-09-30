@@ -1,5 +1,8 @@
 import en from "./en.json";
 import vn from "./vn.json";
+import { translate } from "./translate";
+
+export { translate } from "./translate";
 
 export const DEFAULT_LOCALE = "vn";
 export const LOCALE_COOKIE = "booking_locale";
@@ -13,21 +16,6 @@ export function normalizeLocale(locale) {
 
 export function getDictionary(locale) {
   return dictionaries[normalizeLocale(locale)];
-}
-
-export function translate(messages, key, values = {}) {
-  const value = key
-    .split(".")
-    .reduce((current, part) => current?.[part], messages);
-
-  if (typeof value !== "string") return key;
-
-  return value.replace(/\{(\w+)\}/g, (match, name) => {
-    const replacement = values[name];
-    return replacement === undefined || replacement === null
-      ? match
-      : String(replacement);
-  });
 }
 
 export function createTranslator(locale) {

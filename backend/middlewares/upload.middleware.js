@@ -1,10 +1,11 @@
 const multer = require("multer");
+const os = require("node:os");
 const { errorResponse } = require("../utils/response");
 
 const ALLOWED_MIMES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE = Number(process.env.UPLOAD_MAX_SIZE || 5 * 1024 * 1024); // 5MB
 
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({ destination: os.tmpdir() });
 
 function fileFilter(req, file, cb) {
   if (!ALLOWED_MIMES.includes(file.mimetype)) {
@@ -16,7 +17,7 @@ function fileFilter(req, file, cb) {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: MAX_SIZE, files: 1 },
+  limits: { fileSize: MAX_SIZE, files: 1, fields: 0, parts: 1 },
 });
 
 function uploadErrorHandler(err, req, res, next) {
