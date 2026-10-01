@@ -80,13 +80,17 @@ function startBackgroundJobs(intervalMs = 1000) {
   let stopped = false;
   const tick = () => {
     if (stopped || active) return;
-    active = runNextJob().catch((error) => console.error("[jobs] Không thể nhận tác vụ:", error.name))
+    active = runNextJob().catch((error) => console.error("[jobs] Không thể nhận tác vụ:", {
+      name: error.name, code: error.parent?.code || error.code, message: error.parent?.message || error.message,
+    }))
       .finally(() => { active = null; });
   };
   const timer = setInterval(tick, intervalMs);
   const cleanup = () => {
     if (stopped || activeCleanup) return;
-    activeCleanup = cleanupExpiredUploads().catch((error) => console.error("[uploads] Dọn ảnh bỏ dở thất bại:", error.name))
+    activeCleanup = cleanupExpiredUploads().catch((error) => console.error("[uploads] Dọn ảnh bỏ dở thất bại:", {
+      name: error.name, code: error.parent?.code || error.code, message: error.parent?.message || error.message,
+    }))
       .finally(() => { activeCleanup = null; });
   };
   const cleanupTimer = setInterval(cleanup, 60 * 1000);
