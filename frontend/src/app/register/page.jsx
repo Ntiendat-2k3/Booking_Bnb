@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { user, status, isInitialized, error } = useSelector((s) => s.auth);
   const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,13 +31,14 @@ export default function RegisterPage() {
       setPasswordError(t("auth.passwordMismatch"));
       return;
     }
-    const ok = await dispatch(registerLocal({ email, password, full_name: fullName }));
+    const ok = await dispatch(registerLocal({ email, username, password, full_name: fullName }));
     if (ok) router.push("/profile");
   }
   return (
     <AuthTemplate title={t("auth.registerTitle")} description={t("auth.registerDescription")} coverAlt={t("auth.coverAlt")} homeLabel={t("common.backHome")}>
       <form onSubmit={onSubmit} className="auth-form">
         <InputField className="auth-field" label={t("auth.fullName")} prefix={<User size={21} />} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t("auth.namePlaceholder")} required disabled={busy} />
+        <InputField className="auth-field" label={t("auth.username")} prefix={<User size={21} />} autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} placeholder={t("auth.usernamePlaceholder")} pattern="[a-z0-9_]{3,40}" minLength={3} maxLength={40} required disabled={busy} />
         <InputField className="auth-field" label={t("auth.email")} prefix={<EnvelopeSimple size={21} />} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("auth.emailPlaceholder")} required disabled={busy} />
         <PasswordField className="auth-field" label={t("auth.password")} prefix={<LockKey size={21} />} placeholder={t("auth.createPasswordPlaceholder")} autoComplete="new-password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }} required disabled={busy} />
         <PasswordField className="auth-field" label={t("auth.confirmPassword")} prefix={<LockKey size={21} />} placeholder={t("auth.confirmPasswordPlaceholder")} autoComplete="new-password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(""); }} error={passwordError} required disabled={busy} />

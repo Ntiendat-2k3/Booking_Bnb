@@ -11,7 +11,7 @@ module.exports = new GoogleStrategy(
   },
   async function (req, _accessToken, _refreshToken, profile, done) {
     try {
-      const provider_id = profile.id; // google sub
+      const provider_id = profile.id; // Định danh ổn định do Google cấp.
       const email = profile.email || profile.emails?.[0]?.value || null;
       const full_name = profile.displayName || "Google User";
       const avatar_url = profile.picture || profile.photos?.[0]?.value || null;
@@ -21,6 +21,7 @@ module.exports = new GoogleStrategy(
       const user = await authService.findOrCreateSocialUser({
         provider: "google",
         email,
+        email_verified: profile.email_verified,
         full_name,
         avatar_url,
         provider_id,
@@ -28,6 +29,7 @@ module.exports = new GoogleStrategy(
 
       return done(null, user);
     } catch (e) {
+      if (e.code === "GOOGLE_LINK_REQUIRED") return done(null, false, { googleLink: e.googleLink });
       return done(e);
     }
   }

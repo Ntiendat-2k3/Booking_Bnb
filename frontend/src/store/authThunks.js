@@ -70,6 +70,22 @@ export const loginLocal = (body) => async (dispatch) => {
   }
 };
 
+export const linkGoogleAccount = (body) => async (dispatch) => {
+  dispatch(setStatus("loading"));
+  dispatch(setError(null));
+  try {
+    await dispatch(ensureCsrf());
+    const res = await apiFetch("/api/v1/auth/google/link", { method: "POST", body });
+    dispatch(setUser(res.data.user));
+    dispatch(setStatus("idle"));
+    return true;
+  } catch (e) {
+    dispatch(setError(e?.message || "auth.loginFailed"));
+    dispatch(setStatus("error"));
+    return false;
+  }
+};
+
 export const refreshSession = () => async (dispatch) => {
   await dispatch(ensureCsrf());
   // Máy chủ làm mới cookie nếu phiên còn hợp lệ.

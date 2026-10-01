@@ -9,19 +9,21 @@ module.exports = new LocalStrategy(
     passwordField: "password",
     session: false,
   },
-  async (email, password, done) => {
+  async (identifier, password, done) => {
     try {
-      const user = await userRepo.findByEmail(email);
-      if (!user) return done(null, false, { message: "Invalid email or password" });
+      const user = identifier.includes("@")
+        ? await userRepo.findByEmail(identifier)
+        : await userRepo.findByUsername(identifier.toLowerCase());
+      if (!user) return done(null, false, { message: "Invalid username, email or password" });
 
       if (user.provider !== "local") {
-        return done(null, false, { message: "Use Google login for this account" });
+        return done(null, false, { message: "Use social login for this account" });
       }
 
-      if (!user.password_hash) return done(null, false, { message: "Invalid email or password" });
+      if (!user.password_hash) return done(null, false, { message: "Invalid username, email or password" });
 
       const isValid = await bcrypt.compare(password, user.password_hash);
-      if (!isValid) return done(null, false, { message: "Invalid email or password" });
+      if (!isValid) return done(null, false, { message: "Invalid username, email or password" });
 
       if (user.status !== "active") return done(null, false, { message: "User blocked" });
 

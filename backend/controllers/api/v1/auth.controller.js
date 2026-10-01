@@ -1,5 +1,6 @@
 const passport = require("passport");
 const crypto = require("node:crypto");
+const jwt = require("jsonwebtoken");
 const authService = require("../../../services/auth.service");
 const socialOauth = require("../../../services/social_oauth.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
@@ -31,6 +32,23 @@ function socialStateCookie(provider) {
     path: `/api/v1/auth/${provider}/callback`,
     maxAge: 5 * 60_000,
   };
+}
+
+function googleLinkCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/api/v1/auth",
+    maxAge: 5 * 60_000,
+  };
+}
+
+/** Tách khóa ký phiên liên kết khỏi access token để hai loại token không dùng lẫn nhau. */
+function googleLinkSecret() {
+  return crypto.createHmac("sha256", process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET)
+    .update("google-link")
+    .digest();
 }
 
 function socialFailure(res, reason = "failed") {
@@ -134,6 +152,16 @@ module.exports = {
   googleCallback: (req, res, next) => {
     passport.authenticate("google", { session: false }, async (err, user, info) => {
       if (err) return next(err);
+      if (info?.googleLink) {
+        const token = jwt.sign({ type: "google-link", ...info.googleLink }, googleLinkSecret(), {
+          audience: "google-link",
+          expiresIn: "5m",
+        });
+        res.cookie("google_link", token, googleLinkCookieOptions());
+        const url = new URL("/login", process.env.FRONTEND_URL || "http://localhost:3001");
+        url.searchParams.set("google_link", "1");
+        return res.redirect(url.toString());
+      }
       if (!user) return errorResponse(res, info?.message || "Google auth failed", 401);
 
       try {
@@ -161,6 +189,29 @@ module.exports = {
       }
     })(req, res, next);
   },
+
+  googleLink: asyncHandler(async (req, res) => {
+    let pending;
+    try {
+      pending = jwt.verify(req.cookies?.google_link || "", googleLinkSecret(), {
+        audience: "google-link",
+      });
+    } catch {
+      return errorResponse(res, "Google linking session expired", 401);
+    }
+    if (pending.type !== "google-link" || !pending.googleId || !pending.email) {
+      return errorResponse(res, "Google linking session invalid", 401);
+    }
+    const result = await authService.linkGoogleAccount({
+      googleId: pending.googleId,
+      email: pending.email,
+      identifier: req.body.email,
+      password: req.body.password,
+    }, { ip: req.ip, userAgent: req.headers["user-agent"] });
+    res.clearCookie("google_link", { path: "/api/v1/auth" });
+    const csrfToken = setAuthCookies(res, req, result);
+    return successResponse(res, { user: result.user, csrfToken }, "Google account linked", 200);
+  }),
 
   appleStart: socialStart("apple"),
   appleCallback: socialCallback("apple"),

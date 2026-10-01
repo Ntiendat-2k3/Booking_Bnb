@@ -19,15 +19,19 @@ function refreshExpiresAt() {
   return new Date(Date.now() + ms);
 }
 
+function generatedUsername() {
+  return `user_${crypto.randomUUID().replace(/-/g, "")}`;
+}
+
 function sanitizeUser(user) {
   if (!user) return null;
   const plain = user.toJSON ? user.toJSON() : user;
-  const fields = ["id", "email", "full_name", "phone", "avatar_url", "about", "location", "role", "status", "provider", "provider_id", "created_at", "updated_at"];
+  const fields = ["id", "email", "username", "full_name", "phone", "avatar_url", "about", "location", "role", "status", "provider", "provider_id", "created_at", "updated_at"];
   return Object.fromEntries(fields.filter((field) => field in plain).map((field) => [field, plain[field]]));
 }
 
 module.exports = {
-  registerLocal: async ({ email, password, full_name }, meta = {}) => {
+  registerLocal: async ({ email, username, password, full_name }, meta = {}) => {
     if (!email || !password || !full_name) {
       const err = new Error("Email, password, full_name are required");
       err.status = 400;
@@ -41,10 +45,15 @@ module.exports = {
       throw err;
     }
 
+    if (username && await userRepo.findByUsername(username)) {
+      throw httpError(409, "Username already exists");
+    }
+
     const password_hash = await bcrypt.hash(password, 10);
     return sequelize.transaction(async (transaction) => {
       const user = await User.create({
         email,
+        username: username || generatedUsername(),
         password_hash,
         full_name,
         provider: "local",
@@ -124,18 +133,30 @@ module.exports = {
     await refreshRepo.revokeByHash(tokenHash);
   },
 
-  /** Chỉ gắn tài khoản với định danh đã xác minh từ đúng nhà cung cấp; không tự ghép theo email. */
-  findOrCreateSocialUser: async ({ provider, email, full_name, avatar_url, provider_id }) => {
+  /** Chỉ nối Google vào tài khoản local qua email đã xác minh và bước xác nhận mật khẩu. */
+  findOrCreateSocialUser: async ({ provider, email, full_name, avatar_url, provider_id, email_verified }) => {
     if (!["google", "apple", "facebook"].includes(provider) || !provider_id || !email) {
       const err = new Error("Invalid social account");
       err.status = 400;
       throw err;
     }
-    let user = await userRepo.findByProviderId(provider, provider_id);
+    if (provider === "google" && email_verified !== true && email_verified !== "true") {
+      throw httpError(403, "Google email is not verified");
+    }
+    let user = provider === "google"
+      ? await userRepo.findByGoogleId(provider_id)
+      : await userRepo.findByProviderId(provider, provider_id);
 
     if (!user) {
       const existing = await userRepo.findByEmail(email);
       if (existing) {
+        if (existing.status !== "active") throw httpError(403, "User blocked");
+        if (provider === "google" && existing.provider === "local" && !existing.google_id) {
+          const err = httpError(409, "Google account linking requires password confirmation");
+          err.code = "GOOGLE_LINK_REQUIRED";
+          err.googleLink = { googleId: provider_id, email: existing.email };
+          throw err;
+        }
         const err = new Error("Email already registered with another login method");
         err.status = 409;
         throw err;
@@ -143,11 +164,13 @@ module.exports = {
 
       user = await User.create({
         email,
+        username: generatedUsername(),
         full_name,
         avatar_url: avatar_url || null,
         password_hash: null,
         provider,
-        provider_id,
+        provider_id: provider === "google" ? null : provider_id,
+        google_id: provider === "google" ? provider_id : null,
         role: "guest",
         status: "active",
       });
@@ -160,6 +183,28 @@ module.exports = {
     }
 
     return user;
+  },
+
+  /** Gắn Google vào đúng tài khoản local sau khi người dùng xác nhận lại mật khẩu. */
+  linkGoogleAccount: async ({ googleId, email, identifier, password }, meta = {}) => {
+    return sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: identifier.includes("@")
+          ? Sequelize.where(Sequelize.fn("lower", Sequelize.col("email")), identifier.toLowerCase())
+          : { username: identifier.toLowerCase() },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user || user.email !== email || user.provider !== "local" || !user.password_hash ||
+          !await bcrypt.compare(password, user.password_hash)) {
+        throw httpError(401, "Invalid username, email or password");
+      }
+      if (user.status !== "active") throw httpError(403, "User blocked");
+      if (user.google_id && user.google_id !== googleId) throw httpError(409, "Another Google account is already linked");
+      if (!user.google_id) await user.update({ google_id: googleId }, { transaction });
+      const tokens = await module.exports.issueTokens(user, meta, { transaction });
+      return { user: sanitizeUser(user), ...tokens };
+    });
   },
 
   sanitizeUser,

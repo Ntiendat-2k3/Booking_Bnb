@@ -40,6 +40,7 @@ module.exports = (sequelize, DataTypes) => {
       },
 
       email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
+      username: { type: DataTypes.STRING(40), allowNull: false, unique: true },
       password_hash: { type: DataTypes.TEXT, allowNull: true },
 
       full_name: { type: DataTypes.STRING(255), allowNull: false },
@@ -65,6 +66,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "local",
       },
       provider_id: { type: DataTypes.STRING(255), allowNull: true },
+      google_id: { type: DataTypes.STRING(255), allowNull: true, unique: true },
       reset_password_token: { type: DataTypes.STRING(255), allowNull: true },
       reset_password_expires: { type: DataTypes.DATE, allowNull: true },
       deleted_at: { type: DataTypes.DATE, allowNull: true },

@@ -16,6 +16,7 @@ export default function ProfileForm() {
   const dispatch = useDispatch();
   const user = useSelector((s) => s.auth.user);
   const [fullName, setFullName] = useState(user?.full_name || "");
+  const [username, setUsername] = useState(user?.username || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [about, setAbout] = useState(user?.about || "");
   const [location, setLocation] = useState(user?.location || "");
@@ -25,7 +26,7 @@ export default function ProfileForm() {
     event.preventDefault();
     setIsSaving(true);
     try {
-      const res = await apiFetch("/api/v1/users/me", { method: "PATCH", body: { full_name: fullName, phone, about, location } });
+      const res = await apiFetch("/api/v1/users/me", { method: "PATCH", body: { full_name: fullName, username, phone, about, location } });
       dispatch(setUser(res.data));
       notifySuccess(t("profile.updated"));
     } catch (error) { notifyError(error?.errors ? Object.values(error.errors).join(", ") : error?.message || t("profile.updateFailed")); }
@@ -52,6 +53,7 @@ export default function ProfileForm() {
     <form onSubmit={saveProfile} className="mt-6 space-y-5">
       <fieldset disabled={isSaving || uploading} className="grid min-w-0 gap-5 sm:grid-cols-2">
         <InputField label={t("auth.fullName")} value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" required />
+        <InputField label={t("auth.username")} value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} autoComplete="username" pattern="[a-z0-9_]{3,40}" minLength={3} maxLength={40} required />
         <InputField label={t("profile.phone")} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
         <InputField label={t("profile.address")} value={location} onChange={(e) => setLocation(e.target.value)} className="sm:col-span-2" placeholder={t("profile.locationHint")} />
         <div className="sm:col-span-2"><label htmlFor="profile-about" className="mb-2 block text-sm font-semibold">{t("profile.introduction")}</label><textarea id="profile-about" value={about} onChange={(e) => setAbout(e.target.value)} rows={4} placeholder={t("profile.aboutHint")} className="field-control" /></div>

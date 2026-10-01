@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { loginLocal } from "@/store/authThunks";
+import { linkGoogleAccount, loginLocal } from "@/store/authThunks";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, EnvelopeSimple, LockKey } from "@phosphor-icons/react";
@@ -25,14 +25,16 @@ export default function LoginPage() {
   const dispatch = useDispatch();
   const router = useRouter();
   const { user, status, isInitialized, error } = useSelector((s) => s.auth);
+  const search = useSyncExternalStore(() => () => {}, () => window.location.search, () => "");
+  const googleLink = new URLSearchParams(search).get("google_link") === "1";
   const [email, setEmail] = useState(readRememberedEmail);
   const [password, setPassword] = useState("");
   const [rememberEmail, setRememberEmail] = useState(() => Boolean(readRememberedEmail()));
   const busy = status === "loading";
-  useEffect(() => { if (isInitialized && user && !busy) router.replace("/"); }, [isInitialized, user, busy, router]);
+  useEffect(() => { if (isInitialized && user && !busy && !googleLink) router.replace("/"); }, [isInitialized, user, busy, googleLink, router]);
   async function onSubmit(event) {
     event.preventDefault();
-    const ok = await dispatch(loginLocal({ email, password }));
+    const ok = await dispatch(googleLink ? linkGoogleAccount({ email, password }) : loginLocal({ email, password }));
     if (ok) {
       try {
         if (rememberEmail) window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email);
@@ -40,13 +42,14 @@ export default function LoginPage() {
       } catch {
         // Lưu email là tùy chọn, không được cản trở đăng nhập thành công.
       }
-      router.push("/");
+      router.push(googleLink ? "/profile" : "/");
     }
   }
   return (
     <AuthTemplate title={t("auth.welcome")} description={t("auth.welcomeDescription")} coverAlt={t("auth.coverAlt")} homeLabel={t("common.backHome")}>
       <form onSubmit={onSubmit} className="auth-form">
-        <InputField className="auth-field" label={t("auth.email")} prefix={<EnvelopeSimple size={21} />} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("auth.emailPlaceholder")} required disabled={busy} />
+        {googleLink ? <p role="status" className="text-sm text-muted-ink">{t("auth.googleLinkPrompt")}</p> : null}
+        <InputField className="auth-field" label={t("auth.loginIdentifier")} prefix={<EnvelopeSimple size={21} />} type="text" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("auth.loginIdentifierPlaceholder")} required disabled={busy} />
         <PasswordField className="auth-field" label={t("auth.password")} prefix={<LockKey size={21} />} placeholder={t("auth.passwordPlaceholder")} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={busy} />
         <div className="auth-form-options">
           <label className="auth-check"><input type="checkbox" checked={rememberEmail} onChange={(e) => {
@@ -55,11 +58,11 @@ export default function LoginPage() {
               try { window.localStorage.removeItem(REMEMBERED_EMAIL_KEY); }
               catch { /* Trình duyệt có thể chặn bộ nhớ cục bộ. */ }
             }
-          }} disabled={busy} /><span>{t("auth.rememberEmail")}</span></label>
+          }} disabled={busy} /><span>{t("auth.rememberLogin")}</span></label>
           <Link href="/forgot-password" className="auth-link">{t("auth.forgot")}</Link>
         </div>
         {error ? <p role="alert" className="rounded-xl bg-danger/10 p-3 text-sm text-danger">{error === "auth.loginFailed" ? t(error) : error}</p> : null}
-        <Button type="submit" loading={busy} className="auth-submit w-full">{t(busy ? "auth.loggingIn" : "auth.loginTitle")}<ArrowRight aria-hidden size={21} /></Button>
+        <Button type="submit" loading={busy} className="auth-submit w-full">{t(busy ? "auth.loggingIn" : googleLink ? "auth.linkGoogle" : "auth.loginTitle")}<ArrowRight aria-hidden size={21} /></Button>
       </form>
       <AuthSocial />
       <p className="auth-switch">{t("auth.noAccount")} <Link href="/register" className="auth-link">{t("auth.signUpNow")}</Link></p>

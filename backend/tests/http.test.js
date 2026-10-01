@@ -205,3 +205,27 @@ test("App/routers khởi tạo được; CORS, 404 và validation hoạt động
   assert.equal(allowed.headers.get("access-control-allow-origin"), "https://allowed.example");
   assert.equal(db.calls.length, 0);
 });
+
+test("Upload chấp nhận một ảnh và từ chối trường bổ sung", async (t) => {
+  const { upload, uploadErrorHandler } = require("../middlewares/upload.middleware");
+  const app = express();
+  app.post("/upload", upload.single("image"), uploadErrorHandler, async (req, res, next) => {
+    try {
+      await fs.unlink(req.file.path);
+      res.sendStatus(204);
+    } catch (error) {
+      next(error);
+    }
+  });
+  const base = await serve(t, app);
+
+  const image = new FormData();
+  image.append("image", new Blob(["image"], { type: "image/png" }), "avatar.png");
+  assert.equal((await fetch(`${base}/upload`, { method: "POST", body: image })).status, 204);
+
+  const extraField = new FormData();
+  extraField.append("image", new Blob(["image"], { type: "image/png" }), "avatar.png");
+  extraField.append("caption", "unexpected");
+  const rejected = await fetch(`${base}/upload`, { method: "POST", body: extraField });
+  assert.equal(rejected.status, 400);
+});

@@ -3,6 +3,7 @@ const { password } = require("./auth.schema");
 
 const updateProfileSchema = Joi.object({
   full_name: Joi.string().trim().min(2).max(100).required(),
+  username: Joi.string().trim().lowercase().pattern(/^[a-z0-9_]{3,40}$/),
   phone: Joi.string()
     .trim()
     .pattern(/^[0-9+ ]{8,15}$/)

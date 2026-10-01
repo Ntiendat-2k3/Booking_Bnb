@@ -17,12 +17,11 @@ function fileFilter(req, file, cb) {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: MAX_SIZE, files: 1, fields: 0, parts: 1 },
+  limits: { fileSize: MAX_SIZE, files: 1, fields: 0 },
 });
 
 function uploadErrorHandler(err, req, res, next) {
   if (!err) return next();
-  // Multer error
   const msg = err.message || "Upload failed";
   return errorResponse(res, msg, 400);
 }

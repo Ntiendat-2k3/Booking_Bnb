@@ -1,15 +1,15 @@
 -- Seed data for Sprint 2 (Listings browsing)
 BEGIN;
 -- Users (hosts/admin/demo users)
-INSERT INTO users (id,email,password_hash,full_name,phone,avatar_url,role,status,provider,provider_id,created_at,updated_at)
+INSERT INTO users (id,email,username,password_hash,full_name,phone,avatar_url,role,status,provider,provider_id,created_at,updated_at)
 VALUES
-('75f488fa-4ec2-5e39-a5df-236039325682','admin@example.com',NULL,'Admin',NULL,'https://i.pravatar.cc/150?u=75f488fa-4ec2-5e39-a5df-236039325682','admin','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
-('3054cb96-bbdd-5257-93fc-c2512a17959f','host1@example.com',NULL,'Host Nguyễn',NULL,'https://i.pravatar.cc/150?u=3054cb96-bbdd-5257-93fc-c2512a17959f','host','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
-('67300688-0ec9-58ef-b496-68877bf8c51d','host2@example.com',NULL,'Host Kim',NULL,'https://i.pravatar.cc/150?u=67300688-0ec9-58ef-b496-68877bf8c51d','host','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
-('9d9bfdb7-9492-5dbc-98ea-8404b94ea13d','user1@example.com',NULL,'User 1',NULL,'https://i.pravatar.cc/150?u=9d9bfdb7-9492-5dbc-98ea-8404b94ea13d','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
-('6255dc88-8cd8-5c2c-b42b-c7b6c217f113','user2@example.com',NULL,'User 2',NULL,'https://i.pravatar.cc/150?u=6255dc88-8cd8-5c2c-b42b-c7b6c217f113','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
-('97021a5b-0e61-5040-9dae-8e3eebda6285','user3@example.com',NULL,'User 3',NULL,'https://i.pravatar.cc/150?u=97021a5b-0e61-5040-9dae-8e3eebda6285','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
-('ba552b22-8b68-55b2-b20e-815f9d2c7d88','user4@example.com',NULL,'User 4',NULL,'https://i.pravatar.cc/150?u=ba552b22-8b68-55b2-b20e-815f9d2c7d88','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00')
+('75f488fa-4ec2-5e39-a5df-236039325682','admin@example.com','admin',NULL,'Admin',NULL,'https://i.pravatar.cc/150?u=75f488fa-4ec2-5e39-a5df-236039325682','admin','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
+('3054cb96-bbdd-5257-93fc-c2512a17959f','host1@example.com','host1',NULL,'Host Nguyễn',NULL,'https://i.pravatar.cc/150?u=3054cb96-bbdd-5257-93fc-c2512a17959f','host','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
+('67300688-0ec9-58ef-b496-68877bf8c51d','host2@example.com','host2',NULL,'Host Kim',NULL,'https://i.pravatar.cc/150?u=67300688-0ec9-58ef-b496-68877bf8c51d','host','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
+('9d9bfdb7-9492-5dbc-98ea-8404b94ea13d','user1@example.com','user1',NULL,'User 1',NULL,'https://i.pravatar.cc/150?u=9d9bfdb7-9492-5dbc-98ea-8404b94ea13d','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
+('6255dc88-8cd8-5c2c-b42b-c7b6c217f113','user2@example.com','user2',NULL,'User 2',NULL,'https://i.pravatar.cc/150?u=6255dc88-8cd8-5c2c-b42b-c7b6c217f113','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
+('97021a5b-0e61-5040-9dae-8e3eebda6285','user3@example.com','user3',NULL,'User 3',NULL,'https://i.pravatar.cc/150?u=97021a5b-0e61-5040-9dae-8e3eebda6285','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00'),
+('ba552b22-8b68-55b2-b20e-815f9d2c7d88','user4@example.com','user4',NULL,'User 4',NULL,'https://i.pravatar.cc/150?u=ba552b22-8b68-55b2-b20e-815f9d2c7d88','guest','active','local',NULL,'2025-11-30 10:00:00','2026-01-28 10:00:00')
 ON CONFLICT (id) DO NOTHING;
 
 -- Amenities

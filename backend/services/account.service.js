@@ -33,7 +33,7 @@ module.exports = {
     return sanitizeUser(user);
   },
 
-  async updateProfile(userId, { full_name, phone, about, location }) {
+  async updateProfile(userId, { full_name, username, phone, about, location }) {
     const user = await User.findByPk(userId);
     if (!user) {
       const err = new Error("User not found");
@@ -41,12 +41,22 @@ module.exports = {
       throw err;
     }
 
+    if (username && username !== user.username) {
+      const existing = await User.findOne({ where: { username } });
+      if (existing) throw httpError(409, "Username already exists");
+      user.username = username;
+    }
     user.full_name = full_name;
     user.phone = phone || null;
     user.about = about || null;
     user.location = location || null;
 
-    await user.save();
+    try {
+      await user.save();
+    } catch (error) {
+      if (error.name === "SequelizeUniqueConstraintError") throw httpError(409, "Username already exists");
+      throw error;
+    }
     await invalidateListings();
     return sanitizeUser(user);
   },

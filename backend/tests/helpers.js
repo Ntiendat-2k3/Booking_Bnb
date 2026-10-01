@@ -75,11 +75,16 @@ function database(seed = {}) {
     }
     return expected === null ? value == null : value === expected;
   };
-  const matches = (row, where = {}) => Reflect.ownKeys(where).every((key) => {
-    if (key === Sequelize.Op.or) return where[key].some((part) => matches(row, part));
-    if (key === Sequelize.Op.and) return Array.isArray(where[key]) ? where[key].every((part) => matches(row, part)) : true;
-    return matchValue(row[key], where[key]);
-  });
+  const matches = (row, where = {}) => {
+    if (where instanceof Sequelize.Utils.Where && where.attribute?.fn === "lower") {
+      return String(row[where.attribute.args[0].col]).toLowerCase() === where.logic;
+    }
+    return Reflect.ownKeys(where).every((key) => {
+      if (key === Sequelize.Op.or) return where[key].some((part) => matches(row, part));
+      if (key === Sequelize.Op.and) return Array.isArray(where[key]) ? where[key].every((part) => matches(row, part)) : true;
+      return matchValue(row[key], where[key]);
+    });
+  };
   const write = (name, key, row, tx) => {
     if (failures.has(name)) { const error = failures.get(name); failures.delete(name); throw error; }
     if (tx) { if (!tx.writes.has(name)) tx.writes.set(name, new Map()); tx.writes.get(name).set(key, row); }
