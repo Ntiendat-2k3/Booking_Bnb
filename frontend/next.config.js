@@ -27,6 +27,8 @@ const nextConfig = {
   },
 
   images: {
+    // Tránh lỗi 402 khi Vercel hết hạn mức chuyển đổi ảnh; trình duyệt tải ảnh gốc.
+    unoptimized: process.env.NODE_ENV === "production",
     remotePatterns: [
       { protocol: "https", hostname: "api.mapbox.com", pathname: "/**" },
       { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
