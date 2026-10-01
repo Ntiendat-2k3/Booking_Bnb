@@ -18,6 +18,10 @@ router.post("/reset-password", passwordResetLimiter, validate(resetPasswordSchem
 
 router.get("/google", authController.googleStart);
 router.get("/google/callback", authController.googleCallback);
+router.get("/apple", authLoginLimiter, authController.appleStart);
+router.post("/apple/callback", authLoginLimiter, authController.appleCallback);
+router.get("/facebook", authLoginLimiter, authController.facebookStart);
+router.get("/facebook/callback", authLoginLimiter, authController.facebookCallback);
 
 router.get("/profile", authMiddleware, authController.profile);
 

@@ -1,5 +1,7 @@
 const passport = require("passport");
+const crypto = require("node:crypto");
 const authService = require("../../../services/auth.service");
+const socialOauth = require("../../../services/social_oauth.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
 const { refreshCookieName, accessCookieName, csrfCookieName, refreshCookieOptions, accessCookieOptions, csrfCookieOptions,  } = require("../../../utils/cookies");
 const { generateCsrfToken } = require("../../../utils/csrf");
@@ -19,6 +21,69 @@ function setAuthCookies(res, req, { accessToken, refreshToken }) {
   res.cookie(accessCookieName(), accessToken, accessCookieOptions());
   const csrfToken = ensureCsrfCookie(res, req);
   return csrfToken;
+}
+
+function socialStateCookie(provider) {
+  return {
+    httpOnly: true,
+    secure: provider === "apple" || process.env.NODE_ENV === "production",
+    sameSite: provider === "apple" ? "none" : "lax",
+    path: `/api/v1/auth/${provider}/callback`,
+    maxAge: 5 * 60_000,
+  };
+}
+
+function socialFailure(res, reason = "failed") {
+  const url = new URL("/login", process.env.FRONTEND_URL || "http://localhost:3001");
+  url.searchParams.set("oauth_error", reason);
+  return res.redirect(url.toString());
+}
+
+function socialStart(provider) {
+  return (req, res) => {
+    const config = socialOauth.configFor(provider);
+    if (!config) return socialFailure(res, "not_configured");
+    const state = crypto.randomBytes(24).toString("base64url");
+    const nonce = crypto.randomBytes(24).toString("base64url");
+    res.cookie(`oauth_state_${provider}`, `${state}.${nonce}`, socialStateCookie(provider));
+    return res.redirect(socialOauth.authorizationUrl(provider, config, state, nonce));
+  };
+}
+
+function socialCallback(provider) {
+  return async (req, res) => {
+    const cookieName = `oauth_state_${provider}`;
+    const stored = req.cookies?.[cookieName];
+    const { maxAge: _maxAge, ...cookieOptions } = socialStateCookie(provider);
+    res.clearCookie(cookieName, cookieOptions);
+    const [expectedState, nonce] = typeof stored === "string" ? stored.split(".") : [];
+    const state = provider === "apple" ? req.body?.state : req.query.state;
+    const code = provider === "apple" ? req.body?.code : req.query.code;
+    if (!expectedState || !nonce || typeof state !== "string" || typeof code !== "string" ||
+        state.length !== expectedState.length ||
+        !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expectedState))) {
+      return socialFailure(res);
+    }
+    const config = socialOauth.configFor(provider);
+    if (!config) return socialFailure(res, "not_configured");
+    try {
+      const profile = provider === "apple"
+        ? await socialOauth.appleProfile(code, nonce, config, req.body?.user)
+        : await socialOauth.facebookProfile(code, config);
+      const user = await authService.findOrCreateSocialUser(profile);
+      const tokens = await authService.issueTokens(user, {
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+      setAuthCookies(res, req, tokens);
+      const url = new URL("/auth/callback", process.env.FRONTEND_URL || "http://localhost:3001");
+      url.searchParams.set("success", "1");
+      return res.redirect(url.toString());
+    } catch (error) {
+      const reason = error.status === 409 ? "email_in_use" : "failed";
+      return socialFailure(res, reason);
+    }
+  };
 }
 
 module.exports = {
@@ -96,6 +161,11 @@ module.exports = {
       }
     })(req, res, next);
   },
+
+  appleStart: socialStart("apple"),
+  appleCallback: socialCallback("apple"),
+  facebookStart: socialStart("facebook"),
+  facebookCallback: socialCallback("facebook"),
 
   profile: asyncHandler(async (req, res) => {
     return successResponse(res, req.user.user, "User profile fetched", 200);

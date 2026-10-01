@@ -124,15 +124,19 @@ module.exports = {
     await refreshRepo.revokeByHash(tokenHash);
   },
 
-  // dùng cho google callback để tạo/ lấy user
-  findOrCreateGoogleUser: async ({ email, full_name, avatar_url, provider_id }) => {
-    let user = await userRepo.findByGoogleProviderId(provider_id);
+  /** Chỉ gắn tài khoản với định danh đã xác minh từ đúng nhà cung cấp; không tự ghép theo email. */
+  findOrCreateSocialUser: async ({ provider, email, full_name, avatar_url, provider_id }) => {
+    if (!["google", "apple", "facebook"].includes(provider) || !provider_id || !email) {
+      const err = new Error("Invalid social account");
+      err.status = 400;
+      throw err;
+    }
+    let user = await userRepo.findByProviderId(provider, provider_id);
 
     if (!user) {
-      // nếu email đã tồn tại local => chặn (MVP)
       const existing = await userRepo.findByEmail(email);
-      if (existing && existing.provider === "local") {
-        const err = new Error("Email already registered with local login");
+      if (existing) {
+        const err = new Error("Email already registered with another login method");
         err.status = 409;
         throw err;
       }
@@ -142,7 +146,7 @@ module.exports = {
         full_name,
         avatar_url: avatar_url || null,
         password_hash: null,
-        provider: "google",
+        provider,
         provider_id,
         role: "guest",
         status: "active",

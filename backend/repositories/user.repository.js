@@ -11,7 +11,7 @@ module.exports = class UserRepository extends Repository {
     return this.model.findOne({ where: { email } });
   }
 
-  findByGoogleProviderId(providerId) {
-    return this.model.findOne({ where: { provider: "google", provider_id: providerId } });
+  findByProviderId(provider, providerId) {
+    return this.model.findOne({ where: { provider, provider_id: providerId } });
   }
 };

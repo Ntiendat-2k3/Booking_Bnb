@@ -1,23 +1,45 @@
 import Image from "next/image";
-import { SITE_IMAGES } from "@/lib/constants";
+import Link from "next/link";
+import { ArrowLeft, Mountains } from "@phosphor-icons/react/dist/ssr";
+import { SITE_NAME } from "@/lib/constants";
 
-export default function AuthTemplate({ title, description, coverTitle, coverDescription, coverAlt, children }) {
+/** Bố cục chung cho các màn xác thực, giữ ảnh và biểu mẫu phù hợp từng cỡ màn hình. */
+export default function AuthTemplate({ title, description, coverAlt, homeLabel, children }) {
   return (
-    <div className="surface-panel mx-auto grid w-full max-w-5xl overflow-hidden lg:grid-cols-[0.95fr_1.05fr]">
-      <div className="hidden flex-col bg-muted-surface p-4 lg:flex">
-        <div className="relative min-h-80 flex-1 overflow-hidden rounded-control">
-          <Image src={SITE_IMAGES.interior} alt={coverAlt} fill sizes="(max-width: 1024px) 100vw, 440px" className="object-cover" priority />
-        </div>
-        <div className="p-6 pb-8 text-ink">
-          <h2 className="text-3xl font-bold leading-tight tracking-[-0.04em]">{coverTitle || title}</h2>
-          <p className="mt-3 text-sm leading-7 text-muted-ink">{coverDescription || description}</p>
+    <section className="auth-experience" aria-labelledby="auth-title">
+      <div className="auth-card">
+        <picture className="auth-backdrop">
+          <source media="(max-width: 639px)" srcSet="/auth-background-mobile.webp" />
+          <source media="(max-width: 1023px)" srcSet="/auth-background-tablet.webp" />
+          <Image
+            src="/auth-background-desktop.webp"
+            alt={coverAlt}
+            fill
+            sizes="100vw"
+            className="auth-backdrop-image"
+            loading="eager"
+            fetchPriority="high"
+          />
+        </picture>
+        <div className="auth-visual" aria-hidden="true" />
+        <div className="auth-panel">
+          <div className="auth-panel-inner">
+            <div className="auth-topline">
+              <Link href="/" className="auth-brand" aria-label={SITE_NAME}>
+                <Mountains aria-hidden size={38} weight="thin" />
+                <span>{SITE_NAME}</span>
+              </Link>
+              <Link href="/" className="auth-home-link">
+                <ArrowLeft aria-hidden size={17} />
+                <span>{homeLabel}</span>
+              </Link>
+            </div>
+            <h1 id="auth-title" className="auth-title">{title}</h1>
+            <p className="auth-description">{description}</p>
+            {children}
+          </div>
         </div>
       </div>
-      <div className="min-w-0 self-center p-6 sm:p-10 lg:p-12">
-        <h1 className="page-heading">{title}</h1>
-        <p className="mb-8 mt-3 text-sm leading-7 text-muted-ink">{description}</p>
-        {children}
-      </div>
-    </div>
+    </section>
   );
 }

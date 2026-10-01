@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     catch (err) { setStatus("error"); setError(err.message || "auth.requestFailed"); }
   }
   return (
-    <AuthTemplate title={t("auth.forgot")} description={t("auth.forgotDescription")} coverAlt={t("auth.coverAlt")}>
+    <AuthTemplate title={t("auth.forgot")} description={t("auth.forgotDescription")} coverAlt={t("auth.coverAlt")} homeLabel={t("common.backHome")}>
       {status === "success" ? <div role="status" className="rounded-xl bg-positive/10 p-5 text-positive"><CheckCircle aria-hidden size={28} /><p className="mt-3 text-sm leading-6">{t("auth.resetEmailSent")}</p></div> :
         <form onSubmit={handleSubmit} className="space-y-5">
           <InputField label={t("auth.email")} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={status === "loading"} />

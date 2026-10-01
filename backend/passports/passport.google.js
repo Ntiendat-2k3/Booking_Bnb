@@ -18,7 +18,8 @@ module.exports = new GoogleStrategy(
 
       if (!email) return done(null, false, { message: "Google account has no email" });
 
-      const user = await authService.findOrCreateGoogleUser({
+      const user = await authService.findOrCreateSocialUser({
+        provider: "google",
         email,
         full_name,
         avatar_url,

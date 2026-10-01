@@ -2,6 +2,16 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  async rewrites() {
+    if (process.env.NODE_ENV !== "production") return [];
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: "https://booking-bnb-api.onrender.com/api/v1/:path*",
+      },
+    ];
+  },
+
   // Loại bỏ log chẩn đoán khỏi bản production.
   compiler: {
     removeConsole:

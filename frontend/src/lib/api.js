@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
 
 function getCookie(name) {
   if (typeof document === "undefined") return null;

@@ -9,6 +9,7 @@ export default function InputField({
   hint,
   className,
   inputClassName,
+  prefix,
   suffix,
   id,
   inputRef,
@@ -25,20 +26,22 @@ export default function InputField({
         {label}
       </label>
       <div className="relative">
-      <input
-        ref={inputRef}
-        id={inputId}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error || hint ? messageId : undefined}
-        className={clsx(
-          variant === "integrated" ? "field-integrated" : "field-control",
-          "motion-reduce:transition-none",
-          error ? "border-danger focus:border-danger focus:ring-danger/10" : "border-line",
-          inputClassName,
-        )}
-        {...props}
-      />
-      {suffix ? <div className="absolute right-1 top-1/2 -translate-y-1/2">{suffix}</div> : null}
+        {prefix ? <div className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-ink" aria-hidden>{prefix}</div> : null}
+        <input
+          ref={inputRef}
+          id={inputId}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error || hint ? messageId : undefined}
+          className={clsx(
+            variant === "integrated" ? "field-integrated" : "field-control",
+            "motion-reduce:transition-none",
+            error ? "border-danger focus:border-danger focus:ring-danger/10" : "border-line",
+            prefix && "pl-12",
+            inputClassName,
+          )}
+          {...props}
+        />
+        {suffix ? <div className="absolute right-1 top-1/2 -translate-y-1/2">{suffix}</div> : null}
       </div>
       {error || hint ? (
         <p

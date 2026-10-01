@@ -31,7 +31,7 @@ function ResetPasswordContent() {
     catch (err) { setStatus("error"); setError(err.message || "auth.resetFailed"); }
   }
   return (
-    <AuthTemplate title={t("auth.resetTitle")} description={t("auth.resetDescription")} coverAlt={t("auth.coverAlt")}>
+    <AuthTemplate title={t("auth.resetTitle")} description={t("auth.resetDescription")} coverAlt={t("auth.coverAlt")} homeLabel={t("common.backHome")}>
       {!token ? <div role="alert" className="space-y-4"><p className="text-danger">{t("auth.invalidLink")}</p><Link className="inline-flex min-h-11 items-center font-semibold text-brand underline" href="/forgot-password">{t("auth.requestNewLink")}</Link></div> : status === "success" ?
         <div role="status" className="rounded-xl bg-positive/10 p-5 text-positive"><p>{t("auth.passwordReset")}</p><p className="mt-3 text-sm">{t("auth.redirectLogin")}</p></div> :
         <form onSubmit={handleSubmit} className="space-y-5">
