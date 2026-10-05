@@ -19,6 +19,7 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
       },
       user_id: { type: DataTypes.UUID, allowNull: false },
+      session_id: { type: DataTypes.UUID, allowNull: false },
 
       token_hash: { type: DataTypes.TEXT, allowNull: false, unique: true },
       expires_at: { type: DataTypes.DATE, allowNull: false },
@@ -26,6 +27,7 @@ module.exports = (sequelize, DataTypes) => {
 
       created_ip: { type: DataTypes.STRING(64), allowNull: true },
       user_agent: { type: DataTypes.TEXT, allowNull: true },
+      last_active_at: { type: DataTypes.DATE, allowNull: true },
       created_at: { type: DataTypes.DATE, allowNull: false },
     },
     {

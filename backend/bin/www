@@ -7,6 +7,7 @@ const { startBookingCleanup } = require('../jobs/bookingCleanup');
 const { startBackgroundJobs } = require('../jobs/backgroundJobs');
 const { sequelize } = require('../models');
 const { getRedis } = require('../utils/redis');
+const qrSocket = require('../services/qr_login.socket');
 
 // Khởi động tác vụ nền; các timer được dừng khi tiến trình nhận tín hiệu kết thúc.
 const stopBookingCleanup = startBookingCleanup();
@@ -14,6 +15,7 @@ const stopBackgroundJobs = startBackgroundJobs();
 
 async function shutdown() {
   const backgroundStopped = Promise.allSettled([stopBookingCleanup(), stopBackgroundJobs()]);
+  await qrSocket.close();
   server.close(async () => {
     await backgroundStopped;
     await Promise.allSettled([sequelize.close(), getRedis()?.quit()]);
@@ -27,6 +29,8 @@ var port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
 var server = http.createServer(app);
+
+qrSocket.attach(server).catch((error) => console.error('[qr] Socket setup failed:', error.name));
 
 server.listen(port);
 server.on('error', onError);

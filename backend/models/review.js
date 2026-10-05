@@ -27,7 +27,7 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
       },
 
-      booking_id: { type: DataTypes.UUID, allowNull: false, unique: true },
+      booking_id: { type: DataTypes.UUID, allowNull: false },
       listing_id: { type: DataTypes.UUID, allowNull: false },
       reviewer_id: { type: DataTypes.UUID, allowNull: false },
 
@@ -50,6 +50,9 @@ module.exports = (sequelize, DataTypes) => {
       updatedAt: "updated_at",
       deletedAt: "deleted_at",
       paranoid: true,
+      indexes: [
+        { name: "reviews_active_booking_id_unique", unique: true, fields: ["booking_id"], where: { deleted_at: null } },
+      ],
     },
   );
 

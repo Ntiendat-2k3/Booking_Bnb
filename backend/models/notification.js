@@ -1,11 +1,13 @@
 "use strict";
 const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Notification extends Model {
     static associate(models) {
       Notification.belongsTo(models.User, { foreignKey: "user_id" });
     }
   }
+
   Notification.init(
     {
       id: {
@@ -17,27 +19,12 @@ module.exports = (sequelize, DataTypes) => {
       user_id: {
         type: DataTypes.UUID,
         allowNull: false,
-        references: {
-          model: "users", // table name
-          key: "id",
-        },
+        references: { model: "users", key: "id" },
       },
-      type: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      title: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      message: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-      },
-      is_read: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: false,
-      },
+      type: { type: DataTypes.STRING, allowNull: false },
+      title: { type: DataTypes.STRING, allowNull: false },
+      message: { type: DataTypes.TEXT, allowNull: false },
+      is_read: { type: DataTypes.BOOLEAN, defaultValue: false },
     },
     {
       sequelize,
@@ -45,7 +32,8 @@ module.exports = (sequelize, DataTypes) => {
       tableName: "Notifications",
       createdAt: "created_at",
       updatedAt: "updated_at",
-    }
+    },
   );
+
   return Notification;
 };

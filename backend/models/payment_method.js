@@ -43,6 +43,14 @@ module.exports = (sequelize, DataTypes) => {
       tableName: "payment_methods",
       createdAt: "created_at",
       updatedAt: "updated_at",
+      indexes: [
+        {
+          name: "payment_methods_one_default_per_user",
+          unique: true,
+          fields: ["user_id"],
+          where: { is_default: true },
+        },
+      ],
     },
   );
 

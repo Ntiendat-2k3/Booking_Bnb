@@ -18,7 +18,7 @@ const updateProfileSchema = Joi.object({
 const changePasswordSchema = Joi.object({
   current_password: Joi.string().required(),
   new_password: password.required().messages({
-    "string.min": "Mật khẩu mới phải có ít nhất 6 ký tự",
+    "string.min": "Mật khẩu mới phải có ít nhất 8 ký tự",
   }),
 });
 

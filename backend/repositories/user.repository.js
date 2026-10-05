@@ -7,8 +7,13 @@ module.exports = class UserRepository extends Repository {
     return User;
   }
 
-  findByEmail(email) {
-    return this.model.findOne({ where: Sequelize.where(Sequelize.fn("lower", Sequelize.col("email")), email.toLowerCase()) });
+  findByEmail(email, provider = "local") {
+    return this.model.findOne({ where: {
+      [Sequelize.Op.and]: [
+        Sequelize.where(Sequelize.fn("lower", Sequelize.col("email")), email.toLowerCase()),
+        { provider },
+      ],
+    } });
   }
 
   findByUsername(username) {

@@ -45,6 +45,14 @@ module.exports = (sequelize, DataTypes) => {
       modelName: "ListingImage",
       tableName: "listing_images",
       timestamps: false,
+      indexes: [
+        {
+          name: "listing_images_one_cover_per_listing",
+          unique: true,
+          fields: ["listing_id"],
+          where: { is_cover: true },
+        },
+      ],
     },
   );
 

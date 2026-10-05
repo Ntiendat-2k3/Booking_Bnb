@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createHmac, generateKeyPairSync } = require("node:crypto");
+const { createHmac } = require("node:crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const express = require("express");
@@ -10,46 +10,6 @@ const { Passport } = require("passport");
 const passportGlobal = require("passport");
 const socialOauth = require("../services/social_oauth.service");
 const { loadBackend, database } = require("./helpers");
-
-test("Apple chỉ chấp nhận ID token có chữ ký, audience và nonce hợp lệ", async (t) => {
-  const clientKey = generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey;
-  const appleKeys = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  const otherKeys = generateKeyPairSync("rsa", { modulusLength: 2048 });
-  const jwk = { ...appleKeys.publicKey.export({ format: "jwk" }), kid: "apple-test" };
-  const config = { clientId: "booking.test", teamId: "TEAM123", keyId: "KEY123",
-    privateKey: clientKey.export({ format: "pem", type: "pkcs8" }), redirectUri: "https://api.example.com/apple/callback" };
-  const originalFetch = global.fetch;
-  t.after(() => { global.fetch = originalFetch; });
-
-  let tokenNonce = "expected-nonce";
-  let tokenAudience = "booking.test";
-  let signingKey = appleKeys.privateKey;
-  global.fetch = async (url) => {
-    if (url === "https://appleid.apple.com/auth/token") {
-      return { ok: true, json: async () => ({ id_token: jwt.sign({ sub: "apple-user", email: "user@example.com",
-        email_verified: "true", nonce: tokenNonce }, signingKey,
-      { algorithm: "RS256", keyid: "apple-test", issuer: "https://appleid.apple.com",
-        audience: tokenAudience, expiresIn: "5m" }) }) };
-    }
-    if (url === "https://appleid.apple.com/auth/keys") return { ok: true, json: async () => ({ keys: [jwk] }) };
-    throw new Error(`Unexpected URL: ${url}`);
-  };
-
-  const profile = await socialOauth.appleProfile("code", "expected-nonce", config, JSON.stringify({
-    name: { firstName: "Alex", lastName: "Le" },
-  }));
-  assert.deepEqual(profile, { provider: "apple", provider_id: "apple-user", email: "user@example.com",
-    full_name: "Alex Le", avatar_url: null });
-
-  tokenNonce = "different-nonce";
-  await assert.rejects(socialOauth.appleProfile("code", "expected-nonce", config), /Invalid Apple account data/);
-  tokenNonce = "expected-nonce";
-  tokenAudience = "another-service";
-  await assert.rejects(socialOauth.appleProfile("code", "expected-nonce", config), /jwt audience invalid/);
-  tokenAudience = "booking.test";
-  signingKey = otherKeys.privateKey;
-  await assert.rejects(socialOauth.appleProfile("code", "expected-nonce", config), /invalid signature/);
-});
 
 test("Facebook lấy hồ sơ bằng access token được đổi từ authorization code", async (t) => {
   const originalFetch = global.fetch;
@@ -74,19 +34,32 @@ test("Facebook lấy hồ sơ bằng access token được đổi từ authoriza
   assert.equal(profile.email, "user@example.com");
 });
 
-test("Tài khoản xã hội chỉ tái sử dụng đúng provider ID và không ghép email với phương thức khác", async () => {
+test("Facebook tạo tài khoản riêng khi email trùng và chỉ tái sử dụng đúng Facebook ID", async () => {
   const db = database({ User: [{ id: "local-user", email: "used@example.com", provider: "local", status: "active" }] });
   const service = loadBackend("services/auth.service.js", db.models);
-  await assert.rejects(service.findOrCreateSocialUser({ provider: "facebook", provider_id: "fb-1",
-    email: "used@example.com", full_name: "Alex" }), { status: 409 });
   const first = await service.findOrCreateSocialUser({ provider: "facebook", provider_id: "fb-1",
-    email: "new@example.com", full_name: "Alex" });
+    email: "used@example.com", full_name: "Alex" });
   const second = await service.findOrCreateSocialUser({ provider: "facebook", provider_id: "fb-1",
-    email: "new@example.com", full_name: "Alex" });
+    email: "used@example.com", full_name: "Alex" });
   assert.equal(first.id, second.id);
+  assert.notEqual(first.id, "local-user");
   assert.equal(db.rows("User").length, 2);
+  await assert.rejects(service.findOrCreateSocialUser({ provider: "facebook", provider_id: "fb-2",
+    email: "used@example.com", full_name: "Other" }), { status: 409 });
   await assert.rejects(service.findOrCreateSocialUser({ provider: "apple", provider_id: "apple-1",
-    email: "new@example.com", full_name: "Alex" }), { status: 409 });
+    email: "used@example.com", full_name: "Alex" }), { status: 400 });
+  assert.equal(db.rows("User").length, 2);
+});
+
+test("Tài khoản local có thể dùng email của tài khoản Facebook riêng", async () => {
+  const db = database({ User: [{ id: "facebook-user", email: "used@example.com", provider: "facebook",
+    provider_id: "fb-1", status: "active" }] });
+  const service = loadBackend("services/auth.service.js", db.models);
+  const result = await service.registerLocal({ email: "used@example.com", username: "local_user",
+    password: "password123", full_name: "Local User" });
+  assert.equal(result.user.provider, "local");
+  assert.notEqual(result.user.id, "facebook-user");
+  assert.equal(db.rows("User").length, 2);
 });
 
 test("Google chỉ liên kết email đã xác minh sau khi xác nhận mật khẩu và giữ nguyên tài khoản", async () => {
@@ -158,8 +131,12 @@ test("Google không liên kết tài khoản đã bị khóa", async () => {
 });
 
 test("Mật khẩu local nhận username hoặc email kể cả khi đã liên kết Google", async (t) => {
-  const db = database({ User: [{ id: "local-user", email: "used@example.com", username: "existing_user",
-    password_hash: await bcrypt.hash("existing-password", 4), provider: "local", google_id: "google-sub-1", status: "active" }] });
+  const db = database({ User: [
+    { id: "facebook-user", email: "used@example.com", username: "facebook_user",
+      provider: "facebook", provider_id: "fb-1", status: "active" },
+    { id: "local-user", email: "used@example.com", username: "existing_user",
+      password_hash: await bcrypt.hash("existing-password", 4), provider: "local", google_id: "google-sub-1", status: "active" },
+  ] });
   const strategy = loadBackend("passports/passport.local.js", db.models);
   const passport = new Passport();
   passport.use("local", strategy);

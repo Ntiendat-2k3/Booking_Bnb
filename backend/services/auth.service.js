@@ -9,6 +9,7 @@ const RefreshTokenRepository = require("../repositories/refresh-token.repository
 const { createAccessToken, createRefreshToken, decodeToken } = require("../utils/jwt");
 const { sha256 } = require("../utils/crypto");
 const { parseExpiryToMs } = require("../utils/cookies");
+const { safeDevice } = require("../utils/device");
 
 const userRepo = new UserRepository();
 const refreshRepo = new RefreshTokenRepository();
@@ -68,24 +69,30 @@ module.exports = {
   },
 
   issueTokens: async (user, meta = {}, options = {}) => {
+    const authTime = Number.isSafeInteger(meta.authTime) ? meta.authTime : Math.floor(Date.now() / 1000);
+    const sessionId = meta.sessionId || crypto.randomUUID();
     const accessToken = createAccessToken({
       id: user.id,
       email: user.email,
       role: user.role,
       provider: user.provider,
+      authTime,
+      sessionId,
     });
 
-    const refreshToken = createRefreshToken();
+    const refreshToken = createRefreshToken(authTime);
     const tokenHash = sha256(refreshToken);
 
     await refreshRepo.create({
       user_id: user.id,
+      session_id: sessionId,
       token_hash: tokenHash,
       expires_at: refreshExpiresAt(),
       revoked_at: null,
       created_ip: meta.ip || null,
       user_agent: meta.userAgent || null,
       created_at: new Date(),
+      last_active_at: new Date(),
     }, options);
 
     return { accessToken, refreshToken };
@@ -99,7 +106,7 @@ module.exports = {
     }
 
     // Kiểm tra chữ ký và thời hạn trước khi tra token trong DB.
-    decodeToken(refreshToken, "refresh");
+    const { authTime } = decodeToken(refreshToken, "refresh");
 
     const tokenHash = sha256(refreshToken);
     const result = await sequelize.transaction(async (transaction) => {
@@ -109,14 +116,18 @@ module.exports = {
       const row = await refreshRepo.findByHash(tokenHash, { transaction, lock: transaction.LOCK.UPDATE });
       if (!row) return { error: httpError(401, "Invalid refresh token") };
       if (row.revoked_at) {
+        const activeSuccessor = await refreshRepo.findActiveSession(row.user_id, row.session_id || row.id, { transaction });
+        if (!activeSuccessor) return { error: httpError(401, "Invalid refresh token") };
         if (Date.now() - new Date(row.revoked_at).getTime() < 10000) return { error: httpError(409, "Token recently rotated") };
         await refreshRepo.revokeAllByUserId(row.user_id, { transaction });
-        return { error: httpError(401, "Refresh token revoked due to reuse") };
+        return { error: httpError(401, "Invalid refresh token") };
       }
       if (new Date(row.expires_at) <= new Date()) return { error: httpError(401, "Refresh token expired") };
       if (!user || user.status !== "active") return { error: httpError(401, "User invalid") };
       await refreshRepo.revokeByHash(tokenHash, { transaction });
-      return { tokens: await module.exports.issueTokens(user, meta, { transaction }) };
+      return { tokens: await module.exports.issueTokens(user, { ...meta, ip: meta.ip || row.created_ip,
+        userAgent: meta.userAgent || row.user_agent, sessionId: row.session_id || row.id,
+        authTime: Number.isSafeInteger(authTime) ? authTime : 0 }, { transaction }) };
     });
     if (result.error) throw result.error;
     return result.tokens;
@@ -133,9 +144,38 @@ module.exports = {
     await refreshRepo.revokeByHash(tokenHash);
   },
 
+  /** Trả metadata của các phiên còn hiệu lực; không bao giờ trả token hoặc User-Agent thô. */
+  listSessions: async (userId, currentSessionId) => {
+    const rows = await refreshRepo.listActiveByUserId(userId);
+    return rows.map((row) => ({
+      id: row.session_id,
+      ...safeDevice(row.user_agent),
+      createdAt: row.created_at,
+      lastActiveAt: row.last_active_at || row.created_at,
+      current: row.session_id === currentSessionId,
+    }));
+  },
+
+  sessionIdForRefresh: async (refreshToken, userId) => {
+    if (!refreshToken) return null;
+    const row = await refreshRepo.findByHash(sha256(refreshToken));
+    return row?.user_id === userId && !row.revoked_at && new Date(row.expires_at) > new Date()
+      ? row.session_id || row.id : null;
+  },
+
+  revokeSession: async (userId, sessionId) => {
+    if (typeof sessionId !== "string" || !/^[0-9a-f-]{36}$/.test(sessionId)) throw httpError(400, "Session invalid");
+    await refreshRepo.revokeSession(userId, sessionId);
+  },
+
+  revokeOtherSessions: async (userId, currentSessionId) => {
+    if (!currentSessionId) throw httpError(401, "Session unavailable");
+    await refreshRepo.revokeOtherSessions(userId, currentSessionId);
+  },
+
   /** Chỉ nối Google vào tài khoản local qua email đã xác minh và bước xác nhận mật khẩu. */
   findOrCreateSocialUser: async ({ provider, email, full_name, avatar_url, provider_id, email_verified }) => {
-    if (!["google", "apple", "facebook"].includes(provider) || !provider_id || !email) {
+    if (!["google", "facebook"].includes(provider) || !provider_id || !email) {
       const err = new Error("Invalid social account");
       err.status = 400;
       throw err;
@@ -148,18 +188,23 @@ module.exports = {
       : await userRepo.findByProviderId(provider, provider_id);
 
     if (!user) {
-      const existing = await userRepo.findByEmail(email);
+      const existing = await userRepo.findByEmail(email, provider);
       if (existing) {
         if (existing.status !== "active") throw httpError(403, "User blocked");
-        if (provider === "google" && existing.provider === "local" && !existing.google_id) {
-          const err = httpError(409, "Google account linking requires password confirmation");
-          err.code = "GOOGLE_LINK_REQUIRED";
-          err.googleLink = { googleId: provider_id, email: existing.email };
-          throw err;
+        throw httpError(409, "Email already registered with another account from this provider");
+      }
+      if (provider === "google") {
+        const localUser = await userRepo.findByEmail(email);
+        if (localUser) {
+          if (localUser.status !== "active") throw httpError(403, "User blocked");
+          if (!localUser.google_id) {
+            const err = httpError(409, "Google account linking requires password confirmation");
+            err.code = "GOOGLE_LINK_REQUIRED";
+            err.googleLink = { googleId: provider_id, email: localUser.email };
+            throw err;
+          }
+          throw httpError(409, "Another Google account is already linked");
         }
-        const err = new Error("Email already registered with another login method");
-        err.status = 409;
-        throw err;
       }
 
       user = await User.create({

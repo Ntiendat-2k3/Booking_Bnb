@@ -39,7 +39,7 @@ module.exports = (sequelize, DataTypes) => {
         primaryKey: true,
       },
 
-      email: { type: DataTypes.STRING(255), allowNull: false, unique: true },
+      email: { type: DataTypes.STRING(255), allowNull: false },
       username: { type: DataTypes.STRING(40), allowNull: false, unique: true },
       password_hash: { type: DataTypes.TEXT, allowNull: true },
 

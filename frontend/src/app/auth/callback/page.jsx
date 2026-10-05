@@ -6,6 +6,7 @@ import { useEffect, Suspense } from "react";
 import { useDispatch } from "react-redux";
 import { refreshSession, fetchProfile, ensureCsrf } from "@/store/authThunks";
 import { useRouter, useSearchParams } from "next/navigation";
+import { afterLoginPath } from "@/lib/passkey";
 
 function AuthCallbackContent() {
   const t = useTranslations();
@@ -23,7 +24,8 @@ function AuthCallbackContent() {
           // refresh cookie already set by backend -> rotate access cookie
           await dispatch(refreshSession());
           await dispatch(fetchProfile());
-          router.replace("/profile");
+          window.sessionStorage.setItem("booking-passkey-offer", "1");
+          router.replace(afterLoginPath());
           return;
         }
       } catch {}

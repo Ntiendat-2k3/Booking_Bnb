@@ -155,6 +155,20 @@ test("Schema chặn mật khẩu vượt 72 byte, giá âm, tọa độ thiếu 
   assert.ok(createListingSchema.validate({ title: "Test", city: "HN", country: "VN", max_guests: 2, price_per_night: -1 }).error);
 });
 
+test("Mật khẩu mới cần ít nhất 8 ký tự, mật khẩu đăng nhập cũ vẫn được chấp nhận", () => {
+  const { registerSchema, resetPasswordSchema, loginSchema } = require("../requests/api/v1/auth.schema");
+  const { changePasswordSchema } = require("../requests/api/v1/account.schema");
+  const register = (password) => registerSchema.validate({ email: "a@example.com", full_name: "Test", password });
+  const reset = (newPassword) => resetPasswordSchema.validate({ token: "a".repeat(64), newPassword });
+  const change = (new_password) => changePasswordSchema.validate({ current_password: "old123", new_password });
+
+  for (const validate of [register, reset, change]) {
+    assert.ok(validate("1234567").error);
+    assert.equal(validate("12345678").error, undefined);
+  }
+  assert.equal(loginSchema.validate({ email: "a@example.com", password: "old123" }).error, undefined);
+});
+
 test("Webhook yêu cầu secret, raw body và chữ ký hợp lệ trước khi gọi service", async (t) => {
   let handled = 0;
   for (const [env, signature, body, status] of [
@@ -191,10 +205,17 @@ test("App/routers khởi tạo được; CORS, 404 và validation hoạt động
   const db = database();
   const app = loadBackend("app.js", db.models, {
     "utils/redis.js": { connectRedis: async () => {}, getRedis: () => null, redisReady: () => false },
-  }, { GOOGLE_CLIENT_ID: "test-client", GOOGLE_CLIENT_SECRET: "test-secret", GOOGLE_CALLBACK_URL: "http://localhost/callback", CORS_ORIGINS: "https://allowed.example" });
+  }, { GOOGLE_CLIENT_ID: "test-client", GOOGLE_CLIENT_SECRET: "test-secret", GOOGLE_CALLBACK_URL: "http://localhost/callback",
+    FACEBOOK_APP_ID: "facebook-test", FACEBOOK_APP_SECRET: "facebook-secret", FACEBOOK_CALLBACK_URL: "http://localhost/callback",
+    CORS_ORIGINS: "https://allowed.example" });
   const base = await serve(t, app);
   assert.equal((await fetch(`${base}/`)).status, 200);
   assert.equal((await fetch(`${base}/missing`)).status, 404);
+  assert.equal((await fetch(`${base}/api/v1/auth/apple`)).status, 404);
+  assert.equal((await fetch(`${base}/api/v1/auth/apple/callback`, { method: "POST" })).status, 404);
+  const facebook = await fetch(`${base}/api/v1/auth/facebook`, { redirect: "manual" });
+  assert.equal(facebook.status, 302);
+  assert.match(facebook.headers.get("location"), /^https:\/\/www\.facebook\.com\/dialog\/oauth/);
   assert.equal((await fetch(`${base}/api/v1/listings?lat=10`)).status, 400);
   assert.equal((await fetch(`${base}/api/v1/listings/not-a-uuid`)).status, 400);
   const forbidden = await fetch(`${base}/`, { method: "OPTIONS", headers: { origin: "https://forbidden.example", "access-control-request-method": "GET" } });

@@ -2,6 +2,7 @@ import { apiFetch, setManualCsrfToken } from "@/lib/api";
 import { clearAuth, setCsrfReady, setError, setStatus, setUser, setInitialized } from "./authSlice";
 import { fetchFavorites } from "./favoritesThunks";
 import { clearFavorites } from "./favoritesSlice";
+import { isInvalidCredentials, registrationConflictField, validationFields } from "@/lib/authValidation";
 
 export const ensureCsrf = () => async (dispatch) => {
   try {
@@ -42,11 +43,11 @@ export const registerLocal = (body) => async (dispatch) => {
 
     dispatch(setUser(res.data.user));
     dispatch(setStatus("idle"));
-    return true;
+    return { ok: true };
   } catch (e) {
-    dispatch(setError(e?.message || "auth.registerFailed"));
+    dispatch(setError("auth.registerFailed"));
     dispatch(setStatus("error"));
-    return false;
+    return { ok: false, invalidFields: validationFields(e), conflictField: registrationConflictField(e) };
   }
 };
 
@@ -62,11 +63,11 @@ export const loginLocal = (body) => async (dispatch) => {
 
     dispatch(setUser(res.data.user));
     dispatch(setStatus("idle"));
-    return true;
+    return { ok: true };
   } catch (e) {
-    dispatch(setError(e?.message || "auth.loginFailed"));
+    dispatch(setError("auth.loginFailed"));
     dispatch(setStatus("error"));
-    return false;
+    return { ok: false, invalidFields: validationFields(e), invalidCredentials: isInvalidCredentials(e) };
   }
 };
 
@@ -78,11 +79,11 @@ export const linkGoogleAccount = (body) => async (dispatch) => {
     const res = await apiFetch("/api/v1/auth/google/link", { method: "POST", body });
     dispatch(setUser(res.data.user));
     dispatch(setStatus("idle"));
-    return true;
+    return { ok: true };
   } catch (e) {
-    dispatch(setError(e?.message || "auth.loginFailed"));
+    dispatch(setError("auth.loginFailed"));
     dispatch(setStatus("error"));
-    return false;
+    return { ok: false, invalidFields: validationFields(e), invalidCredentials: isInvalidCredentials(e) };
   }
 };
 

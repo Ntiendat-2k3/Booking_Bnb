@@ -18,16 +18,18 @@ module.exports = {
       email: data.email,
       role: data.role,
       provider: data.provider,
+      authTime: data.authTime,
+      sid: data.sessionId,
     };
     return jwt.sign(payload, secret, { expiresIn: expires });
   },
 
   //: tạo refresh token (zip-style: random signed jwt, userId nằm ở DB record)
-  createRefreshToken: () => {
+  createRefreshToken: (authTime) => {
     const secret = refreshSecret();
     const expires = process.env.JWT_REFRESH_TOKEN_EXPIRES || "30d";
     const data = crypto.randomBytes(32).toString("hex");
-    return jwt.sign({ data, type: "refresh" }, secret, { expiresIn: expires });
+    return jwt.sign({ data, type: "refresh", authTime }, secret, { expiresIn: expires });
   },
 
   //: giải mã token --> trả về payload

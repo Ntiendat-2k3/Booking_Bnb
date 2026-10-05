@@ -6,6 +6,7 @@ import { LocaleProvider } from "@/i18n/LocaleProvider";
 import { useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import { DEFAULT_THEME } from "@/lib/constants";
+import PasskeyOffer from "@/components/auth/PasskeyOffer";
 
 // Giữ snapshot SSR ban đầu dù bootstrap đã cập nhật store trước khi các vùng streaming hydrate.
 const serverState = store.getState();
@@ -17,6 +18,7 @@ export default function Providers({ locale, messages, children }) {
       <LocaleProvider locale={locale} messages={messages}>
         <Toaster theme={resolvedTheme || DEFAULT_THEME} richColors position="top-right" />
         {children}
+        <PasskeyOffer />
       </LocaleProvider>
     </Provider>
   );

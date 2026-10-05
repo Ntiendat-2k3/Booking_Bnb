@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { AppleLogo, FacebookLogo, GoogleLogo } from "@phosphor-icons/react";
+import { FacebookLogo, GoogleLogo } from "@phosphor-icons/react";
 import { useTranslations } from "@/i18n/LocaleProvider";
 
 /** Các liên kết OAuth dùng cùng máy chủ API và quay lại trang xác thực sau khi hoàn tất. */
@@ -26,16 +26,12 @@ export default function AuthSocial() {
           <GoogleLogo aria-hidden size={23} weight="bold" />
           {t("auth.google")}
         </a>
-        <a href={`${authBase}/apple`} className="auth-social-provider auth-apple">
-          <AppleLogo aria-hidden size={23} weight="fill" />
-          {t("auth.apple")}
-        </a>
         <a href={`${authBase}/facebook`} className="auth-social-provider auth-facebook">
           <FacebookLogo aria-hidden size={23} weight="fill" />
           {t("auth.facebook")}
         </a>
       </div>
-      {oauthError ? <p role="alert" className="auth-social-error">{t(oauthError === "not_configured" ? "auth.socialNotConfigured" : oauthError === "email_in_use" ? "auth.socialEmailInUse" : "auth.socialFailed")}</p> : null}
+      {oauthError ? <p role="alert" className="auth-social-error">{t(oauthError === "not_configured" ? "auth.socialNotConfigured" : "auth.socialFailed")}</p> : null}
     </div>
   );
 }

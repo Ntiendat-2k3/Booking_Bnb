@@ -2,6 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
 
+  async headers() {
+    return [{ source: "/auth/qr/approve", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] }];
+  },
+
   async rewrites() {
     if (process.env.NODE_ENV !== "production") return [];
     return [
@@ -32,6 +36,7 @@ const nextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "api.mapbox.com", pathname: "/**" },
       { protocol: "https", hostname: "res.cloudinary.com", pathname: "/**" },
+      { protocol: "https", hostname: "**.fbcdn.net", port: "", pathname: "/**" },
       { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
       {
         protocol: "https",

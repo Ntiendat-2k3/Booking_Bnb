@@ -56,6 +56,17 @@ test("Rating SQL dùng cùng điều kiện công khai và không tính review/u
   assert.ok(sql.includes('COALESCE("reviewer->setting"."show_reviews", TRUE) = TRUE'));
 });
 
+test("Booking chỉ bị khóa đánh giá khi còn review chưa xóa", () => {
+  const db = queryFixture();
+  const review = db.models.Review;
+  const index = review.options.indexes.find((item) => item.name === "reviews_active_booking_id_unique");
+  assert.equal(review.rawAttributes.booking_id.unique, undefined);
+  assert.equal(index.unique, true);
+  const sql = db.models.sequelize.getQueryInterface().queryGenerator.addIndexQuery("reviews", ["booking_id"], index);
+  assert.match(sql, /CREATE UNIQUE INDEX/i);
+  assert.match(sql, /WHERE.*deleted_at.*IS NULL/i);
+});
+
 test("Dashboard tổng hợp trong SQL và trả đủ sáu tháng dù chưa có booking", async () => {
   const db = queryFixture();
   const service = loadBackend("services/host.service.js", db.models);

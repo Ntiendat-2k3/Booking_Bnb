@@ -313,14 +313,28 @@ test("Refresh đồng thời rotate đúng một lần, lỗi DB không revoke t
   const db = fixture();
   const service = loadBackend("services/auth.service.js", db.models);
   const tokens = await service.issueTokens(db.rows("User")[0]);
+  const originalAuthTime = require("jsonwebtoken").verify(tokens.accessToken, "test-secret-only").authTime;
   const result = await Promise.allSettled([service.refresh(tokens.refreshToken), service.refresh(tokens.refreshToken)]);
   assert.equal(result.filter((row) => row.status === "fulfilled").length, 1);
   assert.equal(result.find((row) => row.status === "rejected").reason.status, 409);
   assert.equal(db.rows("RefreshToken").filter((row) => !row.revoked_at).length, 1);
-  const fresh = result.find((row) => row.status === "fulfilled").value.refreshToken;
+  const rotated = result.find((row) => row.status === "fulfilled").value;
+  assert.equal(require("jsonwebtoken").verify(rotated.accessToken, "test-secret-only").authTime, originalAuthTime);
+  assert.equal(require("jsonwebtoken").verify(rotated.refreshToken, "test-secret-only").authTime, originalAuthTime);
+  const fresh = rotated.refreshToken;
   db.failNextWrite("RefreshToken");
   await assert.rejects(service.refresh(fresh));
   assert.equal(db.rows("RefreshToken").filter((row) => !row.revoked_at).length, 1);
+});
+
+test("Refresh token cũ không có authTime vẫn dùng được nhưng không thành phiên xác thực gần đây", async () => {
+  const legacy = require("jsonwebtoken").sign({ data: "legacy", type: "refresh" }, "test-secret-only", { expiresIn: "1h" });
+  const db = fixture({ RefreshToken: [{ id: "legacy", user_id: guestId,
+    token_hash: createHash("sha256").update(legacy).digest("hex"),
+    expires_at: new Date(Date.now() + 60_000), revoked_at: null }] });
+  const service = loadBackend("services/auth.service.js", db.models);
+  const rotated = await service.refresh(legacy);
+  assert.equal(require("jsonwebtoken").verify(rotated.accessToken, "test-secret-only").authTime, 0);
 });
 
 test("Đăng ký rollback user khi lưu refresh token lỗi; email lạ không tạo reset job", async () => {

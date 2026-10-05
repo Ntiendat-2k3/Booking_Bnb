@@ -3,6 +3,10 @@ const crypto = require("node:crypto");
 const jwt = require("jsonwebtoken");
 const authService = require("../../../services/auth.service");
 const socialOauth = require("../../../services/social_oauth.service");
+const passkeys = require("../../../services/passkey.service");
+const qrLogin = require("../../../services/qr_login.service");
+const qrSocket = require("../../../services/qr_login.socket");
+const { User } = require("../../../models");
 const { successResponse, errorResponse } = require("../../../utils/response");
 const { refreshCookieName, accessCookieName, csrfCookieName, refreshCookieOptions, accessCookieOptions, csrfCookieOptions,  } = require("../../../utils/cookies");
 const { generateCsrfToken } = require("../../../utils/csrf");
@@ -27,8 +31,8 @@ function setAuthCookies(res, req, { accessToken, refreshToken }) {
 function socialStateCookie(provider) {
   return {
     httpOnly: true,
-    secure: provider === "apple" || process.env.NODE_ENV === "production",
-    sameSite: provider === "apple" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
     path: `/api/v1/auth/${provider}/callback`,
     maxAge: 5 * 60_000,
   };
@@ -42,6 +46,16 @@ function googleLinkCookieOptions() {
     path: "/api/v1/auth",
     maxAge: 5 * 60_000,
   };
+}
+
+function passkeyCookieOptions() {
+  return { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax",
+    path: "/api/v1/auth/passkeys", maxAge: 5 * 60_000 };
+}
+
+function qrCookieOptions() {
+  return { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax",
+    path: "/api/v1/auth/qr", maxAge: qrLogin.TTL_SECONDS * 1000 };
 }
 
 /** Tách khóa ký phiên liên kết khỏi access token để hai loại token không dùng lẫn nhau. */
@@ -62,22 +76,20 @@ function socialStart(provider) {
     const config = socialOauth.configFor(provider);
     if (!config) return socialFailure(res, "not_configured");
     const state = crypto.randomBytes(24).toString("base64url");
-    const nonce = crypto.randomBytes(24).toString("base64url");
-    res.cookie(`oauth_state_${provider}`, `${state}.${nonce}`, socialStateCookie(provider));
-    return res.redirect(socialOauth.authorizationUrl(provider, config, state, nonce));
+    res.cookie(`oauth_state_${provider}`, state, socialStateCookie(provider));
+    return res.redirect(socialOauth.authorizationUrl(config, state));
   };
 }
 
 function socialCallback(provider) {
   return async (req, res) => {
     const cookieName = `oauth_state_${provider}`;
-    const stored = req.cookies?.[cookieName];
+    const expectedState = req.cookies?.[cookieName];
     const { maxAge: _maxAge, ...cookieOptions } = socialStateCookie(provider);
     res.clearCookie(cookieName, cookieOptions);
-    const [expectedState, nonce] = typeof stored === "string" ? stored.split(".") : [];
-    const state = provider === "apple" ? req.body?.state : req.query.state;
-    const code = provider === "apple" ? req.body?.code : req.query.code;
-    if (!expectedState || !nonce || typeof state !== "string" || typeof code !== "string" ||
+    const state = req.query.state;
+    const code = req.query.code;
+    if (!expectedState || typeof state !== "string" || typeof code !== "string" ||
         state.length !== expectedState.length ||
         !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(expectedState))) {
       return socialFailure(res);
@@ -85,9 +97,7 @@ function socialCallback(provider) {
     const config = socialOauth.configFor(provider);
     if (!config) return socialFailure(res, "not_configured");
     try {
-      const profile = provider === "apple"
-        ? await socialOauth.appleProfile(code, nonce, config, req.body?.user)
-        : await socialOauth.facebookProfile(code, config);
+      const profile = await socialOauth.facebookProfile(code, config);
       const user = await authService.findOrCreateSocialUser(profile);
       const tokens = await authService.issueTokens(user, {
         ip: req.ip,
@@ -213,13 +223,133 @@ module.exports = {
     return successResponse(res, { user: result.user, csrfToken }, "Google account linked", 200);
   }),
 
-  appleStart: socialStart("apple"),
-  appleCallback: socialCallback("apple"),
+  passkeyRegisterOptions: asyncHandler(async (req, res) => {
+    const { options, ceremonyId } = await passkeys.registrationOptions(req.user.user);
+    res.cookie("passkey_register", ceremonyId, passkeyCookieOptions());
+    res.set("Cache-Control", "no-store");
+    return successResponse(res, options);
+  }),
+
+  passkeyRegisterVerify: asyncHandler(async (req, res) => {
+    let passkey;
+    try {
+      passkey = await passkeys.verifyRegistration(req.user.user.id,
+        req.cookies?.passkey_register, req.body?.response, req.body?.name);
+    } finally {
+      res.clearCookie("passkey_register", { path: "/api/v1/auth/passkeys" });
+    }
+    return successResponse(res, passkey, "Passkey registered", 201);
+  }),
+
+  passkeyLoginOptions: asyncHandler(async (_req, res) => {
+    const { options, ceremonyId } = await passkeys.authenticationOptions();
+    res.cookie("passkey_login", ceremonyId, passkeyCookieOptions());
+    res.set("Cache-Control", "no-store");
+    return successResponse(res, options);
+  }),
+
+  passkeyLoginVerify: asyncHandler(async (req, res) => {
+    let user;
+    try {
+      user = await passkeys.verifyAuthentication(req.cookies?.passkey_login, req.body?.response);
+    } finally {
+      res.clearCookie("passkey_login", { path: "/api/v1/auth/passkeys" });
+    }
+    const tokens = await authService.issueTokens(user, { ip: req.ip, userAgent: req.headers["user-agent"] });
+    const csrfToken = setAuthCookies(res, req, tokens);
+    return successResponse(res, { user: authService.sanitizeUser(user), csrfToken }, "Passkey login successful");
+  }),
+
+  passkeyList: asyncHandler(async (req, res) => {
+    return successResponse(res, await passkeys.list(req.user.user.id));
+  }),
+
+  passkeyRemove: asyncHandler(async (req, res) => {
+    await passkeys.remove(req.user.user, req.params.id);
+    return successResponse(res, { ok: true });
+  }),
+
+  qrStart: asyncHandler(async (req, res) => {
+    const { id, binding, socketTicket, displayCode, expiresAt, url } = await qrLogin.start(req.headers["user-agent"]);
+    res.cookie(qrLogin.desktopCookieName(id), binding, qrCookieOptions());
+    return successResponse(res, { id, socketTicket, displayCode, expiresAt, url });
+  }),
+
+  qrInspect: asyncHandler(async (req, res) => {
+    const { id, scanCookie, changed, ...details } = await qrLogin.inspect(req.body?.code, req.cookies?.qr_scan);
+    res.cookie("qr_scan", scanCookie, qrCookieOptions());
+    if (changed) qrSocket.emitStatus(id, "scanned");
+    return successResponse(res, details);
+  }),
+
+  qrApprove: asyncHandler(async (req, res) => {
+    const id = await qrLogin.approve(req.body?.code, req.user.user.id, req.cookies?.qr_scan);
+    res.clearCookie("qr_scan", { path: "/api/v1/auth/qr" });
+    qrSocket.emitStatus(id, "confirmed");
+    return successResponse(res, { ok: true });
+  }),
+
+  qrStatus: asyncHandler(async (req, res) => {
+    const id = req.query?.id;
+    return successResponse(res, await qrLogin.desktopStatus(id, req.cookies?.[qrLogin.desktopCookieName(id)]));
+  }),
+
+  qrComplete: asyncHandler(async (req, res) => {
+    const id = req.body?.id;
+    const { userId } = await qrLogin.complete(id, req.cookies?.[qrLogin.desktopCookieName(id)]);
+    res.clearCookie(qrLogin.desktopCookieName(id), { path: "/api/v1/auth/qr" });
+    const user = await User.findByPk(userId);
+    if (!user || user.status !== "active") return errorResponse(res, "QR login unavailable", 401);
+    const tokens = await authService.issueTokens(user, { ip: req.ip, userAgent: req.headers["user-agent"] });
+    const csrfToken = setAuthCookies(res, req, tokens);
+    qrSocket.emitStatus(id, "consumed");
+    return successResponse(res, { user: authService.sanitizeUser(user), csrfToken }, "QR login successful");
+  }),
+
+  qrCancel: asyncHandler(async (req, res) => {
+    const id = req.body?.id;
+    await qrLogin.cancel(id, req.cookies?.[qrLogin.desktopCookieName(id)]);
+    res.clearCookie(qrLogin.desktopCookieName(id), { path: "/api/v1/auth/qr" });
+    qrSocket.emitStatus(id, "cancelled");
+    return successResponse(res, { ok: true });
+  }),
+
+  qrCancelMobile: asyncHandler(async (req, res) => {
+    const id = await qrLogin.cancelMobile(req.body?.code, req.cookies?.qr_scan);
+    res.clearCookie("qr_scan", { path: "/api/v1/auth/qr" });
+    qrSocket.emitStatus(id, "cancelled");
+    return successResponse(res, { ok: true });
+  }),
+
   facebookStart: socialStart("facebook"),
   facebookCallback: socialCallback("facebook"),
 
   profile: asyncHandler(async (req, res) => {
     return successResponse(res, req.user.user, "User profile fetched", 200);
+  }),
+
+  sessions: asyncHandler(async (req, res) => {
+    const sessionId = req.user.sessionId ||
+      await authService.sessionIdForRefresh(req.cookies?.[refreshCookieName()], req.user.user.id);
+    return successResponse(res, await authService.listSessions(req.user.user.id, sessionId));
+  }),
+
+  revokeSession: asyncHandler(async (req, res) => {
+    const sessionId = req.user.sessionId ||
+      await authService.sessionIdForRefresh(req.cookies?.[refreshCookieName()], req.user.user.id);
+    await authService.revokeSession(req.user.user.id, req.params.id);
+    if (req.params.id === sessionId) {
+      res.clearCookie(refreshCookieName(), { path: "/api/v1/auth" });
+      res.clearCookie(accessCookieName(), { path: "/" });
+    }
+    return successResponse(res, { current: req.params.id === sessionId });
+  }),
+
+  revokeOtherSessions: asyncHandler(async (req, res) => {
+    const sessionId = req.user.sessionId ||
+      await authService.sessionIdForRefresh(req.cookies?.[refreshCookieName()], req.user.user.id);
+    await authService.revokeOtherSessions(req.user.user.id, sessionId);
+    return successResponse(res, { ok: true });
   }),
 
   refresh: async (req, res, next) => {
