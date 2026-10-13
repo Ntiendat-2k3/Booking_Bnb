@@ -1,31 +1,29 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import SonnerToaster from "@/components/ui/SonnerToaster";
+import SonnerToaster from "@/components/organisms/SonnerToaster";
+import { LocaleProvider } from "@/i18n/LocaleProvider";
+import { getServerLocale } from "@/i18n/server";
+import { ThemeProvider } from "next-themes";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+export async function generateMetadata() {
+  const { messages } = await getServerLocale();
+  return {
+    title: messages.meta.title,
+    description: messages.meta.description,
+    icons: { icon: "/favicon.png" },
+  };
+}
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata = {
-  title: "BnB Admin Console",
-  description: "Administration dashboard",
-  icons: {
-    icon: "/favicon.png",
-  },
-};
-
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const { locale, messages } = await getServerLocale();
   return (
-    <html lang="en" className="dark">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <SonnerToaster />
-        {children}
+    <html lang={locale === "vn" ? "vi" : "en"} suppressHydrationWarning>
+      <body className="antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem enableColorScheme disableTransitionOnChange storageKey="booking-theme">
+          <LocaleProvider locale={locale} messages={messages}>
+            <SonnerToaster />
+            {children}
+          </LocaleProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

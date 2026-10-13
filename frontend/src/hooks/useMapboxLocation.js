@@ -9,8 +9,10 @@ export function asNum(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
-export async function geocodeForward(query, token, signal, language = "vi") {
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${encodeURIComponent(token)}&autocomplete=true&limit=6&language=${language}`;
+export async function geocodeForward(query, token, signal, language = "vi", options = {}) {
+  const params = new URLSearchParams({ access_token: token, autocomplete: String(options.autocomplete !== false), limit: "6", language });
+  if (options.types) params.set("types", options.types);
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params}`;
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error("Mapbox geocoding failed");
   return response.json();
@@ -22,7 +24,7 @@ export async function geocodeReverse(lng, lat, token, signal, language = "vi") {
   return response.json();
 }
 /** Giữ địa chỉ đang nhập, hủy truy vấn cũ và chỉ hiển thị gợi ý khớp với nội dung hiện tại. */
-export function useMapboxAutocomplete({ token, initialQuery = "", onSelect }) {
+export function useMapboxAutocomplete({ token, initialQuery = "", onSelect, types, minLength = 3 }) {
   const { locale } = useLocale();
   const [draft, setDraft] = useState({ source: initialQuery, value: initialQuery });
   const query = draft.source === initialQuery ? draft.value : initialQuery;
@@ -32,7 +34,7 @@ export function useMapboxAutocomplete({ token, initialQuery = "", onSelect }) {
   const wrapperRef = useRef(null);
   const suppressRef = useRef(false);
   const normalized = query.trim();
-  const eligible = Boolean(token && openSug && normalized.length >= 3);
+  const eligible = Boolean(token && openSug && normalized.length >= minLength);
   useEffect(() => {
     function onDocMouseDown(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setOpenSug(false);
@@ -41,24 +43,31 @@ export function useMapboxAutocomplete({ token, initialQuery = "", onSelect }) {
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
   useEffect(() => {
-    if (!token || !openSug || normalized.length < 3) return;
+    if (!eligible) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        const data = await geocodeForward(normalized, token, controller.signal, locale === "en" ? "en" : "vi");
+        const data = await geocodeForward(normalized, token, controller.signal, locale === "en" ? "en" : "vi", { types });
         if (!controller.signal.aborted) setResult({ query: normalized, features: data?.features || [], error: false });
       } catch {
         if (!controller.signal.aborted) setResult({ query: normalized, features: [], error: true });
       }
     }, 300);
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [normalized, token, openSug, locale]);
+  }, [eligible, normalized, token, locale, types]);
   const selectFeature = (feature) => {
     setOpenSug(false);
     setQuery(feature?.place_name || query);
     const next = { address: feature?.place_name || query };
-    const city = pickFromContext(feature, "place");
-    const country = pickFromContext(feature, "country");
+    const type = feature?.place_type?.[0];
+    const city =
+      (type === "place" ? feature.text : "") ||
+      pickFromContext(feature, "place") ||
+      (type === "locality" ? feature.text : "") ||
+      pickFromContext(feature, "locality") ||
+      (type === "region" ? feature.text : "") ||
+      pickFromContext(feature, "region");
+    const country = (type === "country" ? feature.text : "") || pickFromContext(feature, "country");
     if (city) next.city = city;
     if (country) next.country = country;
     if (feature?.center?.length >= 2) { next.lng = String(feature.center[0]); next.lat = String(feature.center[1]); }

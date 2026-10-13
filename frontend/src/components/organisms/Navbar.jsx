@@ -13,6 +13,7 @@ import Avatar from "@/components/atoms/Avatar";
 import NotificationBell from "./NotificationBell";
 import LocaleSwitcher from "@/components/molecules/LocaleSwitcher";
 import ThemeSwitcher from "@/components/molecules/ThemeSwitcher";
+import { canManageListings, roleLabelKey } from "@/lib/roles";
 
 const MOBILE_LINKS = [
   { href: "/", label: "navigation.home", Icon: House },
@@ -70,7 +71,7 @@ export default function Navbar() {
 
         <div className="header-actions flex shrink-0 items-center gap-1">
           <Button href="/search" variant="ghost" size="sm" className="mobile-header-search lg:hidden" aria-label={t("common.search")}><MagnifyingGlass aria-hidden size={22} /></Button>
-          {user?.role === "host" || user?.role === "admin" ? (
+          {canManageListings(user?.role) ? (
                 <nav
                   className="hidden items-center gap-1 xl:flex"
                   aria-label={t("navigation.hostDashboard")}
@@ -136,7 +137,7 @@ export default function Navbar() {
                       <div className="truncate text-sm font-semibold text-ink">
                         {user.full_name || t("common.account")}
                       </div>
-                      <div className="mt-0.5 text-xs text-muted-ink">{t(user.role === "host" ? "navigation.hostRole" : user.role === "admin" ? "navigation.adminRole" : "navigation.guestRole")}</div>
+                      <div className="mt-0.5 text-xs text-muted-ink">{t(roleLabelKey(user.role))}</div>
                     </div>
                     <Divider />
                     <MenuItem href="/profile" onClick={close}>
@@ -163,7 +164,7 @@ export default function Navbar() {
                   </>
                 )}
                 <Divider />
-                {user?.role === "host" || user?.role === "admin" ? <><MenuItem href="/host/dashboard" onClick={close}>{t("navigation.hostDashboard")}</MenuItem><MenuItem href="/host/listings" onClick={close}>{t("navigation.manageListings")}</MenuItem></> : <MenuItem href="/host" onClick={close}>{t("navigation.becomeHost")}</MenuItem>}
+                {canManageListings(user?.role) ? <><MenuItem href="/host/dashboard" onClick={close}>{t("navigation.hostDashboard")}</MenuItem><MenuItem href="/host/listings" onClick={close}>{t("navigation.manageListings")}</MenuItem></> : <MenuItem href="/host" onClick={close}>{t("navigation.becomeHost")}</MenuItem>}
                 <div className="space-y-2 border-t border-line px-4 pt-3 lg:hidden">
                   <LocaleSwitcher />
                   <ThemeSwitcher />

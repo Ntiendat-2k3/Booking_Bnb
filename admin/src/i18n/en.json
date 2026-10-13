@@ -1,0 +1,113 @@
+{
+  "meta": { "title": "Booking BnB | Admin", "description": "Booking BnB administration dashboard" },
+  "theme": { "label": "Appearance", "system": "System", "light": "Light", "dark": "Dark" },
+  "locale": {
+    "switchToEnglish": "Switch to English",
+    "switchToVietnamese": "Switch to Vietnamese",
+    "changeFailed": "Could not change language"
+  },
+  "common": {
+    "all": "All", "active": "Active", "inactive": "Inactive", "visible": "Visible", "hidden": "Hidden",
+    "email": "Email", "fullName": "Full name", "role": "Role", "actions": "Actions", "status": "Status",
+    "name": "Name", "group": "Group", "slug": "Slug", "used": "Used", "user": "User", "listing": "Listing",
+    "booking": "Booking", "payment": "Payment", "provider": "Provider", "amount": "Amount", "date": "Date",
+    "created": "Created", "description": "Description", "host": "Host", "city": "City", "address": "Address",
+    "guests": "Guests", "bedrooms": "Bedrooms", "beds": "Beds", "baths": "Baths", "comment": "Comment",
+    "rating": "Rating", "visibility": "Visibility", "metadata": "Metadata", "summary": "Summary", "details": "Details",
+    "view": "View", "detail": "Detail", "edit": "Edit", "save": "Save", "create": "Create", "new": "New",
+    "close": "Close", "cancel": "Cancel", "confirm": "Confirm", "approve": "Approve", "reject": "Reject",
+    "delete": "Delete", "hide": "Hide", "unhide": "Unhide", "activate": "Activate", "deactivate": "Deactivate",
+    "page": "Page", "goToPage": "Go to page", "profile": "Profile", "identifiers": "Identifiers",
+    "userId": "User ID", "listingId": "Listing ID", "pricePerNight": "Price/night", "untitled": "Untitled", "selectPage": "Select all on page",
+    "selectItem": "Select item {id}", "selected": "{count} selected", "copyId": "Copy ID {id}", "copied": "ID copied", "copyFailed": "Could not copy ID", "previousPage": "Previous page",
+    "nextPage": "Next page", "pageNumber": "Page {page}", "currentPageNumber": "Page {page}, current page",
+    "jumpForward": "Jump forward", "jumpBackward": "Jump backward", "loading": "Loading data", "noResults": "No results found",
+    "loadFailed": "Could not load {item}", "createFailed": "Create failed", "updateFailed": "Update failed",
+    "actionFailed": "Action failed", "bulkFailed": "Bulk action failed", "transactionId": "Transaction ID",
+    "bookingId": "Booking ID", "total": "Total", "checkIn": "Check-in", "checkOut": "Check-out",
+    "nights": "Nights", "guest": "Guest", "dates": "Dates", "review": "Review"
+  },
+  "nav": {
+    "overview": "Overview", "users": "Users", "listings": "Listings", "amenities": "Amenities",
+    "bookings": "Bookings", "payments": "Payments", "reviews": "Reviews", "adminConsole": "Admin console",
+    "adminNavigation": "Admin navigation", "openNavigation": "Open navigation", "closeNavigation": "Close navigation",
+    "systemAdmin": "System Admin", "fullAccess": "Full Access", "logout": "Logout"
+  },
+  "login": {
+    "heroTitle": "A clear space for every admin task.",
+    "heroDescription": "Track bookings, moderate listings and care for the Booking BnB community.",
+    "administration": "Administration", "secureAccess": "Secure access", "title": "Admin sign in",
+    "description": "Use an account with admin access to continue.", "password": "Password",
+    "signIn": "Sign in", "signingIn": "Signing in...", "welcome": "Welcome back",
+    "noAccess": "This account does not have admin access.", "failed": "Login failed"
+  },
+  "dashboard": {
+    "workspaceOverview": "Workspace overview", "description": "A clear view of bookings, listings and platform activity.",
+    "metrics": "Platform metrics", "totalRevenue": "Total revenue", "recordedRevenue": "Recorded revenue",
+    "totalUsers": "Total users", "registeredAccounts": "Registered accounts",
+    "pendingListings": "Pending listings", "awaitingReview": "Awaiting review",
+    "activeBookings": "Active bookings", "currentReservations": "Current reservations",
+    "revenueOverview": "Revenue overview", "monthlyPerformance": "Monthly performance from recorded payments",
+    "monthlyRevenueChart": "Monthly revenue chart", "noRevenue": "Revenue data will appear here when payments are recorded.",
+    "quickLinks": "Quick links", "jumpToArea": "Jump to a management area"
+  },
+  "roles": { "admin": "Admin", "host": "Host", "guest": "Guest" },
+  "statuses": {
+    "all": "All", "pending": "Pending", "published": "Published", "paused": "Paused", "draft": "Draft",
+    "rejected": "Rejected", "pending_payment": "Pending payment", "confirmed": "Confirmed",
+    "cancelled": "Cancelled", "completed": "Completed", "success": "Success", "failed": "Failed",
+    "refunded": "Refunded", "succeeded": "Succeeded", "active": "Active", "blocked": "Blocked", "inactive": "Inactive", "visible": "Visible", "hidden": "Hidden"
+  },
+  "users": {
+    "search": "Search name, email or role...", "empty": "No users found.", "information": "User information",
+    "editRole": "Edit role", "editRoleDescription": "Choose a new role for this user. Admin grants full management access.",
+    "roleUpdated": "Role updated", "promoteTitle": "Promote to admin?",
+    "promoteDescription": "This user will have full access to the admin console.", "promoteConfirm": "Yes, make admin"
+  },
+  "listings": {
+    "moderation": "Listings moderation", "search": "Search ID, title, city or host...",
+    "empty": "No listings found.", "information": "Listing information", "rejectReason": "Reject reason",
+    "defaultRejectReason": "Content does not meet requirements", "moderationMode": "Moderation mode",
+    "selectedItems": "{count} items selected", "processedApprovals": "Processed {count}/{total} approvals",
+    "processedRejections": "Processed {count}/{total} rejections", "approved": "Listing approved",
+    "rejected": "Listing rejected", "approveFailed": "Approval failed", "rejectFailed": "Rejection failed",
+    "bulkRejectReason": "Rejected by system admin", "rejectTitle": "Reject listing", "rejectHelp": "Explain what the host needs to change. You may leave this blank.",
+    "reasonPlaceholder": "Reason for rejection...", "approveTitle": "Approve listing?"
+  },
+  "amenities": {
+    "search": "Search name, slug or group...", "empty": "No amenities found.", "created": "Amenity created",
+    "updated": "Amenity updated", "activated": "Amenity activated", "deactivated": "Amenity deactivated",
+    "createTitle": "Create amenity", "createDescription": "Create an amenity for hosts to select when adding a listing.",
+    "editTitle": "Edit amenity", "groupPlaceholder": "Group (optional)", "nameExample": "Wi-Fi, Pool, Kitchen...",
+    "groupExample": "Basic, Safety, Bedroom...", "deactivateTitle": "Deactivate amenity?",
+    "activateTitle": "Activate amenity?"
+  },
+  "bookings": { "search": "Search ID, guest or listing...", "empty": "No bookings found.", "information": "Booking information", "nightsCount": "{count} nights", "noPayments": "No payments.", "noReview": "No review." },
+  "payments": {
+    "search": "Search transaction ID, email or booking ID...", "allStatuses": "All statuses",
+    "empty": "No payments found.", "information": "Payment information", "transactionBooking": "Transaction / Booking"
+  },
+  "ui": {
+    "usersDescription": "Manage Booking BnB accounts and roles.",
+    "listingsDescription": "Review and approve places submitted by hosts.",
+    "amenitiesDescription": "Manage amenities used across listings.",
+    "bookingsDescription": "Monitor reservations across Booking BnB.",
+    "paymentsDescription": "Track payment transactions and their status.",
+    "reviewsDescription": "Moderate guest reviews of places.",
+    "totalUsers": "Total users", "guests": "Guests", "hosts": "Hosts", "admins": "Administrators",
+    "totalAmenities": "Total amenities", "activeAmenities": "Active", "inactiveAmenities": "Inactive", "mostUsed": "Highest usage",
+    "totalBookings": "Total bookings", "completedBookings": "Completed", "pendingBookings": "Pending", "cancelledBookings": "Cancelled",
+    "totalPayments": "Total transactions", "successfulPayments": "Successful", "pendingPayments": "Pending", "totalRevenue": "Successful payments (VND)",
+    "totalReviews": "Total reviews", "fiveStars": "5 stars", "visibleReviews": "Visible", "hiddenReviews": "Hidden",
+    "allGroups": "All groups", "allRatings": "All ratings", "joined": "Joined", "showingCount": "Showing {count} of {total} {item}",
+    "accountStatus": "Account status", "more": "More", "filteredMetrics": "Metrics reflect the current search and filters."
+  },
+  "reviews": {
+    "search": "Search ID, user or listing...", "empty": "No reviews found.", "information": "Review details",
+    "userListing": "User / Listing", "deleteTitle": "Delete review?",
+    "bulkDeleteTitle": "Delete selected reviews?", "bulkDeleteDescription": "Delete {count} selected reviews permanently?",
+    "hiddenCount": "Hidden {count} reviews", "unhiddenCount": "Unhidden {count} reviews",
+    "deletedCount": "Deleted {count} reviews", "bulkHideFailed": "Could not hide reviews",
+    "bulkUnhideFailed": "Could not show reviews", "bulkDeleteFailed": "Could not delete reviews"
+  }
+}

@@ -77,3 +77,119 @@ test("Dashboard tổng hợp trong SQL và trả đủ sáu tháng dù chưa có
   assert.ok(db.queries.some((sql) => sql.includes("GROUP BY") && sql.includes("AT TIME ZONE 'UTC'")));
   assert.ok(db.queries.some((sql) => sql.includes("LIMIT 5")));
 });
+
+test("Dashboard admin dùng tháng thanh toán cho tổng doanh thu và biểu đồ", async () => {
+  const now = new Date();
+  const monthKey = (offset) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1)).toISOString().slice(0, 7);
+  const oldMonth = monthKey(-7);
+  const laterMonth = monthKey(-5);
+  let rows = [{ month: laterMonth, total: "4000000" }, { month: oldMonth, total: "30000000" }];
+  let paymentQuery;
+  const models = {
+    Sequelize,
+    User: { count: async () => 18 },
+    Listing: { count: async () => 1 },
+    Booking: { count: async () => 1 },
+    Payment: { findAll: async (options) => { paymentQuery = options; return rows; } },
+  };
+  const service = loadBackend("services/admin_dashboard.service.js", models);
+  const result = await service.getGlobalStats();
+
+  assert.equal(result.totalRevenue, 34000000);
+  assert.equal(result.chartData[0].month, oldMonth);
+  assert.equal(result.chartData[0].value, 30000000);
+  assert.equal(result.chartData[1].value, 0);
+  assert.equal(result.chartData[2].value, 4000000);
+  assert.equal(result.chartData.at(-1).month, monthKey(0));
+  assert.equal(result.chartData.reduce((sum, point) => sum + point.value, 0), result.totalRevenue);
+  assert.deepEqual(JSON.parse(JSON.stringify(paymentQuery.where)), { status: "succeeded", currency: "VND" });
+  assert.match(paymentQuery.attributes[0][0].val, /COALESCE\("Payment"\."paid_at", "Payment"\."created_at"\) AT TIME ZONE 'UTC'/);
+
+  rows = [];
+  const empty = await service.getGlobalStats();
+  assert.equal(empty.totalRevenue, 0);
+  assert.deepEqual(Array.from(empty.chartData), []);
+});
+
+test("Dashboard admin nhóm thanh toán đã ghi nhận theo tháng UTC trong SQL", async () => {
+  const db = queryFixture();
+  const service = loadBackend("services/admin_dashboard.service.js", db.models);
+  await service.getGlobalStats();
+  const sql = db.queries.find((query) => query.includes('COALESCE("Payment"."paid_at", "Payment"."created_at")'));
+  assert.ok(sql);
+  assert.match(sql, /AT TIME ZONE 'UTC'/);
+  assert.match(sql, /GROUP BY/);
+  assert.match(sql, /"Payment"\."status" = 'succeeded'/);
+  assert.match(sql, /"Payment"\."currency" = 'VND'/);
+});
+
+test("Danh sách Users và thống kê admin loại trừ super_admin ngay trong SQL", async () => {
+  const db = queryFixture();
+  await loadBackend("services/admin_user.service.js", db.models).list();
+  await loadBackend("services/admin_dashboard.service.js", db.models).getGlobalStats();
+  const userQueries = db.queries.filter((sql) => /FROM "users"/.test(sql));
+  assert.equal(userQueries.length, 3);
+  for (const sql of userQueries) assert.match(sql, /"role" != 'super_admin'/);
+});
+
+test("API đổi vai trò không thể gán hoặc sửa tài khoản super_admin", async () => {
+  const id = "10000000-0000-4000-8000-000000000001";
+  let updated = false;
+  const service = loadBackend("services/admin_user.service.js", {
+    Sequelize,
+    User: {
+      findByPk: async () => ({ role: "super_admin", update: async () => { updated = true; } }),
+    },
+  });
+  await assert.rejects(service.setRole(id, "admin"), { status: 403 });
+  await assert.rejects(service.setRole(id, "super_admin"), { status: 400 });
+  assert.equal(updated, false);
+});
+
+test("super_admin kế thừa quyền admin trên route", () => {
+  const requireRole = loadBackend("middlewares/api/role.middleware.js", {});
+  const res = { status(code) { this.code = code; return this; }, json() { return this; } };
+  let passed = false;
+  requireRole(["admin"])({ user: { user: { role: "super_admin" } } }, res, () => { passed = true; });
+  assert.equal(passed, true);
+  requireRole(["host"])({ user: { user: { role: "guest" } } }, res, () => { passed = true; });
+  assert.equal(res.code, 403);
+});
+
+test("Tìm kiếm Users, Listings và Amenities lọc bằng SQL trước LIMIT", async () => {
+  for (const name of ["admin_user", "admin_listing", "admin_amenity"]) {
+    const db = queryFixture();
+    await loadBackend(`services/${name}.service.js`, db.models).list({ q: "test%_" });
+    const sql = db.queries.find((query) => /FROM "(users|listings|amenities)"/.test(query) && /LIMIT/.test(query));
+    assert.ok(sql, name);
+    assert.ok(sql.indexOf("ILIKE") < sql.lastIndexOf("LIMIT"), name);
+    assert.ok(sql.includes("test\\%\\_"), name);
+  }
+});
+
+test("Users, Listings và Amenities phân trang trong SQL và đếm toàn bộ kết quả khớp", async () => {
+  for (const name of ["admin_user", "admin_listing", "admin_amenity"]) {
+    const db = queryFixture();
+    const result = await loadBackend(`services/${name}.service.js`, db.models).list({ q: "test", page: 2, limit: 10 });
+    const rowQuery = db.queries.find((sql) => /FROM "(users|listings|amenities)"/.test(sql) && /LIMIT 10 OFFSET 10/.test(sql));
+    const countQuery = db.queries.find((sql) => /FROM "(users|listings|amenities)"/.test(sql) && /count\(/i.test(sql) && !/LIMIT 10 OFFSET 10/.test(sql));
+    assert.ok(rowQuery, name);
+    assert.ok(countQuery, name);
+    assert.equal(result.meta.page, 2, name);
+    assert.equal(result.meta.limit, 10, name);
+  }
+});
+
+test("Tìm kiếm Bookings và Reviews giữ các bộ lọc ID, rating trong SQL", async () => {
+  const bookings = queryFixture();
+  await loadBackend("services/admin_booking.service.js", bookings.models).list({ q: "test" });
+  const bookingSql = bookings.queries.find((query) => /FROM "bookings"/.test(query) && /LIMIT/.test(query));
+  assert.match(bookingSql, /"guest_id"/);
+  assert.match(bookingSql, /"listing_id"/);
+
+  const reviews = queryFixture();
+  await loadBackend("services/admin_review.service.js", reviews.models).list({ q: "test", rating: "5" });
+  const reviewSql = reviews.queries.find((query) => /FROM "reviews"/.test(query) && /LIMIT/.test(query));
+  assert.match(reviewSql, /"booking_id"/);
+  assert.match(reviewSql, /"rating" = 5/);
+});

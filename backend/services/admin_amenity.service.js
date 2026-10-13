@@ -1,6 +1,7 @@
 const { Amenity, Sequelize } = require("../models");
 const { literal } = Sequelize;
 const { isUuid } = require("../utils/validators");
+const Repository = require("../core/repository");
 
 function slugifyBase(str) {
   return String(str || "")
@@ -32,23 +33,14 @@ async function ensureUniqueSlug(base, excludeId = null) {
 }
 
 module.exports = {
-  async list({ q = null, active = "all" } = {}) {
-    const where = {};
+  async list({ q = null, active = "all", group = "all", page = 1, limit = 1000 } = {}) {
+    const where = Repository.searchWhere(q, ["Amenity.name", "Amenity.slug", "Amenity.group"]);
     if (active === "active") where.is_active = true;
     if (active === "inactive") where.is_active = false;
+    if (group && group !== "all") where.group = group;
 
-    if (q) {
-      const s = String(q).trim();
-      if (s) {
-        where[Sequelize.Op.or] = [
-          { name: { [Sequelize.Op.iLike]: `%${s}%` } },
-          { slug: { [Sequelize.Op.iLike]: `%${s}%` } },
-          { group: { [Sequelize.Op.iLike]: `%${s}%` } },
-        ];
-      }
-    }
-
-    const items = await Amenity.findAll({
+    const [rows, summary, groups] = await Promise.all([
+      Amenity.findAll({
       where,
       attributes: {
         include: [
@@ -66,10 +58,29 @@ module.exports = {
         ["group", "ASC"],
         ["name", "ASC"],
       ],
-      limit: 1000,
-    });
+      limit, offset: (page - 1) * limit,
+      }),
+      Amenity.findOne({
+        where,
+        attributes: [
+          [literal(`COUNT(*) FILTER (WHERE "Amenity".is_active = TRUE)`), "active"],
+          [literal(`COUNT(*)`), "total"],
+          [literal(`COUNT(*) FILTER (WHERE "Amenity".is_active = FALSE)`), "inactive"],
+          [literal(`COALESCE(MAX((SELECT COUNT(*) FROM listing_amenities la WHERE la.amenity_id = "Amenity".id)), 0)`), "mostUsed"],
+        ],
+        raw: true,
+      }),
+      Amenity.findAll({ attributes: ["group"], group: ["group"], raw: true }),
+    ]);
 
-    return { items };
+    return {
+      items: rows,
+      meta: {
+        page, limit, total: Number(summary?.total || 0), total_pages: Math.ceil(Number(summary?.total || 0) / limit),
+        summary: { active: Number(summary?.active || 0), inactive: Number(summary?.inactive || 0), mostUsed: Number(summary?.mostUsed || 0) },
+        groups: groups.map((item) => item.group).filter(Boolean).sort(),
+      },
+    };
   },
 
   async create({ name, group = null, is_active = true } = {}) {

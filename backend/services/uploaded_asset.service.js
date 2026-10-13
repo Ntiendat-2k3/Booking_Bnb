@@ -3,6 +3,7 @@ const { Op } = require("sequelize");
 const { UploadedAsset, sequelize } = require("../models");
 const { enqueue } = require("./background_job.service");
 const httpError = require("../utils/httpError");
+const { isAdminRole } = require("../utils/roles");
 
 function registerUpload(userId, publicId, listingId, transaction) {
   return UploadedAsset.create({ public_id: publicId, user_id: userId, listing_id: listingId, metadata: {} }, { transaction });
@@ -19,7 +20,7 @@ async function completeUpload(asset, result) {
 
 async function findForAttach(user, listingId, publicId, transaction) {
   const asset = await UploadedAsset.findByPk(publicId, { transaction, lock: transaction.LOCK.UPDATE });
-  if (!asset || asset.delete_requested || !asset.metadata?.url || (user.role !== "admin" && String(asset.user_id) !== String(user.id))
+  if (!asset || asset.delete_requested || !asset.metadata?.url || (!isAdminRole(user.role) && String(asset.user_id) !== String(user.id))
     || (asset.listing_id && String(asset.listing_id) !== String(listingId))) throw httpError(403, "Upload does not belong to this user and listing");
   return asset;
 }

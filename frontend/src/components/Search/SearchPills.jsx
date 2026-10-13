@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { CalendarBlank, MagnifyingGlass, MapPin, Users } from "@phosphor-icons/react";
 import { useTranslations } from "@/i18n/LocaleProvider";
@@ -9,13 +9,14 @@ import { POPULAR_DESTINATIONS } from "@/lib/constants";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
 import DateField from "@/components/molecules/DateField";
+import CityAutocomplete from "./CityAutocomplete";
 
 /** Tìm chỗ ở theo địa điểm và số khách; khoảng ngày được giữ đến bước đặt phòng. */
 export default function SearchPills() {
   const router = useRouter();
   const t = useTranslations();
-  const suggestionId = useId();
   const [city, setCity] = useState("");
+  const [selectedPlace, setSelectedPlace] = useState(null);
   const [dates, setDates] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("");
@@ -28,6 +29,10 @@ export default function SearchPills() {
       t(item.labelKey).toLocaleLowerCase() === cityValue.toLocaleLowerCase(),
     );
     if (cityValue) params.set("city", destination?.value || cityValue);
+    if (selectedPlace?.city === cityValue && selectedPlace.lat != null && selectedPlace.lng != null) {
+      params.set("map_lat", selectedPlace.lat);
+      params.set("map_lng", selectedPlace.lng);
+    }
     if (guests) params.set("guests", guests);
     if (dates) params.set("check_in", dates);
     if (dates && checkOut) params.set("check_out", checkOut);
@@ -37,11 +42,15 @@ export default function SearchPills() {
   return (
     <form onSubmit={onSearch} aria-label={t("common.search")} className="search-pills surface-panel grid items-center gap-1 p-2 shadow-float sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_0.8fr_auto] lg:p-3">
       <div className="search-destination search-field">
-        <InputField variant="integrated" label={<span className="flex items-center gap-2"><MapPin aria-hidden size={18} className="text-brand" />{t("search.destination")}</span>}
-          name="city" list={suggestionId} value={city} onChange={(event) => setCity(event.target.value)} placeholder={t("search.destinationPlaceholder")} autoComplete="off" />
-        <datalist id={suggestionId}>
-          {POPULAR_DESTINATIONS.map((destination) => <option key={destination.value} value={t(destination.labelKey)} />)}
-        </datalist>
+        <CityAutocomplete
+          variant="integrated"
+          label={<span className="flex items-center gap-2"><MapPin aria-hidden size={18} className="text-brand" />{t("search.destination")}</span>}
+          name="city"
+          value={city}
+          onChange={(value) => { setCity(value); setSelectedPlace(null); }}
+          onSelect={setSelectedPlace}
+          placeholder={t("search.destinationPlaceholder")}
+        />
       </div>
       <div className="search-checkin search-field sm:border-l sm:border-line">
         <DateField variant="integrated" label={<span className="flex items-center gap-2"><CalendarBlank aria-hidden size={18} className="text-brand" />{t("search.checkIn")}</span>}

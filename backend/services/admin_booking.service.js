@@ -4,12 +4,12 @@ const { literal } = Sequelize;
 
 module.exports = {
   async list({ status = null, q = null, limit = 200, page = 1 } = {}) {
-    const where = Repository.searchWhere(q, ["Booking.id","Booking.status","guest.email","guest.full_name","listing.title"]);
+    const where = Repository.searchWhere(q, ["Booking.id","Booking.guest_id","Booking.listing_id","Booking.status","guest.email","guest.full_name","listing.title"]);
     if (status && status !== "all") where.status = status;
 
     const include = [
       { model: Listing, as: "listing", attributes: ["id", "title", "city", "country"] },
-      { model: User, as: "guest", attributes: ["id", "full_name", "email"] },
+      { model: User, as: "guest", attributes: ["id", "full_name", "email", "avatar_url"] },
     ];
 
     const attrs = {
@@ -47,15 +47,22 @@ module.exports = {
       ],
     };
 
-    const { rows, count } = await Booking.findAndCountAll({
-      where,
-      attributes: attrs,
-      include,
-      order: [["created_at", "DESC"]],
-      limit, offset: (page - 1) * limit, distinct: true,
-    });
-
-    return { items: rows, meta: { page, limit, total: count, total_pages: Math.ceil(count / limit) } };
+    const [rows, statusCounts] = await Promise.all([
+      Booking.findAll({
+        where, attributes: attrs, include,
+        order: [["created_at", "DESC"]],
+        limit, offset: (page - 1) * limit,
+      }),
+      Booking.count({
+        where,
+        include: include.map(({ model, as }) => ({ model, as, attributes: [] })),
+        group: ["Booking.status"],
+      }),
+    ]);
+    const statuses = { completed: 0, pending_payment: 0, confirmed: 0, cancelled: 0 };
+    for (const row of statusCounts) if (row.status in statuses) statuses[row.status] = Number(row.count);
+    const total = statusCounts.reduce((sum, row) => sum + Number(row.count), 0);
+    return { items: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit), statuses } };
   },
 
   async detail(id) {

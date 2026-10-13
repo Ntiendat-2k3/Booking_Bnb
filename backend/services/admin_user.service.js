@@ -1,14 +1,26 @@
-const { User } = require("../models");
+const { User, Sequelize } = require("../models");
 const { isUuid } = require("../utils/validators");
+const Repository = require("../core/repository");
 
 module.exports = {
-  async list() {
-    const items = await User.findAll({
-      attributes: ["id", "email", "full_name", "role", "status", "created_at"],
+  async list({ q = null, page = 1, limit = 500 } = {}) {
+    const where = {
+      role: { [Sequelize.Op.ne]: "super_admin" },
+      ...Repository.searchWhere(q, ["User.id", "User.email", "User.full_name", "User.role"]),
+    };
+    const [rows, roleCounts] = await Promise.all([
+      User.findAll({
+      where,
+      attributes: ["id", "email", "full_name", "avatar_url", "role", "status", "created_at"],
       order: [["created_at", "DESC"]],
-      limit: 500,
-    });
-    return { items };
+      limit, offset: (page - 1) * limit,
+      }),
+      User.count({ where, group: ["role"] }),
+    ]);
+    const roles = { guest: 0, host: 0, admin: 0 };
+    for (const row of roleCounts) if (row.role in roles) roles[row.role] = Number(row.count);
+    const total = roleCounts.reduce((sum, row) => sum + Number(row.count), 0);
+    return { items: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit), roles } };
   },
 
   async setRole(id, role) {
@@ -28,6 +40,12 @@ module.exports = {
     if (!user) {
       const err = new Error("User not found");
       err.status = 404;
+      throw err;
+    }
+
+    if (user.role === "super_admin") {
+      const err = new Error("Cannot change super admin role");
+      err.status = 403;
       throw err;
     }
 

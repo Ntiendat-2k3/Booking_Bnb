@@ -8,6 +8,7 @@ import { SORT_OPTIONS } from "@/lib/constants";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
+import CityAutocomplete from "./CityAutocomplete";
 
 export default function SearchFilters() {
   const params = useSearchParams();
@@ -19,6 +20,7 @@ export default function SearchFilters() {
 function SearchFiltersForm({ params }) {
   const router = useRouter();
   const t = useTranslations();
+  const [selectedPlace, setSelectedPlace] = useState(null);
   const [form, setForm] = useState(() => ({
     city: params.get("city") || "",
     min_price: params.get("min_price") || "",
@@ -36,13 +38,22 @@ function SearchFiltersForm({ params }) {
     setForm((s) => ({ ...s, [k]: v }));
   }
 
-  function apply() {
+  function apply(next = form) {
     const q = new URLSearchParams(params.toString());
     q.delete("page");
-    Object.entries(form).forEach(([k, v]) => {
+    Object.entries(next).forEach(([k, v]) => {
       if (v !== "" && v != null) q.set(k, v);
       else q.delete(k);
     });
+    const city = next.city.trim();
+    if (!city || city !== (params.get("city") || "").trim()) {
+      q.delete("map_lat");
+      q.delete("map_lng");
+    }
+    if (selectedPlace?.city === city && selectedPlace.lat != null && selectedPlace.lng != null) {
+      q.set("map_lat", selectedPlace.lat);
+      q.set("map_lng", selectedPlace.lng);
+    }
     router.push("/search?" + q.toString());
   }
 
@@ -73,13 +84,7 @@ function SearchFiltersForm({ params }) {
           sort: "distance_asc",
         };
         setForm(next);
-
-        const q = new URLSearchParams(params.toString());
-        q.delete("page");
-        Object.entries(next).forEach(([k, v]) => {
-          if (v !== "" && v != null) q.set(k, v);
-        });
-        router.push("/search?" + q.toString());
+        apply(next);
       },
       (err) => {
         if (err?.code === 1) notifyError(t("search.locationDenied"));
@@ -94,7 +99,13 @@ function SearchFiltersForm({ params }) {
   return (
     <form onSubmit={(event) => { event.preventDefault(); apply(); }} aria-label={t("search.filterTitle")} className="surface-panel p-4 sm:p-6">
       <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
-        <InputField label={t("search.city")} value={form.city} onChange={(event) => setField("city", event.target.value)} placeholder={t("search.cityPlaceholder")} />
+        <CityAutocomplete
+          label={t("search.city")}
+          value={form.city}
+          onChange={(value) => { setField("city", value); setSelectedPlace(null); }}
+          onSelect={setSelectedPlace}
+          placeholder={t("search.cityPlaceholder")}
+        />
         <InputField label={t("search.guests")} type="number" min="1" step="1" value={form.guests} onChange={(event) => setField("guests", event.target.value)} placeholder={t("search.guestsPlaceholder")} />
         <Button type="submit" className="sm:col-span-2 lg:col-span-1"><MagnifyingGlass aria-hidden size={18} />{t("search.apply")}</Button>
       </div>
@@ -124,7 +135,11 @@ function SearchFiltersForm({ params }) {
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-4 text-sm text-muted-ink">
           <span className="rounded-full bg-muted-surface px-3 py-2 font-medium">{t("search.nearMeActive")}</span>
           <InputField id="search-radius" label={t("search.radius")} type="number" min="1" value={form.radius_km} onChange={(event) => setField("radius_km", event.target.value)} className="max-w-32" />
-          <Button onClick={() => setForm((previous) => ({ ...previous, lat: "", lng: "", radius_km: "", sort: "rating_desc" }))} variant="ghost" size="sm">{t("search.disableNearMe")}</Button>
+          <Button onClick={() => {
+            const next = { ...form, lat: "", lng: "", radius_km: "", sort: "rating_desc" };
+            setForm(next);
+            apply(next);
+          }} variant="ghost" size="sm">{t("search.disableNearMe")}</Button>
         </div>
       ) : null}
     </form>

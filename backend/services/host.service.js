@@ -7,7 +7,7 @@ const { Op } = Sequelize;
 
 module.exports = {
   async apply(user) {
-    if (!["guest", "host", "admin"].includes(user.role)) throw httpError(400, "Vai trò không hợp lệ");
+    if (!["guest", "host", "admin", "super_admin"].includes(user.role)) throw httpError(400, "Vai trò không hợp lệ");
     if (user.role === "guest") await User.update({ role: "host" }, { where: { id: user.id, role: "guest" } });
     return sanitizeUser(await User.findByPk(user.id));
   },
@@ -43,7 +43,7 @@ module.exports = {
   },
 
   async contactHost(hostId, { email, phone, content }) {
-    const host = await User.findOne({ where: { id: hostId, role: ["host", "admin"], status: "active" }, attributes: ["email", "full_name"] });
+    const host = await User.findOne({ where: { id: hostId, role: ["host", "admin", "super_admin"], status: "active" }, attributes: ["email", "full_name"] });
     if (!host) throw httpError(404, "Không tìm thấy chủ nhà");
     await enqueue("send_email", { to: host.email, subject: "Yêu cầu liên hệ mới từ khách hàng", html: message(`Chào ${host.full_name}`, [`Email người gửi: ${email}`, `Số điện thoại: ${phone || "Không cung cấp"}`, content]) });
   },

@@ -1,34 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import { useCallback, useEffect, useState } from "react";
+import AdminShell from "@/components/templates/AdminShell";
 import { adminService } from "@/services/adminService";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import RipleLoading from "@/components/loading/RipleLoading";
-import AdminPagination from "@/components/admin/AdminPagination";
+import Button from "@/components/atoms/Button";
+import Input from "@/components/atoms/Input";
+import Select from "@/components/atoms/Select";
+import ConfirmDialog from "@/components/molecules/ConfirmDialog";
+import RipleLoading from "@/components/atoms/RipleLoading";
+import AdminPagination from "@/components/molecules/AdminPagination";
+import AdminPageHeader from "@/components/molecules/AdminPageHeader";
+import StatCard from "@/components/molecules/StatCard";
 
-import ReviewsTable from "@/components/admin/reviews/ReviewsTable";
-import ReviewDetailModal from "@/components/admin/reviews/ReviewDetailModal";
-import { Eye, EyeOff, Trash2 } from "lucide-react";
+import ReviewsTable from "@/components/organisms/reviews/ReviewsTable";
+import ReviewDetailModal from "@/components/organisms/reviews/ReviewDetailModal";
+import { Eye, EyeOff, Trash2, Star, MessageSquare, Search } from "lucide-react";
 import { toast } from "sonner";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
 
-const VIS = [
-  { key: "all", label: "All" },
-  { key: "visible", label: "Visible" },
-  { key: "hidden", label: "Hidden" },
-];
+const VIS = ["all", "visible", "hidden"];
 
 const PAGE_SIZE = 10;
 
 export default function Page() {
+  const t = useTranslations();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, total_pages: 1, summary: {} });
 
   const [vis, setVis] = useState("all");
+  const [rating, setRating] = useState("all");
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q);
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -41,44 +45,39 @@ export default function Page() {
     item: null,
   });
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return items;
-    return items.filter((r) => {
-      return (
-        String(r.id || "").includes(s) ||
-        (r.user?.email || "").toLowerCase().includes(s) ||
-        (r.listing?.title || "").toLowerCase().includes(s) ||
-        String(r.booking_id || "").includes(s)
-      );
-    });
-  }, [items, q]);
+  const filtered = items;
 
   useEffect(() => {
     setPage(1);
     setSelectedIds([]);
-  }, [q, vis]);
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pagedItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
-
-  async function loadItems() {
-    try {
-      const res = await adminService.getReviews(vis);
-      setItems(res.data?.items || []);
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  }, [q, vis, rating]);
 
   useEffect(() => {
+    setSelectedIds([]);
+  }, [page]);
+
+  const pageCount = Math.max(1, meta.total_pages);
+  const pagedItems = items;
+
+  const loadItems = useCallback(async (signal) => {
+    try {
+      const res = await adminService.getReviews({ visibility: vis, rating, q: debouncedQ, page, limit: PAGE_SIZE, signal });
+      if (!signal?.aborted) {
+        setItems(res.data?.items || []);
+        setMeta(res.data?.meta || { total: 0, total_pages: 1, summary: {} });
+        if (page > (res.data?.meta?.total_pages || 1)) setPage(Math.max(1, res.data.meta.total_pages));
+      }
+    } catch (e) {
+      if (!signal?.aborted && e?.name !== "AbortError") toast.error(e?.message || t("common.loadFailed", { item: t("nav.reviews") }));
+    }
+  }, [vis, rating, debouncedQ, page, t]);
+
+  useEffect(() => {
+    const controller = new AbortController();
     let alive = true;
     async function init() {
       try {
-        await loadItems();
+        await loadItems(controller.signal);
       } finally {
         if (alive) setLoading(false);
       }
@@ -86,21 +85,17 @@ export default function Page() {
     init();
     return () => {
       alive = false;
+      controller.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vis]);
-
-  async function refresh() {
-    setLoading(true);
-    await loadItems();
-    setLoading(false);
-  }
+  }, [loadItems]);
 
   async function hideReview(id) {
     setBusyId(id);
     try {
       await adminService.hideReview(id);
       await loadItems();
+    } catch (e) {
+      toast.error(e?.message || t("common.actionFailed"));
     } finally {
       setBusyId(null);
     }
@@ -111,6 +106,8 @@ export default function Page() {
     try {
       await adminService.unhideReview(id);
       await loadItems();
+    } catch (e) {
+      toast.error(e?.message || t("common.actionFailed"));
     } finally {
       setBusyId(null);
     }
@@ -121,6 +118,8 @@ export default function Page() {
     try {
       await adminService.deleteReview(id);
       await loadItems();
+    } catch (e) {
+      toast.error(e?.message || t("common.actionFailed"));
     } finally {
       setBusyId(null);
     }
@@ -131,11 +130,11 @@ export default function Page() {
     setSaving(true);
     try {
       await adminService.bulkHideReviews(selectedIds);
-      toast.success(`Hidden ${selectedIds.length} reviews`);
+      toast.success(t("reviews.hiddenCount", { count: selectedIds.length }));
       setSelectedIds([]);
       await loadItems();
     } catch (e) {
-      toast.error(e?.message || "Bulk hide failed");
+      toast.error(e?.message || t("reviews.bulkHideFailed"));
     } finally {
       setSaving(false);
     }
@@ -146,11 +145,11 @@ export default function Page() {
     setSaving(true);
     try {
       await adminService.bulkUnhideReviews(selectedIds);
-      toast.success(`Unhidden ${selectedIds.length} reviews`);
+      toast.success(t("reviews.unhiddenCount", { count: selectedIds.length }));
       setSelectedIds([]);
       await loadItems();
     } catch (e) {
-      toast.error(e?.message || "Bulk unhide failed");
+      toast.error(e?.message || t("reviews.bulkUnhideFailed"));
     } finally {
       setSaving(false);
     }
@@ -158,15 +157,14 @@ export default function Page() {
 
   async function onBulkDelete() {
     if (!selectedIds.length) return;
-    if (!confirm("Are you sure you want to delete these reviews?")) return;
     setSaving(true);
     try {
       await adminService.bulkDeleteReviews(selectedIds);
-      toast.success(`Deleted ${selectedIds.length} reviews`);
+      toast.success(t("reviews.deletedCount", { count: selectedIds.length }));
       setSelectedIds([]);
       await loadItems();
     } catch (e) {
-      toast.error(e?.message || "Bulk delete failed");
+      toast.error(e?.message || t("reviews.bulkDeleteFailed"));
     } finally {
       setSaving(false);
     }
@@ -177,28 +175,24 @@ export default function Page() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Reviews</h1>
-          </div>
+        <AdminPageHeader icon={Star} title={t("nav.reviews")} description={t("ui.reviewsDescription")}>
+          <label className="admin-search"><Search size={18} aria-hidden="true" /><Input aria-label={t("reviews.search")} value={q} maxLength={255} onChange={(e) => setQ(e.target.value)} placeholder={t("reviews.search")} /></label>
+          <Select aria-label={t("common.rating")} value={rating} onChange={(e) => setRating(e.target.value)}>
+            <option value="all">{t("ui.allRatings")}</option>
+            {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} ★</option>)}
+          </Select>
+          <Select aria-label={t("common.visibility")} value={vis} onChange={(e) => setVis(e.target.value)}>
+            {VIS.map((status) => <option key={status} value={status}>{t(`statuses.${status}`)}</option>)}
+          </Select>
+        </AdminPageHeader>
 
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <div className="w-full md:w-72">
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search id / user / listing..."
-              />
-            </div>
-            <Select value={vis} onChange={(e) => setVis(e.target.value)}>
-              {VIS.map((x) => (
-                <option key={x.key} value={x.key}>
-                  {x.label}
-                </option>
-              ))}
-            </Select>
-          </div>
+        <div className="admin-stats">
+          <StatCard icon={MessageSquare} label={t("ui.totalReviews")} value={meta.total} />
+          <StatCard icon={Star} label={t("ui.fiveStars")} value={meta.summary?.fiveStars || 0} tone="amber" />
+          <StatCard icon={Eye} label={t("ui.visibleReviews")} value={meta.summary?.visible || 0} />
+          <StatCard icon={EyeOff} label={t("ui.hiddenReviews")} value={meta.summary?.hidden || 0} tone="red" />
         </div>
+        {q.trim() || vis !== "all" || rating !== "all" ? <p className="text-xs ui-muted">{t("ui.filteredMetrics")}</p> : null}
 
         <ReviewsTable
           pagedItems={pagedItems}
@@ -212,7 +206,7 @@ export default function Page() {
           setSelectedIds={setSelectedIds}
         />
 
-        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
+        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} total={meta.total} itemLabel={t("nav.reviews")} />
       </div>
 
       <ReviewDetailModal view={view} setView={setView} />
@@ -220,47 +214,49 @@ export default function Page() {
       <ConfirmDialog
         open={confirm.open}
         onClose={() => setConfirm({ open: false, kind: null, item: null })}
-        title="Delete review?"
+        title={t(confirm.kind === "bulk" ? "reviews.bulkDeleteTitle" : "reviews.deleteTitle")}
         description={
-          confirm.item
-            ? `#${confirm.item.id} • ${confirm.item.user?.email || ""}`
+          confirm.kind === "bulk"
+            ? t("reviews.bulkDeleteDescription", { count: selectedIds.length })
+            : confirm.item
+            ? `#${confirm.item.id} • ${confirm.item.reviewer?.email || ""}`
             : ""
         }
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={t("common.delete")}
         danger
-        loading={busyId === confirm.item?.id}
+        loading={confirm.kind === "bulk" ? saving : busyId === confirm.item?.id}
         onConfirm={async () => {
           const it = confirm.item;
+          const kind = confirm.kind;
           setConfirm({ open: false, kind: null, item: null });
-          if (it) await deleteReview(it.id);
+          if (kind === "bulk") await onBulkDelete();
+          else if (it) await deleteReview(it.id);
         }}
       />
 
-      {/* Floating Bulk Action Toolbar */}
       {selectedIds.length > 0 && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] animate-fade-in">
-          <div className="flex items-center gap-5 px-8 py-5 rounded-[40px] border ui-border glass shadow-lg ring-1 ring-white/10">
+          <div className="flex items-center gap-5 px-8 py-5 border ui-border glass shadow-lg ring-1 ring-white/10">
             <div className="flex flex-col">
-              <span className="text-sm font-bold ui-fg">{selectedIds.length} Selected</span>
-              <span className="text-[10px] ui-muted uppercase font-bold tracking-widest">Reviews</span>
+              <span className="text-sm font-bold ui-fg">{t("common.selected", { count: selectedIds.length })}</span>
+              <span className="text-[10px] ui-muted uppercase font-bold tracking-widest">{t("nav.reviews")}</span>
             </div>
             <div className="h-10 w-px bg-white/10" />
             <div className="flex gap-2">
               <Button variant="secondary" size="sm" onClick={onBulkHide} disabled={saving}>
                 <EyeOff className="w-4 h-4 mr-2" />
-                Hide
+                {t("common.hide")}
               </Button>
               <Button variant="secondary" size="sm" onClick={onBulkUnhide} disabled={saving}>
                 <Eye className="w-4 h-4 mr-2" />
-                Unhide
+                {t("common.unhide")}
               </Button>
-              <Button variant="danger" size="sm" onClick={onBulkDelete} disabled={saving}>
+              <Button variant="danger" size="sm" onClick={() => setConfirm({ open: true, kind: "bulk", item: null })} disabled={saving}>
                 <Trash2 className="w-4 h-4 mr-2" />
-                Delete
+                {t("common.delete")}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])} disabled={saving}>
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>

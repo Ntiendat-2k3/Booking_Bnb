@@ -13,7 +13,7 @@ const csrfMiddleware = require("../../middlewares/csrf.middleware");
 const requireRole = require("../../middlewares/api/role.middleware");
 const { cache } = require("../../core/cache");
 const validate = require("../../middlewares/api/validation.middleware");
-const { bookingQuerySchema, paymentQuerySchema, reviewQuerySchema } = require("../../requests/api/v1/admin.schema");
+const { bookingQuerySchema, paymentQuerySchema, reviewQuerySchema, userQuerySchema, listingQuerySchema, amenityQuerySchema } = require("../../requests/api/v1/admin.schema");
 const { idParams } = require("../../requests/api/v1/common.schema");
 
 const adminOnly = [authMiddleware, requireRole(["admin"])];
@@ -21,16 +21,16 @@ const adminWrite = [...adminOnly, csrfMiddleware];
 
 router.get("/dashboard/stats", ...adminOnly, cache(60), adminDashboardController.getStats);
 
-router.get("/listings", ...adminOnly, adminListingController.list);
+router.get("/listings", ...adminOnly, validate(listingQuerySchema, "query"), adminListingController.list);
 router.post("/listings/:id/approve", ...adminWrite, adminListingController.approve);
 router.post("/listings/:id/reject", ...adminWrite, adminListingController.reject);
 router.post("/listings/bulk-approve", ...adminWrite, adminListingController.bulkApprove);
 router.post("/listings/bulk-reject", ...adminWrite, adminListingController.bulkReject);
 
-router.get("/users", ...adminOnly, adminUserController.list);
+router.get("/users", ...adminOnly, validate(userQuerySchema, "query"), adminUserController.list);
 router.patch("/users/:id/role", ...adminWrite, adminUserController.setRole);
 
-router.get("/amenities", ...adminOnly, adminAmenityController.list);
+router.get("/amenities", ...adminOnly, validate(amenityQuerySchema, "query"), adminAmenityController.list);
 router.post("/amenities", ...adminWrite, adminAmenityController.create);
 router.patch("/amenities/:id", ...adminWrite, adminAmenityController.update);
 router.post("/amenities/:id/active", ...adminWrite, adminAmenityController.setActive);

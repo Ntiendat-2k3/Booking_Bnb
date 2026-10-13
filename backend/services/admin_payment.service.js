@@ -1,5 +1,5 @@
 const Repository = require("../core/repository");
-const { Payment, Booking, Listing, User } = require("../models");
+const { Payment, Booking, Listing, User, Sequelize } = require("../models");
 
 module.exports = {
   async list({ status = null, provider = null, q = null, limit = 200, page = 1 } = {}) {
@@ -7,24 +7,48 @@ module.exports = {
     if (status && status !== "all") where.status = status;
     if (provider && provider !== "all") where.provider = provider;
 
-    const { rows, count } = await Payment.findAndCountAll({
-      where,
-      include: [
+    const include = [
         {
           model: Booking,
           as: "booking",
           attributes: ["id", "status", "total_amount", "currency", "check_in", "check_out"],
           include: [
             { model: Listing, as: "listing", attributes: ["id", "title"] },
-            { model: User, as: "guest", attributes: ["id", "email", "full_name"] },
+            { model: User, as: "guest", attributes: ["id", "email", "full_name", "avatar_url"] },
           ],
         },
-      ],
-      order: [["created_at", "DESC"]],
-      limit, offset: (page - 1) * limit, distinct: true,
-    });
+    ];
+    const [rows, summary] = await Promise.all([
+      Payment.findAll({
+        where, include, order: [["created_at", "DESC"]],
+        limit, offset: (page - 1) * limit,
+      }),
+      Payment.findOne({
+        where,
+        include: [{
+          model: Booking, as: "booking", attributes: [],
+          include: [
+            { model: Listing, as: "listing", attributes: [] },
+            { model: User, as: "guest", attributes: [] },
+          ],
+        }],
+        attributes: [
+          [Sequelize.literal(`COUNT(*)`), "total"],
+          [Sequelize.literal(`COUNT(*) FILTER (WHERE "Payment".status = 'succeeded')`), "succeeded"],
+          [Sequelize.literal(`COUNT(*) FILTER (WHERE "Payment".status = 'pending')`), "pending"],
+          [Sequelize.literal(`COALESCE(SUM("Payment".amount) FILTER (WHERE "Payment".status = 'succeeded' AND "Payment".currency = 'VND'), 0)`), "revenue"],
+        ],
+        raw: true,
+      }),
+    ]);
 
-    return { items: rows, meta: { page, limit, total: count, total_pages: Math.ceil(count / limit) } };
+    return {
+      items: rows,
+      meta: {
+        page, limit, total: Number(summary?.total || 0), total_pages: Math.ceil(Number(summary?.total || 0) / limit),
+        summary: { succeeded: Number(summary?.succeeded || 0), pending: Number(summary?.pending || 0), revenue: Number(summary?.revenue || 0) },
+      },
+    };
   },
 
   async detail(id) {

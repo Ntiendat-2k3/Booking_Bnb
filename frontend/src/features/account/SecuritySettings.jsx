@@ -4,7 +4,7 @@ import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
 import { Lock, WarningCircle } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
-import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
+import { notifyConfirm, notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import PasswordField from "@/components/molecules/PasswordField";
 import Button from "@/components/atoms/Button";
@@ -46,27 +46,41 @@ export default function SecuritySettings({ user }) {
     return () => { active = false; };
   }, [user?.id, t]);
 
-  async function removeSession(item) {
-    if (!window.confirm(t("sessions.removeConfirm"))) return;
-    setSessionsBusy(true);
-    try {
-      await apiFetch(`/api/v1/auth/sessions/${encodeURIComponent(item.id)}`, { method: "DELETE" });
-      if (item.current) {
-        await dispatch(logout());
-        router.replace("/login");
-      } else setSessions((rows) => rows.filter((row) => row.id !== item.id));
-    } catch { notifyError(t("sessions.failed")); }
-    finally { setSessionsBusy(false); }
+  function removeSession(item) {
+    if (sessionsBusy) return;
+    notifyConfirm(t("sessions.removeConfirm"), {
+      id: `remove-session-${item.id}`,
+      confirmLabel: t("sessions.remove"),
+      cancelLabel: t("common.cancel"),
+      onConfirm: async () => {
+        setSessionsBusy(true);
+        try {
+          await apiFetch(`/api/v1/auth/sessions/${encodeURIComponent(item.id)}`, { method: "DELETE" });
+          if (item.current) {
+            await dispatch(logout());
+            router.replace("/login");
+          } else setSessions((rows) => rows.filter((row) => row.id !== item.id));
+        } catch { notifyError(t("sessions.failed")); }
+        finally { setSessionsBusy(false); }
+      },
+    });
   }
 
-  async function removeOtherSessions() {
-    if (!window.confirm(t("sessions.removeOthersConfirm"))) return;
-    setSessionsBusy(true);
-    try {
-      await apiFetch("/api/v1/auth/sessions/revoke-others", { method: "POST", body: {} });
-      setSessions((rows) => rows.filter((row) => row.current));
-    } catch { notifyError(t("sessions.failed")); }
-    finally { setSessionsBusy(false); }
+  function removeOtherSessions() {
+    if (sessionsBusy) return;
+    notifyConfirm(t("sessions.removeOthersConfirm"), {
+      id: "remove-other-sessions",
+      confirmLabel: t("sessions.removeOthers"),
+      cancelLabel: t("common.cancel"),
+      onConfirm: async () => {
+        setSessionsBusy(true);
+        try {
+          await apiFetch("/api/v1/auth/sessions/revoke-others", { method: "POST", body: {} });
+          setSessions((rows) => rows.filter((row) => row.current));
+        } catch { notifyError(t("sessions.failed")); }
+        finally { setSessionsBusy(false); }
+      },
+    });
   }
 
   async function addPasskey() {
@@ -83,18 +97,25 @@ export default function SecuritySettings({ user }) {
     } finally { setPasskeyBusy(false); }
   }
 
-  async function removePasskey(id) {
-    if (!window.confirm(t("passkey.removeConfirm"))) return;
-    setPasskeyBusy(true);
-    try {
-      await apiFetch(`/api/v1/auth/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" });
-      setPasskeys((items) => items.filter((item) => item.id !== id));
-      notifySuccess(t("passkey.removed"));
-    } catch (error) {
-      if (error?.status === 401) setRecentRequired(true);
-      else notifyError(t("passkey.removeFailed"));
-    }
-    finally { setPasskeyBusy(false); }
+  function removePasskey(id) {
+    if (passkeyBusy) return;
+    notifyConfirm(t("passkey.removeConfirm"), {
+      id: `remove-passkey-${id}`,
+      confirmLabel: t("common.delete"),
+      cancelLabel: t("common.cancel"),
+      onConfirm: async () => {
+        setPasskeyBusy(true);
+        try {
+          await apiFetch(`/api/v1/auth/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" });
+          setPasskeys((items) => items.filter((item) => item.id !== id));
+          notifySuccess(t("passkey.removed"));
+        } catch (error) {
+          if (error?.status === 401) setRecentRequired(true);
+          else notifyError(t("passkey.removeFailed"));
+        }
+        finally { setPasskeyBusy(false); }
+      },
+    });
   }
   async function changePassword(event) {
     event.preventDefault();

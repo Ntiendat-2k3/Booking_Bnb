@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getReviews, getMyReview, createReview, updateReview, deleteReview } from "@/services/reviewService";
-import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
+import { notifyConfirm, notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import { toInt } from "./Stars";
 import ReviewComposer from "./ReviewComposer";
@@ -105,22 +105,30 @@ export default function ReviewsSection({
     }
   }
 
-  async function remove() {
-    if (!mine?.id) return;
-    if (!confirm(t("reviews.deleteConfirm"))) return;
-    try {
-      await deleteReview(mine.id);
-      notifySuccess(t("reviews.deleted"));
-      setMine(null);
-      setCanReview(false);
-      setRating(5);
-      setComment("");
-      setEditing(false);
-      await load(1);
-      await loadMine();
-    } catch (e) {
-      notifyError(e?.message || t("reviews.deleteFailed"));
-    }
+  function remove() {
+    if (!mine?.id || saving) return;
+    const reviewId = mine.id;
+    notifyConfirm(t("reviews.deleteConfirm"), {
+      id: `delete-review-${reviewId}`,
+      confirmLabel: t("common.delete"),
+      cancelLabel: t("common.cancel"),
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          await deleteReview(reviewId);
+          notifySuccess(t("reviews.deleted"));
+          setMine(null);
+          setCanReview(false);
+          setRating(5);
+          setComment("");
+          setEditing(false);
+          await load(1);
+          await loadMine();
+        } catch (e) {
+          notifyError(e?.message || t("reviews.deleteFailed"));
+        } finally { setSaving(false); }
+      },
+    });
   }
 
   return (

@@ -34,7 +34,7 @@ export default function AddressAutocomplete({ label, address, onChange, token })
           suppressRef.current = false;
           setOpenSug(true);
           setQuery(v);
-          onChange?.({ address: v });
+          onChange?.({ address: v, lat: "", lng: "" });
         }}
         className="mt-2 w-full rounded-xl border px-3 py-2"
         placeholder={t("address.placeholder")}

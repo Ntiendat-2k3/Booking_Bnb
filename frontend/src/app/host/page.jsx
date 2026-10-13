@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { becomeHost } from "@/store/authThunks";
 import { useRouter } from "next/navigation";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { canManageListings } from "@/lib/roles";
 
 const STEPS = [
   {
@@ -132,7 +133,7 @@ export default function HostOnboardingPage() {
 
 
   useEffect(() => {
-    if (isInitialized && (user?.role === "host" || user?.role === "admin")) {
+    if (isInitialized && canManageListings(user?.role)) {
       router.replace("/host/listings");
     }
   }, [isInitialized, user, router]);

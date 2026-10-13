@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { CreditCard, Plus, Trash, CheckCircle } from "@phosphor-icons/react";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import { apiFetch } from "@/lib/api";
-import { notifyError, notifySuccess } from "@/lib/notify";
+import { notifyConfirm, notifyError, notifySuccess } from "@/lib/notify";
 import Button from "@/components/atoms/Button";
 import IconButton from "@/components/atoms/IconButton";
 import InputField from "@/components/atoms/InputField";
@@ -66,16 +66,23 @@ export default function PaymentMethods({ user }) {
     finally { setBusy(false); }
   }
 
-  async function removePm(id) {
-    if (busy || !window.confirm(t("payments.deleteConfirm"))) return;
-    setBusy(true);
-    try {
-      await apiFetch(`/api/v1/users/me/payment-methods/${id}`, { method: "DELETE" });
-      const res = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
-      setItems(res.data?.items || []);
-      notifySuccess(t("payments.deleted"));
-    } catch (err) { notifyError(err?.message || t("payments.deleteFailed")); }
-    finally { setBusy(false); }
+  function removePm(id) {
+    if (busy) return;
+    notifyConfirm(t("payments.deleteConfirm"), {
+      id: `delete-payment-method-${id}`,
+      confirmLabel: t("common.delete"),
+      cancelLabel: t("common.cancel"),
+      onConfirm: async () => {
+        setBusy(true);
+        try {
+          await apiFetch(`/api/v1/users/me/payment-methods/${id}`, { method: "DELETE" });
+          const res = await apiFetch("/api/v1/users/me/payment-methods", { method: "GET" });
+          setItems(res.data?.items || []);
+          notifySuccess(t("payments.deleted"));
+        } catch (err) { notifyError(err?.message || t("payments.deleteFailed")); }
+        finally { setBusy(false); }
+      },
+    });
   }
 
   return <section className="surface-panel p-5 sm:p-8" aria-busy={loading || busy}>

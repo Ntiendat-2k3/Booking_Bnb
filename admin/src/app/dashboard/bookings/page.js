@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import AdminShell from "@/components/AdminShell";
+import AdminShell from "@/components/templates/AdminShell";
 import { adminService } from "@/services/adminService";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import RipleLoading from "@/components/loading/RipleLoading";
-import AdminPagination from "@/components/admin/AdminPagination";
+import Input from "@/components/atoms/Input";
+import Select from "@/components/atoms/Select";
+import RipleLoading from "@/components/atoms/RipleLoading";
+import AdminPagination from "@/components/molecules/AdminPagination";
+import AdminPageHeader from "@/components/molecules/AdminPageHeader";
+import StatCard from "@/components/molecules/StatCard";
+import { CalendarDays, FileText, CircleCheck, Clock3, CircleX, Search } from "lucide-react";
 
-import BookingsTable from "@/components/admin/bookings/BookingsTable";
-import BookingDetailModal from "@/components/admin/bookings/BookingDetailModal";
+import BookingsTable from "@/components/organisms/bookings/BookingsTable";
+import BookingDetailModal from "@/components/organisms/bookings/BookingDetailModal";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
 
 const STATUS = [
   "all",
@@ -24,9 +28,12 @@ const STATUS = [
 const PAGE_SIZE = 10;
 
 export default function Page() {
+  const t = useTranslations();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, total_pages: 1, statuses: {} });
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q);
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("all");
 
@@ -34,49 +41,34 @@ export default function Page() {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const filtered = useMemo(() => {
-    let base = items;
-    if (status !== "all") base = base.filter((b) => b.status === status);
-
-    const s = q.trim().toLowerCase();
-    if (!s) return base;
-
-    return base.filter((b) => {
-      return (
-        String(b.id || "").includes(s) ||
-        String(b.guest?.id || "").includes(s) ||
-        String(b.listing?.id || "").includes(s) ||
-        (b.guest?.email || "").toLowerCase().includes(s) ||
-        (b.listing?.title || "").toLowerCase().includes(s) ||
-        (b.status || "").toLowerCase().includes(s)
-      );
-    });
-  }, [items, q, status]);
+  const filtered = items;
 
   useEffect(() => {
     setPage(1);
   }, [q, status]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pagedItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
+  const pageCount = Math.max(1, meta.total_pages);
+  const pagedItems = items;
 
-  async function loadItems() {
+  const loadItems = useCallback(async (signal) => {
     try {
-      const res = await adminService.getBookings(status);
-      setItems(res.data?.items || []);
+      const res = await adminService.getBookings({ status, q: debouncedQ, page, limit: PAGE_SIZE, signal });
+      if (!signal?.aborted) {
+        setItems(res.data?.items || []);
+        setMeta(res.data?.meta || { total: 0, total_pages: 1, statuses: {} });
+        if (page > (res.data?.meta?.total_pages || 1)) setPage(Math.max(1, res.data.meta.total_pages));
+      }
     } catch (e) {
-      toast.error(e?.message || "Lỗi tải bookings");
+      if (!signal?.aborted && e?.name !== "AbortError") toast.error(e?.message || t("common.loadFailed", { item: t("nav.bookings") }));
     }
-  }
+  }, [status, debouncedQ, page, t]);
 
   useEffect(() => {
+    const controller = new AbortController();
     let alive = true;
     async function init() {
       try {
-        await loadItems();
+        await loadItems(controller.signal);
       } finally {
         if (alive) setLoading(false);
       }
@@ -84,15 +76,9 @@ export default function Page() {
     init();
     return () => {
       alive = false;
+      controller.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
-
-  async function refresh() {
-    setLoading(true);
-    await loadItems();
-    setLoading(false);
-  }
+  }, [loadItems]);
 
   async function openDetail(id) {
     setDetailOpen(true);
@@ -102,7 +88,7 @@ export default function Page() {
       const res = await adminService.getBookingDetail(id);
       setDetail(res.data?.booking || null);
     } catch (e) {
-      toast.error(e?.message || "Failed to load booking");
+      toast.error(e?.message || t("common.loadFailed", { item: t("common.booking") }));
     } finally {
       setDetailLoading(false);
     }
@@ -113,28 +99,20 @@ export default function Page() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Bookings</h1>
-          </div>
+        <AdminPageHeader icon={CalendarDays} title={t("nav.bookings")} description={t("ui.bookingsDescription")}>
+          <label className="admin-search"><Search size={18} aria-hidden="true" /><Input aria-label={t("bookings.search")} value={q} maxLength={255} onChange={(e) => setQ(e.target.value)} placeholder={t("bookings.search")} /></label>
+          <Select aria-label={t("common.status")} value={status} onChange={(e) => setStatus(e.target.value)}>
+            {STATUS.map((s) => <option key={s} value={s}>{t(`statuses.${s}`)}</option>)}
+          </Select>
+        </AdminPageHeader>
 
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <div className="w-full md:w-72">
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search id / user / listing..."
-              />
-            </div>
-            <Select value={status} onChange={(e) => setStatus(e.target.value)}>
-              {STATUS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </Select>
-          </div>
+        <div className="admin-stats">
+          <StatCard icon={FileText} label={t("ui.totalBookings")} value={meta.total} />
+          <StatCard icon={CircleCheck} label={t("ui.completedBookings")} value={meta.statuses?.completed || 0} />
+          <StatCard icon={Clock3} label={t("ui.pendingBookings")} value={meta.statuses?.pending_payment || 0} tone="amber" />
+          <StatCard icon={CircleX} label={t("ui.cancelledBookings")} value={meta.statuses?.cancelled || 0} tone="red" />
         </div>
+        {q.trim() || status !== "all" ? <p className="text-xs ui-muted">{t("ui.filteredMetrics")}</p> : null}
 
         <BookingsTable
           pagedItems={pagedItems}
@@ -142,7 +120,7 @@ export default function Page() {
           openDetail={openDetail}
         />
 
-        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
+        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} total={meta.total} itemLabel={t("nav.bookings")} />
       </div>
 
       <BookingDetailModal

@@ -1,70 +1,41 @@
 const { User, Listing, Booking, Payment, Sequelize } = require("../models");
-const { Op } = Sequelize;
 
 module.exports = {
+  /** Tổng doanh thu và từng tháng cùng lấy từ các khoản VND đã thanh toán. */
   async getGlobalStats() {
-    // 1. Core Counts
-    const totalUsers = await User.count({ where: { deleted_at: null } });
-    const pendingListings = await Listing.count({ 
-      where: { status: "pending", deleted_at: null } 
-    });
-    const activeBookings = await Booking.count({ 
-      where: { status: "confirmed" } 
-    });
+    const totalUsers = await User.count({ where: { deleted_at: null, role: { [Sequelize.Op.ne]: "super_admin" } } });
+    const pendingListings = await Listing.count({ where: { status: "pending", deleted_at: null } });
+    const activeBookings = await Booking.count({ where: { status: "confirmed" } });
 
-    // 2. Total Revenue
-    const revenueData = await Payment.sum("amount", {
-      where: { status: "succeeded" },
-    });
-    const totalRevenue = Number(revenueData || 0);
-
-    // 3. Monthly Revenue Trends (Last 6 Months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-    sixMonthsAgo.setDate(1);
-    sixMonthsAgo.setHours(0, 0, 0, 0);
-
+    // Ngày thanh toán là mốc ghi nhận doanh thu; dữ liệu cũ thiếu paid_at dùng ngày tạo.
+    const monthExpression = `to_char(COALESCE("Payment"."paid_at", "Payment"."created_at") AT TIME ZONE 'UTC', 'YYYY-MM')`;
     const monthlyPayments = await Payment.findAll({
-      where: {
-        status: "succeeded",
-        created_at: { [Op.gte]: sixMonthsAgo },
-      },
+      where: { status: "succeeded", currency: "VND" },
       attributes: [
-        [Sequelize.fn("date_trunc", "month", Sequelize.col("created_at")), "month"],
-        [Sequelize.fn("sum", Sequelize.col("amount")), "total"],
+        [Sequelize.literal(monthExpression), "month"],
+        [Sequelize.fn("SUM", Sequelize.col("amount")), "total"],
       ],
-      group: [Sequelize.fn("date_trunc", "month", Sequelize.col("created_at"))],
-      order: [[Sequelize.fn("date_trunc", "month", Sequelize.col("created_at")), "ASC"]],
+      group: [Sequelize.literal(monthExpression)],
+      raw: true,
     });
 
-    // Map to chart format
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const totals = new Map(monthlyPayments.map((row) => [row.month, Number(row.total || 0)]));
+    const totalRevenue = [...totals.values()].reduce((sum, value) => sum + value, 0);
     const chartData = [];
-    
-    // Fill in last 6 months (including those with 0 revenue)
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const mLabel = monthNames[d.getMonth()];
-      const mKey = d.toISOString().substring(0, 7); // YYYY-MM
-      
-      const found = monthlyPayments.find(p => {
-        const pDate = new Date(p.getDataValue("month"));
-        return pDate.toISOString().substring(0, 7) === mKey;
-      });
-      
-      chartData.push({
-        name: mLabel,
-        value: found ? Number(found.getDataValue("total")) : 0
-      });
+    if (totals.size) {
+      const months = [...totals.keys()].sort();
+      const firstMonth = months[0];
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const endMonth = months.at(-1) > currentMonth ? months.at(-1) : currentMonth;
+      const [year, month] = firstMonth.split("-").map(Number);
+      const date = new Date(Date.UTC(year, month - 1, 1));
+
+      for (let key = date.toISOString().slice(0, 7); key <= endMonth; key = date.toISOString().slice(0, 7)) {
+        chartData.push({ month: key, value: totals.get(key) || 0 });
+        date.setUTCMonth(date.getUTCMonth() + 1);
+      }
     }
 
-    return {
-      totalUsers,
-      pendingListings,
-      activeBookings,
-      totalRevenue,
-      chartData
-    };
-  }
+    return { totalUsers, pendingListings, activeBookings, totalRevenue, chartData };
+  },
 };

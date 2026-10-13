@@ -4,6 +4,7 @@ export function getListingCardData(listing) {
     id: listing.id || listing.listing_id || listing.uuid,
     title: listing.title,
     city: listing.city,
+    address: listing.address,
     country: listing.country,
     cover_url: listing.cover_url || listing.images?.[0]?.url,
     price_per_night: listing.price_per_night || listing.price || 0,

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { formatVND } from "@/lib/format";
 import { useLocale } from "@/i18n/LocaleProvider";
+import { canManageListings } from "@/lib/roles";
 
 const STATUS_TABS = [
   { key: "all", labelKey: "search.allCategories" },
@@ -39,7 +40,7 @@ export default function HostListingsPage() {
   }, [items, tab]);
 
   const userId = user?.id;
-  const canManage = user?.role === "host" || user?.role === "admin";
+  const canManage = canManageListings(user?.role);
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function HostListingsPage() {
     );
   }
 
-  if (user.role !== "host" && user.role !== "admin") {
+  if (!canManageListings(user.role)) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
         <div className="surface-panel p-6">

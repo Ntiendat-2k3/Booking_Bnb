@@ -4,14 +4,7 @@ const adminAmenityService = require("../../../services/admin_amenity.service");
 const { invalidateAmenities } = require("../../../core/cache");
 module.exports = {
   list: asyncHandler(async (req, res) => {
-    const {
-      q = null,
-      active = "all"
-    } = req.query || {};
-    const data = await adminAmenityService.list({
-      q,
-      active
-    });
+    const data = await adminAmenityService.list(req.query);
     return successResponse(res, data, "Amenities fetched", 200);
   }),
   create: asyncHandler(async (req, res) => {

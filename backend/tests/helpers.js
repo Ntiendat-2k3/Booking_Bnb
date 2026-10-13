@@ -41,7 +41,7 @@ function database(seed = {}) {
   const locks = new Map();
   const failures = new Map();
   const calls = [];
-  const names = ["Listing", "Booking", "Payment", "User", "Notification", "UploadedAsset", "ListingImage", "Amenity", "ListingAmenity", "PaymentMethod", "UserSetting", "RefreshToken", "BackgroundJob"];
+  const names = ["Listing", "Booking", "Payment", "User", "Notification", "UploadedAsset", "ListingImage", "Amenity", "ListingAmenity", "Favorite", "Review", "PaymentMethod", "UserSetting", "RefreshToken", "BackgroundJob"];
   for (const name of names) tables.set(name, new Map((seed[name] || []).map((row) => [row.id || row.public_id || row.user_id, { ...row }])));
   const keyOf = (row) => row.id || row.public_id || row.user_id;
   const view = (name, tx) => {

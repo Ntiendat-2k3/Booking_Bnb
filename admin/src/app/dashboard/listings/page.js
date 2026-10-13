@@ -1,41 +1,40 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import AdminShell from "@/components/AdminShell";
+import AdminShell from "@/components/templates/AdminShell";
 import { adminService } from "@/services/adminService";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import RipleLoading from "@/components/loading/RipleLoading";
-import AdminPagination from "@/components/admin/AdminPagination";
+import Button from "@/components/atoms/Button";
+import Input from "@/components/atoms/Input";
+import RipleLoading from "@/components/atoms/RipleLoading";
+import AdminPagination from "@/components/molecules/AdminPagination";
+import AdminPageHeader from "@/components/molecules/AdminPageHeader";
 
-import ListingsTable from "@/components/admin/listings/ListingsTable";
-import ListingDetailModal from "@/components/admin/listings/ListingDetailModal";
-import ListingActionModals from "@/components/admin/listings/ListingActionModals";
-import { CheckCircle2, XCircle, CheckSquare } from "lucide-react";
+import ListingsTable from "@/components/organisms/listings/ListingsTable";
+import ListingDetailModal from "@/components/organisms/listings/ListingDetailModal";
+import ListingActionModals from "@/components/organisms/listings/ListingActionModals";
+import { XCircle, CheckSquare, House, Search } from "lucide-react";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
 
-const TABS = [
-  { key: "all", label: "Tất cả" },
-  { key: "pending", label: "Chờ duyệt" },
-  { key: "published", label: "Đang hiển thị" },
-  { key: "paused", label: "Tạm dừng" },
-  { key: "draft", label: "Draft" },
-  { key: "rejected", label: "Bị từ chối" },
-];
+const TABS = ["all", "pending", "published", "paused", "draft", "rejected"];
 
 const PAGE_SIZE = 10;
 
 export default function Page() {
+  const t = useTranslations();
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("pending");
+  const [tab, setTab] = useState("all");
   const [items, setItems] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, total_pages: 1, statuses: {} });
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q);
   const [page, setPage] = useState(1);
 
   const [view, setView] = useState(null);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState(null);
-  const [rejectReason, setRejectReason] = useState("Nội dung chưa đạt yêu cầu");
+  const [rejectReason, setRejectReason] = useState("");
 
   const [confirm, setConfirm] = useState({
     open: false,
@@ -45,47 +44,39 @@ export default function Page() {
   const [saving, setSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  const filtered = useMemo(() => {
-    let base = items;
-    if (tab !== "all") base = base.filter((x) => x.status === tab);
-    const s = q.trim().toLowerCase();
-    if (!s) return base;
-    return base.filter((x) => {
-      return (
-        (x.title || "").toLowerCase().includes(s) ||
-        (x.city || "").toLowerCase().includes(s) ||
-        (x.host?.email || "").toLowerCase().includes(s) ||
-        (x.host?.full_name || "").toLowerCase().includes(s) ||
-        String(x.id || "").includes(s)
-      );
-    });
-  }, [items, tab, q]);
+  const filtered = items;
 
   useEffect(() => {
     setPage(1);
     setSelectedIds([]);
   }, [tab, q]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pagedItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [page]);
 
-  async function loadItems() {
+  const pageCount = Math.max(1, meta.total_pages);
+  const pagedItems = items;
+
+  const loadItems = useCallback(async (signal) => {
     try {
-      const res = await adminService.getListings();
-      setItems(res.data?.items || []);
+      const res = await adminService.getListings({ status: tab, q: debouncedQ, page, limit: PAGE_SIZE, signal });
+      if (!signal?.aborted) {
+        setItems(res.data?.items || []);
+        setMeta(res.data?.meta || { total: 0, total_pages: 1, statuses: {} });
+        if (page > (res.data?.meta?.total_pages || 1)) setPage(Math.max(1, res.data.meta.total_pages));
+      }
     } catch (e) {
-      toast.error(e?.message || "Lỗi tải listings");
+      if (!signal?.aborted && e?.name !== "AbortError") toast.error(e?.message || t("common.loadFailed", { item: t("nav.listings") }));
     }
-  }
+  }, [tab, debouncedQ, page, t]);
 
   useEffect(() => {
+    const controller = new AbortController();
     let alive = true;
     async function init() {
       try {
-        await loadItems();
+        await loadItems(controller.signal);
       } finally {
         if (alive) setLoading(false);
       }
@@ -93,8 +84,9 @@ export default function Page() {
     init();
     return () => {
       alive = false;
+      controller.abort();
     };
-  }, []);
+  }, [loadItems]);
 
   async function refresh() {
     setLoading(true);
@@ -109,27 +101,27 @@ export default function Page() {
     try {
       const res = await adminService.bulkApproveListings(selectedIds);
       const success = res.data?.results?.filter((r) => r.status === "success") || [];
-      toast.success(`Processed ${success.length}/${selectedIds.length} approvals`);
+      toast.success(t("listings.processedApprovals", { count: success.length, total: selectedIds.length }));
       setSelectedIds([]);
       await loadItems();
     } catch (e) {
-      toast.error(e?.message || "Bulk action failed");
+      toast.error(e?.message || t("common.bulkFailed"));
     } finally {
       setSaving(false);
     }
   }
 
-  async function onBulkReject(reason = "Batch reject") {
+  async function onBulkReject() {
     if (!selectedIds.length) return;
     setSaving(true);
     try {
-      const res = await adminService.bulkRejectListings(selectedIds, reason);
+      const res = await adminService.bulkRejectListings(selectedIds, t("listings.bulkRejectReason"));
       const success = res.data?.results?.filter((r) => r.status === "success") || [];
-      toast.success(`Processed ${success.length}/${selectedIds.length} rejections`);
+      toast.success(t("listings.processedRejections", { count: success.length, total: selectedIds.length }));
       setSelectedIds([]);
       await loadItems();
     } catch (e) {
-      toast.error(e?.message || "Bulk action failed");
+      toast.error(e?.message || t("common.bulkFailed"));
     } finally {
       setSaving(false);
     }
@@ -139,10 +131,10 @@ export default function Page() {
     setSaving(true);
     try {
       await adminService.approveListing(id);
-      toast.success("Listing approved");
+      toast.success(t("listings.approved"));
       await refresh();
     } catch (e) {
-      toast.error(e?.message || "Approve failed");
+      toast.error(e?.message || t("listings.approveFailed"));
     } finally {
       setSaving(false);
     }
@@ -152,10 +144,10 @@ export default function Page() {
     setSaving(true);
     try {
       await adminService.rejectListing(id, reason);
-      toast.success("Listing rejected");
+      toast.success(t("listings.rejected"));
       await refresh();
     } catch (e) {
-      toast.error(e?.message || "Reject failed");
+      toast.error(e?.message || t("listings.rejectFailed"));
     } finally {
       setSaving(false);
     }
@@ -163,7 +155,7 @@ export default function Page() {
 
   function openReject(item) {
     setRejectTarget(item);
-    setRejectReason(item?.reject_reason || "Nội dung chưa đạt yêu cầu");
+    setRejectReason(item?.reject_reason || t("listings.defaultRejectReason"));
     setRejectOpen(true);
   }
 
@@ -172,36 +164,24 @@ export default function Page() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Listings moderation
-            </h1>
-          </div>
-
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <div className="w-full md:w-80">
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search id/title/city/host..."
-              />
-            </div>
-          </div>
-        </div>
+        <AdminPageHeader icon={House} title={t("listings.moderation")} description={t("ui.listingsDescription")}>
+          <label className="admin-search"><Search size={18} aria-hidden="true" /><Input aria-label={t("listings.search")} value={q} maxLength={255} onChange={(e) => setQ(e.target.value)} placeholder={t("listings.search")} /></label>
+        </AdminPageHeader>
 
         <div className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
+          {TABS.map((status) => (
             <Button
-              key={t.key}
+              key={status}
               size="sm"
-              variant={tab === t.key ? "primary" : "secondary"}
-              onClick={() => setTab(t.key)}
+              variant={tab === status ? "primary" : "secondary"}
+              className="rounded-full"
+              onClick={() => setTab(status)}
             >
-              {t.label}
+              {t(`statuses.${status}`)} <span className="ml-1 opacity-70">{status === "all" ? Object.values(meta.statuses || {}).reduce((sum, count) => sum + count, 0) : (meta.statuses?.[status] || 0)}</span>
             </Button>
           ))}
         </div>
+        {q.trim() ? <p className="text-xs ui-muted">{t("ui.filteredMetrics")}</p> : null}
 
         <ListingsTable
           filtered={filtered}
@@ -214,7 +194,7 @@ export default function Page() {
           setSelectedIds={setSelectedIds}
         />
 
-        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
+        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} total={meta.total} itemLabel={t("nav.listings")} />
       </div>
 
       <ListingDetailModal view={view} setView={setView} />
@@ -232,41 +212,40 @@ export default function Page() {
         approve={approve}
       />
 
-      {/* Floating Bulk Action Toolbar */}
       {selectedIds.length > 0 && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] animate-fade-in">
-          <div className="flex items-center gap-5 px-8 py-5 rounded-[40px] border ui-border glass shadow-[0_20px_50px_rgba(0,0,0,0.4)] ring-1 ring-white/10">
+          <div className="flex items-center gap-5 px-8 py-5 border ui-border glass shadow-[0_20px_50px_rgba(0,0,0,0.4)] ring-1 ring-white/10">
             <div className="flex flex-col">
-              <span className="text-sm font-black text-white">{selectedIds.length} Selected</span>
-              <span className="text-[10px] ui-muted font-bold tracking-widest uppercase">Moderation Mode</span>
+              <span className="text-sm font-black ui-fg">{t("common.selected", { count: selectedIds.length })}</span>
+              <span className="text-[10px] ui-muted font-bold tracking-widest uppercase">{t("listings.moderationMode")}</span>
             </div>
             <div className="h-10 w-px bg-white/10" />
             <div className="flex gap-3">
               <Button 
                 variant="success" 
-                className="rounded-full px-6 brand-shadow"
+                className="px-6 brand-shadow"
                 onClick={onBulkApprove} 
                 disabled={saving}
               >
                 <CheckSquare className="w-4 h-4 mr-2" />
-                Approve
+                {t("common.approve")}
               </Button>
               <Button 
                 variant="danger" 
-                className="rounded-full px-6"
-                onClick={() => onBulkReject("Bulk rejected by system admin")} 
+                className="px-6"
+                onClick={onBulkReject}
                 disabled={saving}
               >
                 <XCircle className="w-4 h-4 mr-2" />
-                Reject
+                {t("common.reject")}
               </Button>
               <Button 
                 variant="ghost" 
-                className="rounded-full hover:bg-white/10"
+                className="hover:bg-white/10"
                 onClick={() => setSelectedIds([])} 
                 disabled={saving}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>

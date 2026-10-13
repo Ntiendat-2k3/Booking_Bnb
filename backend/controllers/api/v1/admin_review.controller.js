@@ -6,12 +6,14 @@ module.exports = {
   list: asyncHandler(async (req, res) => {
     const {
       visibility = "all",
+      rating = "all",
       q = null,
       limit = 200,
       page = 1
     } = req.query || {};
     const data = await adminReviewService.list({
       visibility,
+      rating,
       q,
       limit,
       page

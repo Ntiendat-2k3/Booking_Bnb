@@ -4,10 +4,7 @@ const adminListingService = require("../../../services/admin_listing.service");
 const { invalidateListings } = require("../../../core/cache");
 module.exports = {
   list: asyncHandler(async (req, res) => {
-    const status = req.query.status || null;
-    const data = await adminListingService.list({
-      status
-    });
+    const data = await adminListingService.list(req.query);
     return successResponse(res, data, "Admin listings fetched", 200);
   }),
   approve: asyncHandler(async (req, res) => {

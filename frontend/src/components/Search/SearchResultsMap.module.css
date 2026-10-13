@@ -1,0 +1,85 @@
+.mapSurface :global(.mapboxgl-ctrl-group) {
+  overflow: hidden;
+  border: 1px solid rgb(var(--color-line));
+  border-radius: var(--radius-control);
+  background: rgb(var(--color-surface));
+  box-shadow: var(--shadow-soft);
+}
+
+.mapSurface :global(.mapboxgl-ctrl-group button) {
+  width: 44px;
+  height: 44px;
+  border-color: rgb(var(--color-line));
+}
+
+.mapSurface :global(.mapboxgl-ctrl-group button:hover) {
+  background: rgb(var(--color-muted-surface));
+}
+
+:global(.dark) .mapSurface :global(.mapboxgl-ctrl-icon) {
+  filter: invert(1);
+}
+
+.markerRoot {
+  display: inline-flex;
+}
+
+.priceMarker {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border: 2px solid rgb(var(--color-surface));
+  border-radius: 999px;
+  background: rgb(var(--color-ink));
+  box-shadow: var(--shadow-soft);
+  color: rgb(var(--color-on-ink));
+  cursor: pointer;
+  font: 700 13px/1.2 var(--font-be-vietnam-pro), system-ui, sans-serif;
+  white-space: nowrap;
+  transition: background-color 180ms, border-color 180ms, box-shadow 180ms, scale 180ms;
+}
+
+.priceMarker:hover,
+.priceMarker:focus-visible,
+.priceMarker[data-hovered="true"] {
+  border-color: rgb(var(--color-accent));
+  box-shadow: var(--shadow-float);
+  scale: 1.05;
+}
+
+.priceMarker:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 2px;
+}
+
+.priceMarker[data-selected="true"] {
+  background: rgb(var(--color-accent));
+  box-shadow: var(--shadow-float);
+  color: rgb(var(--color-on-accent));
+  scale: 1.05;
+}
+
+.markerAbove {
+  z-index: 2;
+}
+
+.markerSelected {
+  z-index: 3;
+}
+
+.userMarker {
+  width: 16px;
+  height: 16px;
+  border: 3px solid rgb(var(--color-surface));
+  border-radius: 50%;
+  background: rgb(var(--color-accent));
+  box-shadow: 0 0 0 4px rgb(var(--color-accent) / 18%), var(--shadow-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .priceMarker {
+    transition: none;
+  }
+}

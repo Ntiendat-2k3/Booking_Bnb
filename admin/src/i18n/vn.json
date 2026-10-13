@@ -1,0 +1,112 @@
+{
+  "meta": { "title": "Booking BnB | Quản trị", "description": "Bảng quản trị Booking BnB" },
+  "theme": { "label": "Giao diện", "system": "Theo hệ thống", "light": "Sáng", "dark": "Tối" },
+  "locale": {
+    "switchToEnglish": "Chuyển sang tiếng Anh", "switchToVietnamese": "Chuyển sang tiếng Việt",
+    "changeFailed": "Không thể đổi ngôn ngữ"
+  },
+  "common": {
+    "all": "Tất cả", "active": "Hoạt động", "inactive": "Ngừng hoạt động", "visible": "Hiển thị", "hidden": "Đã ẩn",
+    "email": "Email", "fullName": "Họ tên", "role": "Vai trò", "actions": "Thao tác", "status": "Trạng thái",
+    "name": "Tên", "group": "Nhóm", "slug": "Slug", "used": "Đã dùng", "user": "Người dùng", "listing": "Chỗ ở",
+    "booking": "Đặt phòng", "payment": "Thanh toán", "provider": "Cổng thanh toán", "amount": "Số tiền", "date": "Ngày",
+    "created": "Ngày tạo", "description": "Mô tả", "host": "Chủ nhà", "city": "Thành phố", "address": "Địa chỉ",
+    "guests": "Khách", "bedrooms": "Phòng ngủ", "beds": "Giường", "baths": "Phòng tắm", "comment": "Bình luận",
+    "rating": "Đánh giá", "visibility": "Hiển thị", "metadata": "Dữ liệu bổ sung", "summary": "Tổng quan", "details": "Chi tiết",
+    "view": "Xem", "detail": "Chi tiết", "edit": "Sửa", "save": "Lưu", "create": "Tạo", "new": "Thêm mới",
+    "close": "Đóng", "cancel": "Hủy", "confirm": "Xác nhận", "approve": "Duyệt", "reject": "Từ chối",
+    "delete": "Xóa", "hide": "Ẩn", "unhide": "Hiện lại", "activate": "Kích hoạt", "deactivate": "Vô hiệu hóa",
+    "page": "Trang", "goToPage": "Mở trang", "profile": "Hồ sơ", "identifiers": "Thông tin định danh",
+    "userId": "ID người dùng", "listingId": "ID chỗ ở", "pricePerNight": "Giá/đêm", "untitled": "Chưa có tiêu đề", "selectPage": "Chọn tất cả trên trang",
+    "selectItem": "Chọn mục {id}", "selected": "Đã chọn {count}", "copyId": "Sao chép ID {id}", "copied": "Đã sao chép ID", "copyFailed": "Không thể sao chép ID", "previousPage": "Trang trước",
+    "nextPage": "Trang sau", "pageNumber": "Trang {page}", "currentPageNumber": "Trang {page}, trang hiện tại",
+    "jumpForward": "Chuyển tới", "jumpBackward": "Quay lại", "loading": "Đang tải dữ liệu", "noResults": "Không tìm thấy kết quả",
+    "loadFailed": "Không thể tải {item}", "createFailed": "Tạo thất bại", "updateFailed": "Cập nhật thất bại",
+    "actionFailed": "Thao tác thất bại", "bulkFailed": "Thao tác hàng loạt thất bại", "transactionId": "Mã giao dịch",
+    "bookingId": "Mã đặt phòng", "total": "Tổng cộng", "checkIn": "Nhận phòng", "checkOut": "Trả phòng",
+    "nights": "Số đêm", "guest": "Khách", "dates": "Ngày", "review": "Đánh giá"
+  },
+  "nav": {
+    "overview": "Tổng quan", "users": "Người dùng", "listings": "Chỗ ở", "amenities": "Tiện ích",
+    "bookings": "Đặt phòng", "payments": "Thanh toán", "reviews": "Đánh giá", "adminConsole": "Bảng quản trị",
+    "adminNavigation": "Điều hướng quản trị", "openNavigation": "Mở điều hướng", "closeNavigation": "Đóng điều hướng",
+    "systemAdmin": "Quản trị viên", "fullAccess": "Toàn quyền", "logout": "Đăng xuất"
+  },
+  "login": {
+    "heroTitle": "Không gian rõ ràng cho mọi công việc quản trị.",
+    "heroDescription": "Theo dõi đặt phòng, kiểm duyệt chỗ ở và chăm sóc cộng đồng Booking BnB.",
+    "administration": "Quản trị", "secureAccess": "Truy cập bảo mật", "title": "Đăng nhập quản trị",
+    "description": "Sử dụng tài khoản có quyền admin để tiếp tục.", "password": "Mật khẩu",
+    "signIn": "Đăng nhập", "signingIn": "Đang đăng nhập...", "welcome": "Chào mừng trở lại",
+    "noAccess": "Tài khoản này không có quyền quản trị.", "failed": "Đăng nhập thất bại"
+  },
+  "dashboard": {
+    "workspaceOverview": "Tổng quan hệ thống", "description": "Theo dõi đặt phòng, chỗ ở và hoạt động nền tảng.",
+    "metrics": "Số liệu nền tảng", "totalRevenue": "Tổng doanh thu", "recordedRevenue": "Doanh thu đã ghi nhận",
+    "totalUsers": "Tổng người dùng", "registeredAccounts": "Tài khoản đã đăng ký",
+    "pendingListings": "Chỗ ở chờ duyệt", "awaitingReview": "Đang chờ xét duyệt",
+    "activeBookings": "Đặt phòng đang hoạt động", "currentReservations": "Lượt đặt phòng hiện tại",
+    "revenueOverview": "Tổng quan doanh thu", "monthlyPerformance": "Doanh thu hằng tháng từ các khoản thanh toán đã ghi nhận",
+    "monthlyRevenueChart": "Biểu đồ doanh thu theo tháng", "noRevenue": "Dữ liệu doanh thu sẽ xuất hiện khi có thanh toán.",
+    "quickLinks": "Truy cập nhanh", "jumpToArea": "Đi tới khu vực quản lý"
+  },
+  "roles": { "admin": "Quản trị viên", "host": "Chủ nhà", "guest": "Khách" },
+  "statuses": {
+    "all": "Tất cả", "pending": "Chờ xử lý", "published": "Đang hiển thị", "paused": "Tạm dừng", "draft": "Bản nháp",
+    "rejected": "Bị từ chối", "pending_payment": "Chờ thanh toán", "confirmed": "Đã xác nhận",
+    "cancelled": "Đã hủy", "completed": "Hoàn tất", "success": "Thành công", "failed": "Thất bại",
+    "refunded": "Đã hoàn tiền", "succeeded": "Thành công", "active": "Hoạt động", "blocked": "Bị khóa", "inactive": "Ngừng hoạt động", "visible": "Hiển thị", "hidden": "Đã ẩn"
+  },
+  "users": {
+    "search": "Tìm tên, email hoặc vai trò...", "empty": "Không có người dùng.", "information": "Thông tin người dùng",
+    "editRole": "Sửa vai trò", "editRoleDescription": "Chọn vai trò mới. Quyền quản trị cho phép truy cập toàn bộ trang quản lý.",
+    "roleUpdated": "Đã cập nhật vai trò", "promoteTitle": "Cấp quyền quản trị?",
+    "promoteDescription": "Người dùng này sẽ có toàn quyền truy cập bảng quản trị.", "promoteConfirm": "Xác nhận cấp quyền"
+  },
+  "listings": {
+    "moderation": "Kiểm duyệt chỗ ở", "search": "Tìm ID, tiêu đề, thành phố hoặc chủ nhà...",
+    "empty": "Không có chỗ ở.", "information": "Thông tin chỗ ở", "rejectReason": "Lý do từ chối",
+    "defaultRejectReason": "Nội dung chưa đạt yêu cầu", "moderationMode": "Chế độ kiểm duyệt",
+    "selectedItems": "Đã chọn {count} mục", "processedApprovals": "Đã xử lý {count}/{total} lượt duyệt",
+    "processedRejections": "Đã xử lý {count}/{total} lượt từ chối", "approved": "Đã duyệt chỗ ở",
+    "rejected": "Đã từ chối chỗ ở", "approveFailed": "Duyệt thất bại", "rejectFailed": "Từ chối thất bại",
+    "bulkRejectReason": "Quản trị viên từ chối", "rejectTitle": "Từ chối chỗ ở", "rejectHelp": "Nêu nội dung chủ nhà cần sửa. Có thể để trống.",
+    "reasonPlaceholder": "Lý do từ chối...", "approveTitle": "Duyệt chỗ ở?"
+  },
+  "amenities": {
+    "search": "Tìm tên, slug hoặc nhóm...", "empty": "Không có tiện ích.", "created": "Đã tạo tiện ích",
+    "updated": "Đã cập nhật tiện ích", "activated": "Đã kích hoạt tiện ích", "deactivated": "Đã vô hiệu hóa tiện ích",
+    "createTitle": "Tạo tiện ích", "createDescription": "Tạo tiện ích mới để chủ nhà chọn khi đăng chỗ ở.",
+    "editTitle": "Sửa tiện ích", "groupPlaceholder": "Nhóm (không bắt buộc)", "nameExample": "Wi-Fi, Hồ bơi, Bếp...",
+    "groupExample": "Cơ bản, An toàn, Phòng ngủ...", "deactivateTitle": "Vô hiệu hóa tiện ích?",
+    "activateTitle": "Kích hoạt tiện ích?"
+  },
+  "bookings": { "search": "Tìm ID, khách hoặc chỗ ở...", "empty": "Không có đặt phòng.", "information": "Thông tin đặt phòng", "nightsCount": "{count} đêm", "noPayments": "Không có thanh toán.", "noReview": "Không có đánh giá." },
+  "payments": {
+    "search": "Tìm mã giao dịch, email hoặc mã đặt phòng...", "allStatuses": "Mọi trạng thái",
+    "empty": "Không có giao dịch.", "information": "Thông tin thanh toán", "transactionBooking": "Giao dịch / Đặt phòng"
+  },
+  "ui": {
+    "usersDescription": "Quản lý tài khoản người dùng trong hệ thống Booking BnB.",
+    "listingsDescription": "Xem xét và phê duyệt các chỗ ở do chủ nhà đăng ký.",
+    "amenitiesDescription": "Quản lý các tiện ích sử dụng cho chỗ ở trên hệ thống.",
+    "bookingsDescription": "Quản lý tất cả đơn đặt phòng trên Booking BnB.",
+    "paymentsDescription": "Quản lý giao dịch và trạng thái thanh toán.",
+    "reviewsDescription": "Quản lý và kiểm duyệt đánh giá từ người dùng.",
+    "totalUsers": "Tổng người dùng", "guests": "Khách", "hosts": "Chủ nhà", "admins": "Quản trị viên",
+    "totalAmenities": "Tổng tiện ích", "activeAmenities": "Đang hoạt động", "inactiveAmenities": "Ngừng hoạt động", "mostUsed": "Lượt dùng cao nhất",
+    "totalBookings": "Tổng đơn", "completedBookings": "Hoàn tất", "pendingBookings": "Chờ xử lý", "cancelledBookings": "Đã hủy",
+    "totalPayments": "Tổng giao dịch", "successfulPayments": "Thành công", "pendingPayments": "Chờ xử lý", "totalRevenue": "Thanh toán thành công (VND)",
+    "totalReviews": "Tổng đánh giá", "fiveStars": "5 sao", "visibleReviews": "Đang hiển thị", "hiddenReviews": "Đã ẩn",
+    "allGroups": "Tất cả nhóm", "allRatings": "Tất cả xếp hạng", "joined": "Ngày tham gia", "showingCount": "Hiển thị {count} trên tổng {total} {item}",
+    "accountStatus": "Trạng thái", "more": "Thêm", "filteredMetrics": "Số liệu phản ánh kết quả tìm kiếm và bộ lọc hiện tại."
+  },
+  "reviews": {
+    "search": "Tìm ID, người dùng hoặc chỗ ở...", "empty": "Không có đánh giá.", "information": "Chi tiết đánh giá",
+    "userListing": "Người dùng / Chỗ ở", "deleteTitle": "Xóa đánh giá?",
+    "bulkDeleteTitle": "Xóa các đánh giá đã chọn?", "bulkDeleteDescription": "Xóa vĩnh viễn {count} đánh giá đã chọn?",
+    "hiddenCount": "Đã ẩn {count} đánh giá", "unhiddenCount": "Đã hiện lại {count} đánh giá",
+    "deletedCount": "Đã xóa {count} đánh giá", "bulkHideFailed": "Không thể ẩn đánh giá",
+    "bulkUnhideFailed": "Không thể hiện lại đánh giá", "bulkDeleteFailed": "Không thể xóa đánh giá"
+  }
+}

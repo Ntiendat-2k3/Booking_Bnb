@@ -9,6 +9,7 @@ import Avatar from "@/components/atoms/Avatar";
 import Badge from "@/components/atoms/Badge";
 import Button from "@/components/atoms/Button";
 import EmptyState from "@/components/molecules/EmptyState";
+import { roleLabelKey } from "@/lib/roles";
 
 export default function ProfilePage() {
   const { locale, t } = useLocale();
@@ -23,7 +24,7 @@ export default function ProfilePage() {
       <section className="surface-panel p-8 text-center">
         <Avatar src={user.avatar_url} name={user.full_name || t("common.account")} size={112} className="mx-auto" />
         <h1 className="mt-5 break-words text-2xl font-bold tracking-tight text-ink">{user.full_name}</h1>
-        <div className="mt-3"><Badge tone="brand">{t(user.role === "host" ? "navigation.hostRole" : user.role === "admin" ? "navigation.adminRole" : "navigation.guestRole")}</Badge></div>
+        <div className="mt-3"><Badge tone="brand">{t(roleLabelKey(user.role))}</Badge></div>
         <Button href="/account/settings?tab=profile" variant="secondary" className="mt-6">{t("profile.edit")}</Button>
       </section>
       <section className="surface-panel space-y-4 p-6">

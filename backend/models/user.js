@@ -50,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
       location: { type: DataTypes.STRING(255), allowNull: true },
 
       role: {
-        type: DataTypes.ENUM("guest", "host", "admin"),
+        type: DataTypes.ENUM("guest", "host", "admin", "super_admin"),
         allowNull: false,
         defaultValue: "guest",
       },

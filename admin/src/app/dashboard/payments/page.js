@@ -1,71 +1,65 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import AdminShell from "@/components/AdminShell";
+import { useTranslations } from "@/i18n/LocaleProvider";
+import { useCallback, useEffect, useState } from "react";
+import AdminShell from "@/components/templates/AdminShell";
 import { adminService } from "@/services/adminService";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import { CreditCard } from "lucide-react";
-import RipleLoading from "@/components/loading/RipleLoading";
-import AdminPagination from "@/components/admin/AdminPagination";
+import Input from "@/components/atoms/Input";
+import Select from "@/components/atoms/Select";
+import { CreditCard, ArrowLeftRight, CircleCheck, Clock3, Banknote, Search } from "lucide-react";
+import RipleLoading from "@/components/atoms/RipleLoading";
+import AdminPagination from "@/components/molecules/AdminPagination";
+import AdminPageHeader from "@/components/molecules/AdminPageHeader";
+import StatCard from "@/components/molecules/StatCard";
 
-import PaymentsTable from "@/components/admin/payments/PaymentsTable";
-import PaymentDetailModal from "@/components/admin/payments/PaymentDetailModal";
+import PaymentsTable from "@/components/organisms/payments/PaymentsTable";
+import PaymentDetailModal from "@/components/organisms/payments/PaymentDetailModal";
+import { toast } from "sonner";
+import useDebouncedValue from "@/hooks/useDebouncedValue";
 
 const PAGE_SIZE = 10;
 
 export default function Page() {
+  const t = useTranslations();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
+  const [meta, setMeta] = useState({ total: 0, total_pages: 1, summary: {} });
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q);
   const [page, setPage] = useState(1);
   const [filterSt, setFilterSt] = useState("all");
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detail, setDetail] = useState(null);
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    let base = items;
-    if (filterSt !== "all") {
-      base = base.filter((p) => p.status === filterSt);
-    }
-    if (!s) return base;
-    return base.filter((p) => {
-      return (
-        String(p.id).includes(s) ||
-        String(p.booking_id || "").includes(s) ||
-        (p.transaction_id || "").toLowerCase().includes(s) ||
-        (p.user?.email || "").toLowerCase().includes(s)
-      );
-    });
-  }, [items, q, filterSt]);
+  const filtered = items;
 
   useEffect(() => {
     setPage(1);
-  }, [q]);
+  }, [q, filterSt]);
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pagedItems = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
-  }, [filtered, page]);
+  const pageCount = Math.max(1, meta.total_pages);
+  const pagedItems = items;
 
-  async function loadItems() {
+  const loadItems = useCallback(async (signal) => {
     try {
-      const res = await adminService.getPayments(filterSt);
-      setItems(res.data?.items || []);
+      const res = await adminService.getPayments({ status: filterSt, q: debouncedQ, page, limit: PAGE_SIZE, signal });
+      if (!signal?.aborted) {
+        setItems(res.data?.items || []);
+        setMeta(res.data?.meta || { total: 0, total_pages: 1, summary: {} });
+        if (page > (res.data?.meta?.total_pages || 1)) setPage(Math.max(1, res.data.meta.total_pages));
+      }
     } catch (e) {
-      console.error(e);
+      if (!signal?.aborted && e?.name !== "AbortError") toast.error(e?.message || t("common.loadFailed", { item: t("nav.payments") }));
     }
-  }
+  }, [filterSt, debouncedQ, page, t]);
 
   useEffect(() => {
+    const controller = new AbortController();
     let alive = true;
     async function init() {
       try {
-        await loadItems();
+        await loadItems(controller.signal);
       } finally {
         if (alive) setLoading(false);
       }
@@ -73,15 +67,9 @@ export default function Page() {
     init();
     return () => {
       alive = false;
+      controller.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterSt]);
-
-  async function refresh() {
-    setLoading(true);
-    await loadItems();
-    setLoading(false);
-  }
+  }, [loadItems]);
 
   function openDetail(p) {
     setDetail(p);
@@ -93,35 +81,24 @@ export default function Page() {
   return (
     <AdminShell>
       <div className="space-y-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <CreditCard className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight">
-                Payments
-              </h1>
-            </div>
-          </div>
+        <AdminPageHeader icon={CreditCard} title={t("nav.payments")} description={t("ui.paymentsDescription")}>
+          <label className="admin-search"><Search size={18} aria-hidden="true" /><Input aria-label={t("payments.search")} value={q} maxLength={255} onChange={(e) => setQ(e.target.value)} placeholder={t("payments.search")} /></label>
+          <Select aria-label={t("common.status")} value={filterSt} onChange={(e) => setFilterSt(e.target.value)}>
+            <option value="all">{t("payments.allStatuses")}</option>
+            <option value="pending">{t("statuses.pending")}</option>
+            <option value="succeeded">{t("statuses.succeeded")}</option>
+            <option value="failed">{t("statuses.failed")}</option>
+            <option value="refunded">{t("statuses.refunded")}</option>
+          </Select>
+        </AdminPageHeader>
 
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <div className="w-full md:w-72">
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="Search tx_id, email, bk_id..."
-              />
-            </div>
-            <Select value={filterSt} onChange={(e) => setFilterSt(e.target.value)}>
-              <option value="all">All status</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
-            </Select>
-          </div>
+        <div className="admin-stats">
+          <StatCard icon={ArrowLeftRight} label={t("ui.totalPayments")} value={meta.total} />
+          <StatCard icon={CircleCheck} label={t("ui.successfulPayments")} value={meta.summary?.succeeded || 0} />
+          <StatCard icon={Clock3} label={t("ui.pendingPayments")} value={meta.summary?.pending || 0} tone="amber" />
+          <StatCard icon={Banknote} label={t("ui.totalRevenue")} value={new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(meta.summary?.revenue || 0)} />
         </div>
+        {q.trim() || filterSt !== "all" ? <p className="text-xs ui-muted">{t("ui.filteredMetrics")}</p> : null}
 
         <PaymentsTable
           pagedItems={pagedItems}
@@ -129,7 +106,7 @@ export default function Page() {
           openDetail={openDetail}
         />
 
-        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} />
+        <AdminPagination pageCount={pageCount} page={page} onPageChange={setPage} total={meta.total} itemLabel={t("nav.payments")} />
       </div>
 
       <PaymentDetailModal

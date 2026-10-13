@@ -276,6 +276,60 @@ test("Xóa ảnh chỉ enqueue Cloudinary sau khi chứng minh namespace/chủ s
   assert.equal(db.rows("BackgroundJob").length, 1);
 });
 
+test("Host xóa vĩnh viễn phòng đã đăng khi chưa có đơn đặt", async () => {
+  const publicId = `booking_bnb/listings/${listingId}/cover`;
+  const db = fixture({
+    Booking: [], Payment: [],
+    ListingImage: [{ id: "image", listing_id: listingId, public_id: publicId }],
+    ListingAmenity: [{ id: "amenity-link", listing_id: listingId, amenity_id: guestId }],
+    Favorite: [{ id: "favorite-link", listing_id: listingId, user_id: guestId }],
+    UploadedAsset: [{ public_id: publicId, user_id: hostId, listing_id: listingId, metadata: {}, delete_requested: false }],
+  });
+  const service = loadBackend("services/host_listing.service.js", db.models);
+
+  await service.deleteListing({ id: hostId, role: "host" }, listingId);
+
+  for (const name of ["Listing", "ListingImage", "ListingAmenity", "Favorite"]) assert.equal(db.rows(name).length, 0);
+  assert.equal(db.rows("UploadedAsset")[0].listing_id, null);
+  assert.equal(db.rows("UploadedAsset")[0].delete_requested, true);
+  assert.equal(db.rows("BackgroundJob")[0].type, "cloudinary_delete");
+});
+
+test("Host không thể xóa phòng của người khác hoặc phòng đã có lịch sử đặt", async () => {
+  const foreignDb = fixture({ Booking: [], Payment: [] });
+  const foreignService = loadBackend("services/host_listing.service.js", foreignDb.models);
+  await assert.rejects(foreignService.deleteListing({ id: guestId, role: "host" }, listingId), { status: 403 });
+  assert.equal(foreignDb.rows("Listing").length, 1);
+
+  const bookedDb = fixture();
+  const bookedService = loadBackend("services/host_listing.service.js", bookedDb.models);
+  await assert.rejects(bookedService.deleteListing({ id: hostId, role: "host" }, listingId), { status: 409 });
+  assert.equal(bookedDb.rows("Listing").length, 1);
+  assert.equal(bookedDb.rows("Booking").length, 1);
+
+  const reviewedDb = fixture({ Booking: [], Payment: [], Review: [{ id: "review", listing_id: listingId, deleted_at: new Date() }] });
+  const reviewedService = loadBackend("services/host_listing.service.js", reviewedDb.models);
+  await assert.rejects(reviewedService.deleteListing({ id: hostId, role: "host" }, listingId), { status: 409 });
+  assert.equal(reviewedDb.rows("Listing").length, 1);
+});
+
+test("Xóa phòng lỗi thì hoàn tác cả liên kết và lệnh xóa ảnh", async () => {
+  const publicId = `booking_bnb/listings/${listingId}/cover`;
+  const db = fixture({
+    Booking: [], Payment: [],
+    ListingImage: [{ id: "image", listing_id: listingId, public_id: publicId }],
+    UploadedAsset: [{ public_id: publicId, user_id: hostId, listing_id: listingId, metadata: {}, delete_requested: false }],
+  });
+  const service = loadBackend("services/host_listing.service.js", db.models);
+  db.failNextWrite("Listing");
+
+  await assert.rejects(service.deleteListing({ id: hostId, role: "host" }, listingId));
+  assert.equal(db.rows("Listing").length, 1);
+  assert.equal(db.rows("ListingImage").length, 1);
+  assert.equal(db.rows("UploadedAsset")[0].listing_id, listingId);
+  assert.equal(db.rows("BackgroundJob").length, 0);
+});
+
 test("Amenities không hợp lệ hoặc insert lỗi giữ nguyên liên kết cũ", async () => {
   const db = fixture({ Listing: [{ ...listing, status: "draft" }], Amenity: [{ id: guestId, is_active: true }], ListingAmenity: [{ id: "old", listing_id: listingId, amenity_id: guestId }] });
   const service = loadBackend("services/host_listing.service.js", db.models);
@@ -283,6 +337,52 @@ test("Amenities không hợp lệ hoặc insert lỗi giữ nguyên liên kết 
   db.failNextWrite("ListingAmenity");
   await assert.rejects(service.setAmenities({ id: hostId, role: "host" }, listingId, [guestId]));
   assert.equal(db.rows("ListingAmenity")[0].id, "old");
+});
+
+test("Sửa phòng đã duyệt chuyển sang chờ duyệt và chỉ admin mới công khai lại", async () => {
+  const db = fixture({
+    ListingImage: [{ id: "cover", listing_id: listingId, is_cover: true }],
+    ListingAmenity: [{ id: "amenity-link", listing_id: listingId, amenity_id: guestId }],
+    Amenity: [{ id: guestId, is_active: true }],
+  });
+  const hostService = loadBackend("services/host_listing.service.js", db.models);
+  const adminService = loadBackend("services/admin_listing.service.js", db.models);
+
+  await hostService.update({ id: hostId, role: "host" }, listingId, { title: "Tiêu đề mới" });
+  assert.equal(db.rows("Listing")[0].status, "pending");
+  assert.equal(db.rows("Listing")[0].title, "Tiêu đề mới");
+  await hostService.setAmenities({ id: hostId, role: "host" }, listingId, [guestId]);
+  assert.equal(db.rows("Listing")[0].status, "pending");
+
+  await adminService.approve(listingId);
+  assert.equal(db.rows("Listing")[0].status, "published");
+});
+
+test("Sửa ảnh phòng đã duyệt cũng yêu cầu duyệt lại", async () => {
+  const db = fixture({
+    ListingImage: [{ id: "first", listing_id: listingId, is_cover: true }, { id: "second", listing_id: listingId, is_cover: false }],
+  });
+  const imageService = loadBackend("services/host_listing_image.service.js", db.models, { "services/cloudinary.service.js": {} });
+
+  await imageService.setCover({ id: hostId, role: "host" }, listingId, "second");
+  assert.equal(db.rows("Listing")[0].status, "pending");
+  await imageService.remove({ id: hostId, role: "host" }, listingId, "first");
+  assert.equal(db.rows("ListingImage").length, 1);
+
+  const uploadDb = fixture({
+    ListingImage: [{ id: "cover", listing_id: listingId, is_cover: true }],
+    UploadedAsset: [{ public_id: "owned", user_id: hostId, listing_id: listingId, metadata: { url: "https://trusted", resource_type: "image" }, delete_requested: false }],
+  });
+  const uploadService = loadBackend("services/host_listing_image.service.js", uploadDb.models, { "services/cloudinary.service.js": {} });
+  await uploadService.attach({ id: hostId, role: "host" }, listingId, { public_id: "owned" });
+  assert.equal(uploadDb.rows("Listing")[0].status, "pending");
+});
+
+test("Admin không duyệt phòng thiếu ảnh hoặc tiện nghi sau khi host sửa", async () => {
+  const db = fixture({ Listing: [{ ...listing, status: "pending" }] });
+  const adminService = loadBackend("services/admin_listing.service.js", db.models);
+  await assert.rejects(adminService.approve(listingId), { status: 400 });
+  assert.equal(db.rows("Listing")[0].status, "pending");
 });
 
 test("Tạo payment method đồng thời chỉ có một default; xóa default chọn lại", async () => {

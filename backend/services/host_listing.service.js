@@ -4,12 +4,17 @@ const {
   ListingImage,
   Amenity,
   ListingAmenity,
+  Favorite,
+  Booking,
+  Review,
+  UploadedAsset,
   sequelize,
   Sequelize,
 } = require("../models");
 const { enqueueDeletion } = require("./uploaded_asset.service");
 
 const { isUuid, pick } = require("../utils/validators");
+const { isAdminRole } = require("../utils/roles");
 
 function normalizeNumber(v, { int = false, defaultValue } = {}) {
   if (v === undefined) return undefined;
@@ -72,7 +77,7 @@ const UPDATABLE_FIELDS = [
 module.exports = {
   async listForUser(user, { status } = {}) {
     const where = { deleted_at: null };
-    if (user.role !== "admin") where.host_id = user.id;
+    if (!isAdminRole(user.role)) where.host_id = user.id;
     if (status && status !== "all") where.status = status;
 
     const { literal } = Sequelize;
@@ -147,7 +152,7 @@ module.exports = {
       throw err;
     }
 
-    if (user.role !== "admin" && listing.host_id !== user.id) {
+    if (!isAdminRole(user.role) && listing.host_id !== user.id) {
       const err = new Error("Forbidden");
       err.status = 403;
       throw err;
@@ -198,13 +203,15 @@ module.exports = {
   },
 
   async update(user, id, body) {
-    const { listing } = await this.getByIdForUser(user, id);
-
-    this.assertEditable(user, listing);
-
     let data = pick(body || {}, UPDATABLE_FIELDS);
     data = sanitizeListingData(data);
-    await listing.update(data);
+    const listing = await sequelize.transaction(async (transaction) => {
+      const { listing: current } = await this.getByIdForUser(user, id, { transaction, lock: transaction.LOCK.UPDATE, include: [] });
+      this.assertEditable(user, current);
+      await current.update(data, { transaction });
+      await this.requireReviewAfterEdit(current, transaction);
+      return current;
+    });
     return { listing };
   },
 
@@ -218,6 +225,7 @@ module.exports = {
       }
       await ListingAmenity.destroy({ where: { listing_id: id }, transaction });
       if (ids.length) await ListingAmenity.bulkCreate(ids.map((amenityId) => ({ listing_id: id, amenity_id: amenityId })), { transaction });
+      await this.requireReviewAfterEdit(listing, transaction);
     });
     return this.getByIdForUser(user, id);
   },
@@ -225,7 +233,7 @@ module.exports = {
   async submitForReview(user, id) {
     const { listing } = await this.getByIdForUser(user, id);
 
-    if (user.role !== "admin") {
+    if (!isAdminRole(user.role)) {
       if (!["draft", "rejected"].includes(listing.status)) {
         const err = new Error("Only draft/rejected can be submitted");
         err.status = 400;
@@ -277,11 +285,16 @@ module.exports = {
     return { listing };
   },
 
+  /** Xóa hẳn phòng chưa phát sinh lịch sử đặt phòng; giữ nguyên dữ liệu giao dịch khi đã có khách đặt. */
   async deleteListing(user, id) {
     return sequelize.transaction(async (t) => {
       const { listing } = await this.getByIdForUser(user, id, { transaction: t, lock: t.LOCK.UPDATE, include: [] });
-      if (user.role !== "admin" && !["draft", "rejected", "paused", "pending"].includes(listing.status)) {
-        throw Object.assign(new Error("Listing cannot be deleted in this status"), { status: 400 });
+      const [hasBookings, hasReviews] = await Promise.all([
+        Booking.count({ where: { listing_id: id }, transaction: t }),
+        Review.count({ where: { listing_id: id }, paranoid: false, transaction: t }),
+      ]);
+      if (hasBookings || hasReviews) {
+        throw Object.assign(new Error("Không thể xóa vĩnh viễn phòng đã có đơn đặt hoặc đánh giá. Hãy tạm dừng phòng để ngừng nhận khách."), { status: 409 });
       }
       const images = await ListingImage.findAll({
         where: { listing_id: id },
@@ -296,16 +309,24 @@ module.exports = {
         where: { listing_id: id },
         transaction: t,
       });
-
-      await listing.update({ deleted_at: new Date() }, { transaction: t });
+      await Favorite.destroy({ where: { listing_id: id }, transaction: t });
+      await UploadedAsset.update({ listing_id: null }, { where: { listing_id: id }, transaction: t });
+      await listing.destroy({ force: true, transaction: t });
 
       return { ok: true };
     });
   },
 
   assertEditable(user, listing) {
-    if (user.role !== "admin" && !["draft", "rejected", "paused"].includes(listing.status)) {
+    if (!isAdminRole(user.role) && !["draft", "rejected", "paused", "published", "pending"].includes(listing.status)) {
       throw Object.assign(new Error("Thông tin đăng tải không thể chỉnh sửa ở trạng thái này"), { status: 400 });
+    }
+  },
+
+  /** Mọi thay đổi đối với phòng đã từng hiển thị phải được duyệt trước khi công khai lại. */
+  async requireReviewAfterEdit(listing, transaction) {
+    if (["published", "paused"].includes(listing.status)) {
+      await listing.update({ status: "pending", reject_reason: null }, { transaction });
     }
   },
 };

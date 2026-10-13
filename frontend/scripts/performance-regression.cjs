@@ -66,8 +66,15 @@ function hookHarness() {
   let pending = [];
   const hooks = {
     ...React,
-    useMemo: (factory) => factory(),
-    useCallback: (callback) => callback,
+    useMemo(factory, dependencies) {
+      const index = cursor++;
+      const previous = slots[index];
+      if (previous && dependencies?.every((value, at) => Object.is(value, previous.dependencies?.[at]))) return previous.value;
+      const value = factory();
+      slots[index] = { value, dependencies };
+      return value;
+    },
+    useCallback(callback, dependencies) { return hooks.useMemo(() => callback, dependencies); },
     useState(initial) {
       const index = cursor++;
       slots[index] ||= { value: typeof initial === "function" ? initial() : initial };
@@ -143,7 +150,7 @@ function pageMocks(serverGetJson) {
     "@/components/atoms/Button": "Button", "@/components/molecules/ImageCarousel": "ImageCarousel",
     "@/components/ListingCardSkeleton": "ListingCardSkeleton", "@/components/ListingCard": "ListingCard",
     "@/components/Search/SearchFilters": "SearchFilters", "@/components/Pagination": "Pagination",
-    "@/components/Search/SearchResultsMap": "SearchResultsMap", "@/components/molecules/EmptyState": "EmptyState",
+    "@/components/Search/SearchResultsLayout": "SearchResultsLayout", "@/components/molecules/EmptyState": "EmptyState",
     "@/lib/serverApi": { serverGetJson }, "@/lib/seo": {},
     "@/i18n/server": { getServerTranslator: async () => ({ t }) },
   };
@@ -196,7 +203,7 @@ test("Thành phố rỗng dùng truy vấn dự phòng; lỗi API vẫn giữ he
 test("Tìm kiếm giữ ngày nhận phòng, khách, vị trí, phân trang và lấy API mới", async () => {
   const calls = [];
   const load = createLoader(pageMocks(async (...args) => { calls.push(args); return { data: { items: [listing], meta: { page: 2, total: 30 } } }; }));
-  const query = { city: "Hà Nội", guests: "3", lat: "0", lng: "0", page: "2", check_in: "2026-12-01", check_out: "2026-12-04" };
+  const query = { city: "Hà Nội", guests: "3", lat: "0", lng: "0", map_lat: "21.0278", map_lng: "105.8342", page: "2", check_in: "2026-12-01", check_out: "2026-12-04" };
   const Search = load("app/search/page.jsx").default;
   const nodes = elements(await Search({ searchParams: Promise.resolve(query) }));
   await Search({ searchParams: Promise.resolve(query) });
@@ -204,13 +211,17 @@ test("Tìm kiếm giữ ngày nhận phòng, khách, vị trí, phân trang và 
   assert(calls.every((call) => call.length === 1));
   const apiQuery = new URL(calls[0][0], "http://fixture").searchParams;
   for (const key of ["city", "guests", "lat", "lng", "page"]) assert.equal(apiQuery.get(key), query[key]);
-  assert.equal(nodes.find((node) => node.type === "ListingCard").props.checkIn, query.check_in);
-  assert.equal(nodes.find((node) => node.type === "ListingCard").props.checkOut, query.check_out);
-  const map = nodes.find((node) => node.type === "SearchResultsMap");
+  assert.equal(apiQuery.has("map_lat"), false);
+  assert.equal(apiQuery.has("map_lng"), false);
+  const map = nodes.find((node) => node.type === "SearchResultsLayout");
+  assert.equal(map.props.checkIn, query.check_in);
+  assert.equal(map.props.checkOut, query.check_out);
   assert.equal(map.props.items[0].lat, 0);
   assert.equal(map.props.userLat, "0");
+  assert.equal(map.props.mapLat, query.map_lat);
+  assert.equal(map.props.mapLng, query.map_lng);
   assert(!Object.hasOwn(map.props.items[0], "host"));
-  assert(!Object.hasOwn(nodes.find((node) => node.type === "Pagination").props.baseParams, "page"));
+  assert(!Object.hasOwn(map.props.pagination.props.baseParams, "page"));
 });
 
 test("Ô lịch dùng chung định dạng, locale và chỉ tải bộ lịch khi mở", () => {
@@ -276,7 +287,7 @@ test("Lịch tìm kiếm giữ ngày ISO, địa điểm và số khách; xóa n
   const render = () => harness.render(() => Search());
   const initial = elements(render());
   const destination = constants.POPULAR_DESTINATIONS[0];
-  initial.find((node) => node.props?.name === "city").props.onChange({ target: { value: t(destination.labelKey) } });
+  initial.find((node) => node.props?.name === "city").props.onChange(t(destination.labelKey));
   initial.find((node) => node.props?.name === "guests").props.onChange({ target: { value: "3" } });
   initial.find((node) => node.type === "DateField").props.onChange(new Date(2030, 9, 1));
   elements(render()).find((node) => node.props?.name === "check_out").props.onChange(new Date(2030, 9, 3));
@@ -290,6 +301,36 @@ test("Lịch tìm kiếm giữ ngày ISO, địa điểm và số khách; xóa n
   render().props.onSubmit({ preventDefault() {} });
   assert.equal(new URL(pushes[1], "http://fixture").searchParams.has("check_in"), false);
   assert.equal(new URL(pushes[1], "http://fixture").searchParams.has("check_out"), false);
+});
+
+test("Chọn gợi ý Mapbox chỉ dùng tọa độ để căn bản đồ, không đổi bộ lọc vị trí", () => {
+  const harness = hookHarness();
+  const pushes = [];
+  const Search = createLoader({
+    react: harness.hooks,
+    "next/navigation": { useRouter: () => ({ push: (url) => pushes.push(url) }) },
+    "@/i18n/LocaleProvider": { useTranslations: () => t },
+    "@/components/atoms/InputField": "InputField", "@/components/atoms/Button": "Button",
+    "@/components/molecules/DateField": "DateField",
+  })("components/Search/SearchPills.jsx").default;
+  const render = () => harness.render(() => Search());
+  const cityField = () => elements(render()).find((node) => node.props?.name === "city");
+  cityField().props.onChange("Hà Nội");
+  cityField().props.onSelect({ city: "Hà Nội", lat: "21.0278", lng: "105.8342" });
+  render().props.onSubmit({ preventDefault() {} });
+  const selected = new URL(pushes[0], "http://fixture").searchParams;
+  assert.equal(selected.get("city"), "Hà Nội");
+  assert.equal(selected.get("map_lat"), "21.0278");
+  assert.equal(selected.get("map_lng"), "105.8342");
+  assert.equal(selected.has("lat"), false);
+  assert.equal(selected.has("lng"), false);
+
+  cityField().props.onChange("Đà Nẵng");
+  render().props.onSubmit({ preventDefault() {} });
+  const edited = new URL(pushes[1], "http://fixture").searchParams;
+  assert.equal(edited.get("city"), "Đà Nẵng");
+  assert.equal(edited.has("map_lat"), false);
+  assert.equal(edited.has("map_lng"), false);
 });
 
 test("Ngày nhận phòng mới xóa ngày trả phòng cũ không còn hợp lệ", () => {
@@ -516,12 +557,17 @@ for (const filename of ["components/MapboxStaticMap.jsx", "components/Search/Sea
       const sdk = { Map, Marker, NavigationControl: class {} };
       const mocks = {
         react: harness.hooks, "mapbox-gl": { __esModule: true },
+        "next-themes": { useTheme: () => ({ resolvedTheme: "light" }) },
         "@/hooks/useInViewport": { useInViewport: (ref) => ({ visible, viewportRef: (node) => { ref.current = node; } }) },
         "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn", t }), useTranslations: () => t },
         "./MapPopupCard": "MapPopupCard",
       };
       Object.defineProperty(mocks["mapbox-gl"], "default", { enumerable: true, get() { imports++; return sdk; } });
-      const Component = createLoader(mocks, { process: { env: { NEXT_PUBLIC_MAPBOX_TOKEN: "fixture-token" } } })(filename).default;
+      const colors = { canvas: "247 244 237", surface: "255 253 248", positive: "47 106 79", accent: "34 55 39", line: "223 221 210", "muted-surface": "239 235 225", ink: "29 40 28", "muted-ink": "91 101 89" };
+      const Component = createLoader(mocks, {
+        process: { env: { NEXT_PUBLIC_MAPBOX_TOKEN: "fixture-token" } },
+        getComputedStyle: () => ({ getPropertyValue: (name) => colors[name.replace("--color-", "")] || "" }),
+      })(filename).default;
       const props = { lat: 0, lng: 0, items: [listing], userLat: 0, userLng: 0 };
       const render = () => harness.render(() => Component(props));
       const tree = render();
@@ -537,6 +583,255 @@ for (const filename of ["components/MapboxStaticMap.jsx", "components/Search/Sea
     }
   });
 }
+
+test("Card và bản đồ đồng bộ hover, chọn phòng mà vẫn giữ link chi tiết riêng", () => {
+  const harness = hookHarness();
+  let compact = false;
+  const Layout = createLoader({
+    react: harness.hooks,
+    "@/components/ListingCard": "ListingCard",
+    "./SearchMapPanel": "SearchMapPanel",
+  }, { window: { matchMedia: () => ({ matches: compact }) } })("components/Search/SearchResultsLayout.jsx").default;
+  const render = () => elements(harness.render(() => Layout({ items: [listing] })));
+  let nodes = render();
+  nodes.find((node) => node.type === "ListingCard").props.onMapHover(listing.id);
+  nodes = render();
+  assert.equal(nodes.find((node) => node.type === "SearchMapPanel").props.hoveredId, listing.id);
+  nodes.find((node) => node.type === "SearchMapPanel").props.onMarkerSelect(listing.id);
+  nodes = render();
+  assert.equal(nodes.find((node) => node.type === "ListingCard").props.mapHighlighted, true);
+  nodes.find((node) => node.type === "ListingCard").props.onMapSelect(listing.id);
+  nodes = render();
+  const map = nodes.find((node) => node.type === "SearchMapPanel");
+  assert.equal(map.props.selectedId, listing.id);
+  assert.equal(map.props.focusRequest.sequence, 1);
+  compact = true;
+  nodes.find((node) => node.type === "ListingCard").props.onMapSelect(listing.id);
+  assert.equal(render().find((node) => node.type === "SearchMapPanel").props.expanded, true);
+});
+
+test("Camera và khoảng đệm bản đồ theo desktop, tablet, mobile", () => {
+  const { getSearchMapCameraProfile, getSearchMapFitPadding, getSearchMapFocusOffset, canUseMobileBuildings } = dataLoader("components/Search/searchMapCamera.js");
+  for (const [width, pitch, buildingZoom, duration] of [[1280, 30, 14, 600], [800, 25, 15, 500], [390, 18, 16, 350]]) {
+    const profile = getSearchMapCameraProfile(width);
+    assert.equal(profile.pitch, pitch);
+    assert.equal(profile.buildingZoom, buildingZoom);
+    assert.equal(profile.duration, duration);
+  }
+  const portrait = { clientWidth: 360, clientHeight: 600 };
+  const landscape = { clientWidth: 800, clientHeight: 400 };
+  assert(getSearchMapFitPadding(portrait).top > getSearchMapFitPadding(portrait).bottom);
+  assert.equal(getSearchMapFocusOffset(portrait, true)[1], -140);
+  assert(getSearchMapFocusOffset(landscape, true)[0] > 0);
+  assert.equal(canUseMobileBuildings({ deviceMemory: 2, hardwareConcurrency: 8 }), false);
+  assert.equal(canUseMobileBuildings({ deviceMemory: 8, hardwareConcurrency: 8, connection: { saveData: true } }), false);
+});
+
+test("Marker giữ giá đầy đủ và đổi 2D/3D không tạo lại map hoặc ghim", async () => {
+  const harness = hookHarness();
+  let mapCount = 0, markerCount = 0, removedMarkers = 0;
+  let reducedMotion = false;
+  let resolvedTheme = "light";
+  let currentZoom = 11, currentPitch = 0, isMoving = false, now = 0, resizeCount = 0;
+  let resizeObserver;
+  const windowListeners = {}, frames = [];
+  const browser = {
+    innerWidth: 1280,
+    navigator: { deviceMemory: 8, hardwareConcurrency: 8, connection: { saveData: false } },
+    matchMedia: () => ({ matches: reducedMotion }),
+    addEventListener(name, listener) { windowListeners[name] = listener; },
+    removeEventListener(name) { delete windowListeners[name]; },
+    requestAnimationFrame(callback) { frames.push(callback); return frames.length; },
+    cancelAnimationFrame() {},
+    performance: { now: () => now },
+  };
+  class ResizeObserver {
+    constructor(callback) { this.callback = callback; resizeObserver = this; }
+    observe() {}
+    disconnect() {}
+  }
+  const flushResize = () => { resizeObserver.callback(); frames.shift()?.(); };
+  const markerElements = [];
+  const camera = [], configurations = [];
+  let map;
+  class Element {
+    constructor() {
+      this.dataset = {};
+      this.listeners = {};
+      this.children = [];
+      this.clientWidth = 360;
+      this.clientHeight = 520;
+      this.classList = { toggle() {} };
+    }
+    append(child) { this.children.push(child); }
+    addEventListener(name, listener) { this.listeners[name] = listener; }
+    setAttribute(name, value) { this[name] = value; }
+  }
+  class Map {
+    constructor(options) {
+      mapCount++;
+      this.options = options;
+      this.config = { ...options.config.basemap };
+      this.listeners = {};
+      this.touchZoomRotate = { disableRotation: () => { this.touchRotationDisabled = true; } };
+      this.keyboard = { disableRotation: () => { this.keyboardRotationDisabled = true; } };
+      map = this;
+    }
+    addControl() {}
+    on(name, listener) { this.listeners[name] = listener; }
+    off(name, listener) { if (this.listeners[name] === listener) delete this.listeners[name]; }
+    isStyleLoaded() { return true; }
+    getConfigProperty(_, name) { return this.config[name]; }
+    setConfigProperty(...args) { configurations.push(args); this.config[args[1]] = args[2]; }
+    getZoom() { return currentZoom; }
+    getPitch() { return currentPitch; }
+    getBearing() { return 0; }
+    isMoving() { return isMoving; }
+    resize() { resizeCount++; }
+    easeTo(options) {
+      camera.push(options);
+      if (options.zoom !== undefined) currentZoom = options.zoom;
+      if (options.pitch !== undefined) currentPitch = options.pitch;
+    }
+    fitBounds(_, options) { this.fitOptions = options; }
+    remove() { this.removed = true; }
+  }
+  class Marker {
+    constructor({ element }) { this.element = element; markerElements.push(element); markerCount++; }
+    setLngLat() { return this; }
+    addTo() { return this; }
+    remove() { removedMarkers++; }
+  }
+  const colors = { canvas: "247 244 237", surface: "255 253 248", positive: "47 106 79", accent: "34 55 39", line: "223 221 210", "muted-surface": "239 235 225", ink: "29 40 28", "muted-ink": "91 101 89" };
+  const sdk = { Map, Marker, NavigationControl: class {} };
+  const Component = createLoader({
+    react: harness.hooks,
+    "mapbox-gl": { __esModule: true, default: sdk },
+    "next-themes": { useTheme: () => ({ resolvedTheme }) },
+    "@/hooks/useInViewport": { useInViewport: (ref) => ({ visible: true, viewportRef: (node) => { ref.current = node; } }) },
+    "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn", t }) },
+    "@/components/atoms/Button": "Button",
+    "./MapPopupCard": "MapPopupCard",
+  }, {
+    process: { env: { NEXT_PUBLIC_MAPBOX_TOKEN: "fixture-token" } },
+    document: { createElement: () => new Element() },
+    window: browser,
+    ResizeObserver,
+    getComputedStyle: () => ({ colorScheme: resolvedTheme, getPropertyValue: (name) => colors[name.replace("--color-", "")] || "" }),
+  })("components/Search/SearchResultsMap.jsx").default;
+  let props = { items: [listing], onMarkerHover: (id) => { props = { ...props, hoveredId: id }; }, onMarkerSelect: (id) => { props = { ...props, selectedId: id }; } };
+  const render = () => {
+    const tree = harness.render(() => Component(props));
+    elements(tree).find((node) => node.ref)?.ref({});
+    return elements(tree);
+  };
+  render(); harness.flush(); await tick();
+  map.listeners.load();
+  render(); harness.flush(); await tick();
+  assert.equal(mapCount, 1);
+  assert.equal(markerCount, 1);
+  map.listeners.error();
+  assert.equal(render().some((node) => node.props?.role === "alert"), false);
+  assert(map.options.style.includes("standard"));
+  assert.equal(map.options.pitch, 0);
+  assert.equal(map.options.bearing, 0);
+  assert.equal(map.options.dragRotate, false);
+  assert.equal(map.options.touchPitch, false);
+  assert.equal(map.touchRotationDisabled, true);
+  assert.equal(map.keyboardRotationDisabled, true);
+  assert.equal(map.fitOptions.retainPadding, false);
+  assert(map.fitOptions.padding.top > map.fitOptions.padding.bottom);
+  const price = dataLoader("lib/format.js").formatVND(listing.price_per_night);
+  assert.equal(map.options.config.basemap.colorLand, "rgb(247, 244, 237)");
+  assert.equal(map.options.config.basemap.lightPreset, "day");
+  assert.equal(map.options.config.basemap.colorPlaceLabels, "rgb(91, 101, 89)");
+  assert.equal(markerElements[0].children[0].textContent, price);
+  assert.match(price, /980.000/);
+  markerElements[0].children[0].listeners.pointerenter();
+  render(); harness.flush();
+  assert.equal(markerCount, 1);
+  assert.equal(markerElements[0].children[0].dataset.hovered, "true");
+  markerElements[0].children[0].listeners.click({ preventDefault() {}, stopPropagation() {} });
+  assert.equal(camera.at(-1).center[0], listing.lng);
+  assert.equal(camera.at(-1).center[1], listing.lat);
+  assert.equal(camera.at(-1).zoom, 15);
+  assert(camera.at(-1).offset[1] < 0);
+  let nodes = render(); harness.flush();
+  assert.equal(markerElements[0].children[0].dataset.selected, "true");
+  assert.equal(nodes.find((node) => node.type === "MapPopupCard").props.listing.id, listing.id);
+  assert.equal(markerCount, 1);
+  let toggle = nodes.find((node) => node.type === "Button" && node.props["aria-pressed"] === false);
+  toggle.props.onClick();
+  nodes = render(); harness.flush();
+  assert.equal(nodes.find((node) => node.type === "Button").props["aria-pressed"], true);
+  assert.equal(camera.at(-1).pitch, 30);
+  assert.equal(camera.at(-1).duration, 600);
+  assert(configurations.some((entry) => entry[1] === "show3dObjects" && entry[2] === true));
+  assert.equal(map.config.show3dBuildings, true);
+  currentZoom = 13;
+  map.listeners.zoom();
+  assert.equal(map.config.show3dBuildings, false);
+  currentZoom = 14;
+  map.listeners.zoom();
+  assert.equal(map.config.show3dBuildings, true);
+  toggle = nodes.find((node) => node.type === "Button");
+  toggle.props.onClick();
+  render(); harness.flush();
+  assert.equal(camera.at(-1).pitch, 0);
+  browser.innerWidth = 800;
+  flushResize();
+  assert.equal(currentPitch, 0);
+  render().find((node) => node.type === "Button").props.onClick();
+  render(); harness.flush();
+  assert.equal(currentPitch, 25);
+  assert.equal(camera.at(-1).duration, 500);
+  assert.equal(map.config.show3dBuildings, false);
+  currentZoom = 15;
+  map.listeners.zoom();
+  assert.equal(map.config.show3dBuildings, true);
+  map.listeners.dragstart({ originalEvent: {} });
+  browser.innerWidth = 390;
+  flushResize();
+  assert.equal(currentPitch, 25);
+  map.listeners.moveend();
+  assert.equal(currentPitch, 18);
+  assert.equal(camera.at(-1).duration, 350);
+  assert.equal(map.config.show3dBuildings, false);
+  currentZoom = 16;
+  map.listeners.zoom();
+  assert.equal(map.config.show3dBuildings, true);
+  isMoving = true;
+  for (let index = 0; index < 15; index++) { now += 60; map.listeners.render(); }
+  isMoving = false;
+  assert.equal(map.config.show3dBuildings, false);
+  assert.equal(currentPitch, 18);
+  browser.innerWidth = 844;
+  flushResize();
+  assert.equal(currentPitch, 25);
+  browser.innerWidth = 390;
+  flushResize();
+  assert.equal(currentPitch, 18);
+  reducedMotion = true;
+  render().find((node) => node.type === "Button").props.onClick();
+  render(); harness.flush();
+  assert.equal(camera.at(-1).duration, 0);
+  assert.equal(resizeCount, 4);
+  resolvedTheme = "dark";
+  Object.assign(colors, { canvas: "18 27 21", surface: "29 40 31", positive: "144 216 174", accent: "182 203 149", line: "58 70 56", "muted-surface": "36 49 38", ink: "244 240 228", "muted-ink": "180 187 172" });
+  render(); harness.flush();
+  assert(configurations.some((entry) => entry[1] === "colorLand" && entry[2] === "rgb(18, 27, 21)"));
+  assert(configurations.some((entry) => entry[1] === "lightPreset" && entry[2] === "night"));
+  assert(configurations.some((entry) => entry[1] === "colorPlaceLabels" && entry[2] === "rgb(180, 187, 172)"));
+  assert.equal(mapCount, 1);
+  assert.equal(markerCount, 1);
+  map.setConfigProperty = () => { throw new Error("3D unavailable"); };
+  render().find((node) => node.type === "Button").props.onClick();
+  assert.equal(render().some((node) => node.type === "Button"), false);
+  assert.equal(currentPitch, 0);
+  harness.unmount();
+  assert.equal(map.removed, true);
+  assert.equal(removedMarkers, 1);
+});
 
 test("Carousel lặp nguyên chu kỳ ảnh, giữ ảnh phụ trong cùng dải và chỉ preload ảnh đầu", () => {
   for (const count of [1, 2, 3, 5]) {

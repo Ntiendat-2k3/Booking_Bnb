@@ -1,9 +1,17 @@
 import { apiFetch } from "@/lib/api";
 
+function listPath(path, params) {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null && value !== "" && (key === "q" || value !== "all")) query.set(key, String(value));
+  }
+  return query.size ? `${path}?${query}` : path;
+}
+
 export const adminService = {
   // ---- Listings ----
-  getListings: async () => {
-    return await apiFetch(`/api/v1/admin/listings`, { method: "GET" });
+  getListings: async ({ status = "all", q = "", page = 1, limit = 10, signal } = {}) => {
+    return await apiFetch(listPath("/api/v1/admin/listings", { status, q: q.trim(), page, limit }), { method: "GET", signal });
   },
   approveListing: async (id) => {
     return await apiFetch(`/api/v1/admin/listings/${id}/approve`, {
@@ -31,9 +39,9 @@ export const adminService = {
   },
 
   // ---- Bookings ----
-  getBookings: async (status = "all") => {
-    return await apiFetch(`/api/v1/admin/bookings?status=${status}`, {
-      method: "GET",
+  getBookings: async ({ status = "all", q = "", page = 1, limit = 10, signal } = {}) => {
+    return await apiFetch(listPath("/api/v1/admin/bookings", { status, q: q.trim(), page, limit }), {
+      method: "GET", signal,
     });
   },
   getBookingDetail: async (id) => {
@@ -43,8 +51,8 @@ export const adminService = {
   },
 
   // ---- Users ----
-  getUsers: async () => {
-    return await apiFetch(`/api/v1/admin/users`, { method: "GET" });
+  getUsers: async ({ q = "", page = 1, limit = 10, signal } = {}) => {
+    return await apiFetch(listPath("/api/v1/admin/users", { q: q.trim(), page, limit }), { method: "GET", signal });
   },
   updateUserRole: async (id, role) => {
     return await apiFetch(`/api/v1/admin/users/${id}/role`, {
@@ -54,9 +62,9 @@ export const adminService = {
   },
 
   // ---- Amenities ----
-  getAmenities: async (activeFilter = "all") => {
-    return await apiFetch(`/api/v1/admin/amenities?active=${activeFilter}`, {
-      method: "GET",
+  getAmenities: async ({ active = "all", group = "all", q = "", page = 1, limit = 10, signal } = {}) => {
+    return await apiFetch(listPath("/api/v1/admin/amenities", { active, group, q: q.trim(), page, limit }), {
+      method: "GET", signal,
     });
   },
   createAmenity: async (data) => {
@@ -79,9 +87,9 @@ export const adminService = {
   },
 
   // ---- Reviews ----
-  getReviews: async (vis = "all") => {
-    return await apiFetch(`/api/v1/admin/reviews?visibility=${vis}`, {
-      method: "GET",
+  getReviews: async ({ visibility = "all", rating = "all", q = "", page = 1, limit = 10, signal } = {}) => {
+    return await apiFetch(listPath("/api/v1/admin/reviews", { visibility, rating, q: q.trim(), page, limit }), {
+      method: "GET", signal,
     });
   },
   hideReview: async (id) => {
@@ -119,9 +127,9 @@ export const adminService = {
   },
 
   // ---- Payments ----
-  getPayments: async (status = "all", provider = "all") => {
-    return await apiFetch(`/api/v1/admin/payments?status=${status}&provider=${provider}`, {
-      method: "GET",
+  getPayments: async ({ status = "all", provider = "all", q = "", page = 1, limit = 10, signal } = {}) => {
+    return await apiFetch(listPath("/api/v1/admin/payments", { status, provider, q: q.trim(), page, limit }), {
+      method: "GET", signal,
     });
   },
   getPaymentDetail: async (id) => {

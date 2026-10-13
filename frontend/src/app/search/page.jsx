@@ -3,9 +3,8 @@ import { Suspense } from "react";
 import CategoryTabs from "@/components/CategoryTabs";
 import Button from "@/components/atoms/Button";
 import SearchFilters from "@/components/Search/SearchFilters";
-import ListingCard from "@/components/ListingCard";
 import Pagination from "@/components/Pagination";
-import SearchResultsMap from "@/components/Search/SearchResultsMap";
+import SearchResultsLayout from "@/components/Search/SearchResultsLayout";
 import EmptyState from "@/components/molecules/EmptyState";
 import { serverGetJson } from "@/lib/serverApi";
 import { getListingCardData } from "@/lib/listings";
@@ -55,42 +54,25 @@ export default async function SearchPage({ searchParams }) {
       <SearchFilters />
       <Suspense fallback={null}><CategoryTabs /></Suspense>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((it) => (
-              <ListingCard key={it.id} listing={it} checkIn={sp?.check_in} checkOut={sp?.check_out} />
-            ))}
-          </div>
-
-          {!items.length ? (
-            <EmptyState
-              className="mt-6"
-              icon={<MapTrifold aria-hidden size={30} />}
-              title={t("search.emptyTitle")}
-              description={t("search.emptyDescription")}
-            />
-          ) : null}
-
-          <Pagination meta={meta} baseParams={baseParams} />
-        </div>
-
-        <aside className="block">
-          <div className="surface-panel sticky top-24 overflow-hidden p-3">
-            <div className="flex items-center gap-2 px-2 pb-3 text-sm font-semibold text-ink">
-              <MapTrifold aria-hidden size={18} />
-              {t("search.map")}
-            </div>
-            <div className="overflow-hidden rounded-control bg-muted-surface">
-              <SearchResultsMap
-                items={items}
-                userLat={sp?.lat}
-                userLng={sp?.lng}
-              />
-            </div>
-          </div>
-        </aside>
-      </div>
+      <SearchResultsLayout
+        items={items}
+        checkIn={sp?.check_in}
+        checkOut={sp?.check_out}
+        city={sp?.city}
+        mapLat={sp?.map_lat}
+        mapLng={sp?.map_lng}
+        userLat={sp?.lat}
+        userLng={sp?.lng}
+        emptyState={!items.length ? (
+          <EmptyState
+            className="mt-6"
+            icon={<MapTrifold aria-hidden size={30} />}
+            title={t("search.emptyTitle")}
+            description={t("search.emptyDescription")}
+          />
+        ) : null}
+        pagination={<Pagination meta={meta} baseParams={baseParams} />}
+      />
     </div>
   );
 }

@@ -62,7 +62,7 @@ module.exports = {
 
   async attach(user, listingId, body) {
     return sequelize.transaction(async (transaction) => {
-      await lockEditableListing(user, listingId, transaction);
+      const listing = await lockEditableListing(user, listingId, transaction);
       const asset = await findForAttach(user, listingId, body.public_id, transaction);
       if (await ListingImage.findOne({ where: { public_id: asset.public_id }, transaction })) throw httpError(409, "Image is already attached");
       const count = await ListingImage.count({ where: { listing_id: listingId }, transaction });
@@ -76,17 +76,19 @@ module.exports = {
       }, { transaction });
       await asset.update({ listing_id: listingId, attached_at: new Date() }, { transaction });
       await ensureCoverExists(listingId, transaction);
+      await hostListingService.requireReviewAfterEdit(listing, transaction);
       return { image };
     });
   },
 
   async setCover(user, listingId, imageId) {
     return sequelize.transaction(async (transaction) => {
-      await lockEditableListing(user, listingId, transaction);
+      const listing = await lockEditableListing(user, listingId, transaction);
       const image = await ListingImage.findOne({ where: { id: imageId, listing_id: listingId }, transaction });
       if (!image) throw httpError(404, "Image not found");
       await ListingImage.update({ is_cover: false }, { where: { listing_id: listingId }, transaction });
       await image.update({ is_cover: true }, { transaction });
+      await hostListingService.requireReviewAfterEdit(listing, transaction);
       return { image };
     });
   },
@@ -99,6 +101,7 @@ module.exports = {
       await enqueueDeletion(image, listing, transaction);
       await image.destroy({ transaction });
       await ensureCoverExists(listingId, transaction);
+      await hostListingService.requireReviewAfterEdit(listing, transaction);
       return { ok: true };
     });
   },

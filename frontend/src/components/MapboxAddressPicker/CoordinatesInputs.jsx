@@ -1,18 +1,27 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { asNum, pickFromContext, geocodeReverse } from "@/hooks/useMapboxLocation";
 import { useLocale } from "@/i18n/LocaleProvider";
 import InputField from "@/components/atoms/InputField";
 
 export default function CoordinatesInputs({ city, country, lat, lng, onChange, token }) {
   const { locale, t } = useLocale();
+  const reverseControllerRef = useRef(null);
+  useEffect(() => {
+    reverseControllerRef.current?.abort();
+    return () => reverseControllerRef.current?.abort();
+  }, [city, country, lat, lng]);
   async function onLatLngBlur() {
+    reverseControllerRef.current?.abort();
     if (!token) return;
     const latitude = asNum(lat); const longitude = asNum(lng);
     if (latitude === null || longitude === null || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return;
+    const controller = new AbortController();
+    reverseControllerRef.current = controller;
     try {
-      const result = await geocodeReverse(longitude, latitude, token, undefined, locale === "en" ? "en" : "vi");
+      const result = await geocodeReverse(longitude, latitude, token, controller.signal, locale === "en" ? "en" : "vi");
       const feature = result?.features?.[0];
-      if (feature?.place_name) onChange?.({ address: feature.place_name, city: pickFromContext(feature, "place") || city, country: pickFromContext(feature, "country") || country });
+      if (!controller.signal.aborted && feature?.place_name) onChange?.({ address: feature.place_name, city: pickFromContext(feature, "place") || city, country: pickFromContext(feature, "country") || country });
     } catch { /* Giữ thông tin người dùng nhập nếu không lấy được địa chỉ. */ }
   }
   return <>
