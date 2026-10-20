@@ -1,0 +1,23 @@
+# TC — TASK-02
+
+API-05–06 đang OPEN. Các bài HTTP bên dưới là tiêu chí hành vi; status, field, nullable và error sẽ đối chiếu contract được duyệt trước khi chạy Phase.
+
+<!-- table:tc -->
+| TC | Trace | BR | API | Type | Verify | Scenario | Status | Evidence |
+|---|---|---|---|---|---|---|---|---|
+| TC-02.1-01 | REQ-MSG-05, REQ-MSG-06 | BR-05, BR-07 | - | Integration | cmd:node --test backend/tests/call.integration.test.js | Given conversation có hai participant / When lưu call và chuyển terminal / Then metadata, thời điểm server và quan hệ FK được giữ bền vững | UNTESTED | - |
+| TC-02.1-02 | REQ-MSG-05, RISK-02 | BR-05 | - | Boundary | cmd:node --test backend/tests/call.integration.test.js | Given hai request tạo call đồng thời cùng user hoặc conversation / When transaction commit / Then tối đa một active call hợp lệ | UNTESTED | - |
+| TC-02.1-03 | REQ-MSG-06, REQ-MSG-11 | BR-07, BR-12 | - | Negative | cmd:node --test backend/tests/call.integration.test.js | Given call đã terminal / When thử cập nhật active hoặc ghi raw SDP/ICE vào metadata / Then thay đổi không được chấp nhận hoặc không được lưu | UNTESTED | - |
+| TC-02.2-01 | REQ-MSG-05, REQ-MSG-11 | BR-05, BR-12 | API-05 | Integration | cmd:node --test backend/tests/call.integration.test.js | Given caller là participant và callee hợp lệ, cả hai rảnh / When tạo và truy vấn call / Then chỉ hai bên nhận state canonical theo contract | UNTESTED | - |
+| TC-02.2-02 | REQ-MSG-05, REQ-MSG-11 | BR-05, BR-12 | API-05 | Negative | cmd:node --test backend/tests/call.integration.test.js | Given guest, outsider hoặc client giả caller/callee / When tạo hay truy vấn call / Then bị từ chối, không lộ call metadata và không tạo row | UNTESTED | - |
+| TC-02.2-03 | REQ-MSG-05 | BR-05 | API-05 | Boundary | cmd:node --test backend/tests/call.integration.test.js | Given user đang trong call khác hoặc callee bị khóa / When tạo call mới / Then không có call active thứ hai và response theo contract | UNTESTED | - |
+| TC-02.2-04 | REQ-MSG-05 | BR-05 | API-05 | Negative | cmd:node --test backend/tests/call.test.js | Given call ID không tồn tại hoặc input sai schema / When truy vấn hoặc tạo / Then lỗi không làm lộ thông tin riêng tư và không ghi DB | UNTESTED | - |
+| TC-02.3-01 | REQ-MSG-06 | BR-06, BR-07 | API-06 | Positive | cmd:node --test backend/tests/call.integration.test.js | Given call ringing / When đúng callee accept / Then state accepted đúng một lần và caller có thể đọc lại state đó | UNTESTED | - |
+| TC-02.3-02 | REQ-MSG-06 | BR-06, BR-07 | API-06 | Integration | cmd:node --test backend/tests/call.integration.test.js | Given call ringing / When callee decline hoặc caller cancel / Then terminal reason và endedAt đúng actor, call không quay active | UNTESTED | - |
+| TC-02.3-03 | REQ-MSG-06, RISK-02 | BR-06, BR-07 | API-06 | Boundary | cmd:node --test backend/tests/call.integration.test.js | Given hai tab accept đồng thời hoặc accept tranh với cancel / When các lệnh commit / Then chỉ một transition thắng và bên thua nhận state canonical | UNTESTED | - |
+| TC-02.3-04 | REQ-MSG-06, REQ-MSG-11 | BR-06, BR-12 | API-06 | Negative | cmd:node --test backend/tests/call.integration.test.js | Given outsider, caller tự accept hoặc callee cancel / When gửi command / Then không đổi trạng thái call | UNTESTED | - |
+| TC-02.3-05 | REQ-MSG-06 | BR-07 | API-06 | Boundary | cmd:node --test backend/tests/call.integration.test.js | Given participant end call rồi retry hoặc gửi lệnh sau terminal / When server xử lý / Then một terminal result bền vững, không phát sinh transition mới | UNTESTED | - |
+| TC-02.4-01 | REQ-MSG-06, REQ-MSG-10, RISK-04 | BR-07, BR-11 | API-05, API-06 | Integration | cmd:node --test backend/tests/call.integration.test.js | Given call ringing không có phản hồi / When quá ring timeout server / Then no_answer một lần và truy vấn trả state terminal | UNTESTED | - |
+| TC-02.4-02 | REQ-MSG-10 | BR-11 | API-05, API-06 | Positive | cmd:node --test backend/tests/call.integration.test.js | Given call mất kết nối rồi phục hồi trong grace / When reconcile / Then call còn hợp lệ, không có terminal giả | UNTESTED | - |
+| TC-02.4-03 | REQ-MSG-10, RISK-04 | BR-11 | API-05, API-06 | Negative | cmd:node --test backend/tests/call.integration.test.js | Given call mất kết nối quá grace hoặc backend restart / When job reconcile chạy / Then state terminal được ghi và không treo active vô hạn | UNTESTED | - |
+| TC-02.4-04 | REQ-MSG-06 | BR-07 | API-06 | Boundary | cmd:node --test backend/tests/call.integration.test.js | Given accept/end commit sát thời điểm timeout / When job và command chạy đồng thời / Then chỉ một transition hợp lệ thắng, endedAt không bị ghi đè | UNTESTED | - |
