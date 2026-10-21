@@ -7,6 +7,7 @@ import { useChatSocket } from "./useChatSocket";
 import { useWebRTCCall } from "./useWebRTCCall";
 import CallOverlay from "../components/CallOverlay";
 import { isTerminalCall, mergeCallState } from "../utils/mergeCallState.mjs";
+import { playMessageSound, startIncomingCallRingtone, unlockChatAudio } from "../utils/chatSounds";
 
 const CallContext = createContext(null);
 
@@ -24,6 +25,21 @@ export function CallSessionProvider({ children }) {
   const requestRef = useRef(0);
   const actionRef = useRef(0);
   useEffect(() => { currentUser.current = userId; }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    window.addEventListener("pointerdown", unlockChatAudio, { passive: true });
+    window.addEventListener("keydown", unlockChatAudio);
+    return () => {
+      window.removeEventListener("pointerdown", unlockChatAudio);
+      window.removeEventListener("keydown", unlockChatAudio);
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (call?.status !== "ringing" || call.callee_id !== userId) return;
+    return startIncomingCallRingtone(call.ring_expires_at);
+  }, [call?.id, call?.status, call?.callee_id, call?.ring_expires_at, userId]);
 
   const apply = useCallback((next) => {
     if (next && next.caller_id !== currentUser.current && next.callee_id !== currentUser.current) return;
@@ -56,6 +72,10 @@ export function CallSessionProvider({ children }) {
   }, [userId, apply]);
 
   useChatSocket(userId, (event, data) => {
+    if (event === "chat:message" && data?.sender_id && data.sender_id !== userId &&
+      data.type !== "call") {
+      playMessageSound();
+    }
     if (event === "chat:block" && data?.blocked && callRef.current &&
       [callRef.current.caller_id, callRef.current.callee_id].includes(data.user_id) &&
       [callRef.current.caller_id, callRef.current.callee_id].includes(data.target_id)) {
