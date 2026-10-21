@@ -100,8 +100,12 @@ export default function Page() {
     setSaving(true);
     try {
       const res = await adminService.bulkApproveListings(selectedIds);
-      const success = res.data?.results?.filter((r) => r.status === "success") || [];
-      toast.success(t("listings.processedApprovals", { count: success.length, total: selectedIds.length }));
+      const results = res.data?.results || [];
+      const success = results.filter((r) => r.status === "success");
+      const failure = results.find((r) => r.status !== "success");
+      const message = t("listings.processedApprovals", { count: success.length, total: selectedIds.length });
+      if (success.length === selectedIds.length) toast.success(message);
+      else toast.error(message, { description: failure?.message || t("common.bulkFailed") });
       setSelectedIds([]);
       await loadItems();
     } catch (e) {
@@ -116,8 +120,12 @@ export default function Page() {
     setSaving(true);
     try {
       const res = await adminService.bulkRejectListings(selectedIds, t("listings.bulkRejectReason"));
-      const success = res.data?.results?.filter((r) => r.status === "success") || [];
-      toast.success(t("listings.processedRejections", { count: success.length, total: selectedIds.length }));
+      const results = res.data?.results || [];
+      const success = results.filter((r) => r.status === "success");
+      const failure = results.find((r) => r.status !== "success");
+      const message = t("listings.processedRejections", { count: success.length, total: selectedIds.length });
+      if (success.length === selectedIds.length) toast.success(message);
+      else toast.error(message, { description: failure?.message || t("common.bulkFailed") });
       setSelectedIds([]);
       await loadItems();
     } catch (e) {

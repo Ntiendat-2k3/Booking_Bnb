@@ -67,11 +67,12 @@
     "moderation": "Kiểm duyệt chỗ ở", "search": "Tìm ID, tiêu đề, thành phố hoặc chủ nhà...",
     "empty": "Không có chỗ ở.", "information": "Thông tin chỗ ở", "rejectReason": "Lý do từ chối",
     "defaultRejectReason": "Nội dung chưa đạt yêu cầu", "moderationMode": "Chế độ kiểm duyệt",
-    "selectedItems": "Đã chọn {count} mục", "processedApprovals": "Đã xử lý {count}/{total} lượt duyệt",
-    "processedRejections": "Đã xử lý {count}/{total} lượt từ chối", "approved": "Đã duyệt chỗ ở",
+    "selectedItems": "Đã chọn {count} mục", "processedApprovals": "Đã duyệt {count}/{total} chỗ ở",
+    "processedRejections": "Đã từ chối {count}/{total} chỗ ở", "approved": "Đã duyệt chỗ ở",
     "rejected": "Đã từ chối chỗ ở", "approveFailed": "Duyệt thất bại", "rejectFailed": "Từ chối thất bại",
     "bulkRejectReason": "Quản trị viên từ chối", "rejectTitle": "Từ chối chỗ ở", "rejectHelp": "Nêu nội dung chủ nhà cần sửa. Có thể để trống.",
-    "reasonPlaceholder": "Lý do từ chối...", "approveTitle": "Duyệt chỗ ở?"
+    "reasonPlaceholder": "Lý do từ chối...", "approveTitle": "Duyệt chỗ ở?",
+    "draftAwaitingSubmission": "Bản nháp chưa được chủ nhà gửi duyệt."
   },
   "amenities": {
     "search": "Tìm tên, slug hoặc nhóm...", "empty": "Không có tiện ích.", "created": "Đã tạo tiện ích",

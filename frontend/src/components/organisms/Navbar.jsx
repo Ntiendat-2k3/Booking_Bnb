@@ -11,6 +11,7 @@ import Container from "@/components/layout/Container";
 import Dropdown from "@/components/molecules/Dropdown";
 import Avatar from "@/components/atoms/Avatar";
 import NotificationBell from "./NotificationBell";
+import ChatNavLink from "@/features/chat/components/ChatNavLink";
 import LocaleSwitcher from "@/components/molecules/LocaleSwitcher";
 import ThemeSwitcher from "@/components/molecules/ThemeSwitcher";
 import { canManageListings, roleLabelKey } from "@/lib/roles";
@@ -98,6 +99,7 @@ export default function Navbar() {
                 </Link>
               )}
 
+          <ChatNavLink userId={user?.id} />
           <div className="header-notifications"><NotificationBell /></div>
           <div className="hidden items-center gap-1 lg:flex">
             <LocaleSwitcher compact />
@@ -148,6 +150,9 @@ export default function Navbar() {
                     </MenuItem>
                     <MenuItem href="/trips" onClick={close}>
                       {t("navigation.trips")}
+                    </MenuItem>
+                    <MenuItem href="/messages" onClick={close}>
+                      {t("navigation.messages")}
                     </MenuItem>
                     <MenuItem href="/favorites" onClick={close}>
                       {t("navigation.favorites")}

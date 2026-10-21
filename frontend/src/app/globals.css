@@ -429,6 +429,13 @@ body:has(.auth-experience) .mobile-dock { display: none; }
 body:has(.auth-experience) #main-content { min-height: 100dvh; padding: 0; }
 body:has(.auth-experience) #main-content > .site-container { max-width: none; padding: 0; }
 
+/* Trang tin nhắn chiếm trọn vùng hiển thị bên dưới thanh điều hướng. */
+body:has(.chat-page) #main-content { height: calc(100dvh - var(--header-height)); min-height: 0; padding: 0; overflow: hidden; }
+body:has(.chat-page) #main-content > .site-container { width: 100%; max-width: none; height: 100%; padding: 0; }
+body:has(.chat-page) .site-footer,
+body:has(.chat-page) .mobile-dock { display: none; }
+.chat-page { width: 100%; height: 100%; min-height: 0; }
+
 .auth-experience {
   --color-ink: 23 39 30;
   --color-muted-ink: 77 84 78;
@@ -497,7 +504,7 @@ body:has(.auth-experience) #main-content > .site-container { max-width: none; pa
 .auth-social { margin-top: 24px; }
 .auth-divider { display: flex; align-items: center; gap: 16px; color: #626963; font-size: 13px; text-align: center; white-space: nowrap; }
 .auth-divider::before, .auth-divider::after { height: 1px; flex: 1; background: #cbc9bd; content: ""; }
-.auth-social-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+.auth-social-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
 .auth-social-provider { display: flex; min-height: 52px; align-items: center; justify-content: center; gap: 8px; min-width: 0; border: 1px solid #ddd9ce; border-radius: 15px; background: rgb(255 255 255 / 0.7); color: #18251c; font-size: 13px; font-weight: 600; box-shadow: 0 5px 15px rgb(41 45 30 / 0.04); transition: background 180ms, transform 180ms; }
 .auth-social-provider:hover { background: #fff; transform: translateY(-2px); }
 .auth-google svg { color: #4285f4; }

@@ -235,7 +235,7 @@ export default async function RoomDetailPage({ params, searchParams }) {
                   </p>
                 </div>
                 <div className="mt-2">
-                  <ContactHostButton hostId={listing.host?.id} />
+                  <ContactHostButton listingId={listing.id} />
                 </div>
               </div>
               <div className="flex-1 space-y-4">

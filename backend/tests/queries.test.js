@@ -67,15 +67,59 @@ test("Booking chỉ bị khóa đánh giá khi còn review chưa xóa", () => {
   assert.match(sql, /WHERE.*deleted_at.*IS NULL/i);
 });
 
-test("Dashboard tổng hợp trong SQL và trả đủ sáu tháng dù chưa có booking", async () => {
+test("Dashboard host chỉ đếm booking hợp lệ và tổng hợp payment đã thu đúng host", async () => {
   const db = queryFixture();
   const service = loadBackend("services/host.service.js", db.models);
-  const result = await service.getDashboardStats("10000000-0000-4000-8000-000000000001");
+  const hostId = "10000000-0000-4000-8000-000000000001";
+  const result = await service.getDashboardStats(hostId);
+  assert.equal(result.chartMonths.length, 6);
   assert.equal(result.chartValues.length, 6);
   assert.equal(result.totalBookings, 0);
-  assert.ok(db.queries.some((sql) => sql.includes("SUM(CASE WHEN")));
-  assert.ok(db.queries.some((sql) => sql.includes("GROUP BY") && sql.includes("AT TIME ZONE 'UTC'")));
-  assert.ok(db.queries.some((sql) => sql.includes("LIMIT 5")));
+  assert.equal(result.totalRevenue, 0);
+  assert.deepEqual(result.recentPayments, []);
+  const bookingSql = db.queries.find((sql) => sql.includes('FROM "bookings" AS "Booking"'));
+  assert.match(bookingSql, /COUNT\(CASE WHEN "Booking"\.status IN \('confirmed','completed'\) THEN 1 END\)/);
+  const paymentSql = db.queries.filter((sql) => sql.includes('FROM "payments" AS "Payment"'));
+  assert.equal(paymentSql.length, 2);
+  for (const sql of paymentSql) {
+    assert.match(sql, /"Payment"\."status" = 'succeeded'/);
+    assert.match(sql, /"Payment"\."currency" = 'VND'/);
+    assert.ok(sql.includes(`"host_id" = '${hostId}'`));
+  }
+  assert.match(paymentSql[0], /GROUP BY.*COALESCE\("Payment"\."paid_at", "Payment"\."created_at"\) AT TIME ZONE 'UTC'/);
+  assert.match(paymentSql[1], /ORDER BY COALESCE\("Payment"\."paid_at", "Payment"\."created_at"\) DESC/);
+  assert.match(paymentSql[1], /LIMIT 5/);
+});
+
+test("Dashboard host giữ tổng tiền mọi thời kỳ và biểu đồ chỉ sáu tháng gần nhất", async () => {
+  const now = new Date();
+  const monthKey = (offset) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1)).toISOString().slice(0, 7);
+  const payment = { id: "payment-1", amount: "500000", paid_at: now, booking: { status: "confirmed" } };
+  const queries = [];
+  const hostId = "10000000-0000-4000-8000-000000000001";
+  const service = loadBackend("services/host.service.js", {
+    Sequelize,
+    User: {},
+    Listing: {},
+    Booking: { findOne: async () => ({ totalBookings: "2", pendingBookings: "1" }) },
+    Payment: { findAll: async (options) => {
+      queries.push(options);
+      return queries.length === 1
+        ? [{ month: monthKey(-7), total: "300000" }, { month: monthKey(-5), total: "200000" }, { month: monthKey(0), total: "500000" }]
+        : [payment];
+    } },
+  });
+
+  const result = await service.getDashboardStats(hostId);
+  assert.equal(result.totalRevenue, 1000000);
+  assert.equal(result.totalBookings, 2);
+  assert.equal(result.pendingBookings, 1);
+  assert.equal(result.chartValues[0], 200000);
+  assert.equal(result.chartValues.at(-1), 500000);
+  assert.deepEqual(result.recentPayments, [payment]);
+  assert.deepEqual(JSON.parse(JSON.stringify(queries[0].where)), { status: "succeeded", currency: "VND" });
+  assert.equal(queries[0].include[0].include[0].where.host_id, hostId);
+  assert.equal(queries[1].include[0].include[1].where.host_id, hostId);
 });
 
 test("Dashboard admin dùng tháng thanh toán cho tổng doanh thu và biểu đồ", async () => {

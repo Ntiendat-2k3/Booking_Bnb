@@ -20,7 +20,7 @@ export default function ListingsTable({
   const frontendUrl =
     process.env.NEXT_PUBLIC_FRONTEND_URL || "http://localhost:3001";
 
-  const allVisibleIds = pagedItems.map((x) => x.id);
+  const allVisibleIds = pagedItems.filter((x) => x.status === "pending").map((x) => x.id);
   const isAllSelected =
     allVisibleIds.length > 0 &&
     allVisibleIds.every((id) => selectedIds.includes(id));
@@ -56,7 +56,8 @@ export default function ListingsTable({
         <button
           type="button"
           onClick={toggleAll}
-          className="flex items-center gap-2 text-sm font-semibold ui-fg hover:ui-accent transition"
+          disabled={!allVisibleIds.length || saving}
+          className="flex items-center gap-2 text-sm font-semibold ui-fg hover:ui-accent transition disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isAllSelected ? (
             <CheckSquare className="w-5 h-5 text-pink-500" />
@@ -80,19 +81,22 @@ export default function ListingsTable({
             >
               <div className="flex w-full flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-4 min-w-0">
-                  <button
-                    type="button"
-                    onClick={() => toggleRow(x.id)}
-                    aria-label={t("common.selectItem", { id: x.id })}
-                    aria-pressed={isSelected}
-                    className="mt-1 shrink-0 lg:mt-0"
-                  >
-                    {isSelected ? (
-                      <CheckSquare className="w-5 h-5 text-pink-500" />
-                    ) : (
-                      <Square className="w-5 h-5 ui-muted hover:ui-fg transition" />
-                    )}
-                  </button>
+                  {x.status === "pending" ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleRow(x.id)}
+                      disabled={saving}
+                      aria-label={t("common.selectItem", { id: x.id })}
+                      aria-pressed={isSelected}
+                      className="mt-1 shrink-0 lg:mt-0"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-5 h-5 text-pink-500" />
+                      ) : (
+                        <Square className="w-5 h-5 ui-muted hover:ui-fg transition" />
+                      )}
+                    </button>
+                  ) : <span className="w-5 shrink-0" aria-hidden="true" />}
 
                   {x.cover_url ? <Image src={x.cover_url} alt="" width={100} height={58} unoptimized className="admin-listing-image" /> : <span className="admin-listing-image" aria-hidden="true" />}
 
@@ -118,6 +122,9 @@ export default function ListingsTable({
                         <span className="font-semibold">{t("listings.rejectReason")}:</span>{" "}
                         {x.reject_reason}
                       </div>
+                    ) : null}
+                    {x.status === "draft" ? (
+                      <p className="mt-2 text-xs ui-muted">{t("listings.draftAwaitingSubmission")}</p>
                     ) : null}
                   </div>
                 </div>

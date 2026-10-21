@@ -20,10 +20,20 @@ const upload = multer({
   limits: { fileSize: MAX_SIZE, files: 1, fields: 0 },
 });
 
+const CHAT_MIMES = new Set([...ALLOWED_MIMES, "audio/webm", "audio/ogg", "audio/mp4"]);
+const chatUpload = multer({
+  storage,
+  fileFilter(_req, file, cb) {
+    if (!CHAT_MIMES.has(file.mimetype)) return cb(new Error("Invalid chat media type"));
+    return cb(null, true);
+  },
+  limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 2 },
+});
+
 function uploadErrorHandler(err, req, res, next) {
   if (!err) return next();
   const msg = err.message || "Upload failed";
   return errorResponse(res, msg, 400);
 }
 
-module.exports = { upload, uploadErrorHandler, ALLOWED_MIMES, MAX_SIZE };
+module.exports = { upload, chatUpload, uploadErrorHandler, ALLOWED_MIMES, MAX_SIZE };

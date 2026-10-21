@@ -68,11 +68,12 @@
     "moderation": "Listings moderation", "search": "Search ID, title, city or host...",
     "empty": "No listings found.", "information": "Listing information", "rejectReason": "Reject reason",
     "defaultRejectReason": "Content does not meet requirements", "moderationMode": "Moderation mode",
-    "selectedItems": "{count} items selected", "processedApprovals": "Processed {count}/{total} approvals",
-    "processedRejections": "Processed {count}/{total} rejections", "approved": "Listing approved",
+    "selectedItems": "{count} items selected", "processedApprovals": "Approved {count}/{total} listings",
+    "processedRejections": "Rejected {count}/{total} listings", "approved": "Listing approved",
     "rejected": "Listing rejected", "approveFailed": "Approval failed", "rejectFailed": "Rejection failed",
     "bulkRejectReason": "Rejected by system admin", "rejectTitle": "Reject listing", "rejectHelp": "Explain what the host needs to change. You may leave this blank.",
-    "reasonPlaceholder": "Reason for rejection...", "approveTitle": "Approve listing?"
+    "reasonPlaceholder": "Reason for rejection...", "approveTitle": "Approve listing?",
+    "draftAwaitingSubmission": "The host has not submitted this draft for review."
   },
   "amenities": {
     "search": "Search name, slug or group...", "empty": "No amenities found.", "created": "Amenity created",

@@ -24,6 +24,9 @@ module.exports = (sequelize, DataTypes) => {
       type: { type: DataTypes.STRING, allowNull: false },
       title: { type: DataTypes.STRING, allowNull: false },
       message: { type: DataTypes.TEXT, allowNull: false },
+      resource_type: { type: DataTypes.STRING(32), allowNull: true },
+      resource_id: { type: DataTypes.UUID, allowNull: true },
+      dedupe_key: { type: DataTypes.STRING(100), allowNull: true },
       is_read: { type: DataTypes.BOOLEAN, defaultValue: false },
     },
     {

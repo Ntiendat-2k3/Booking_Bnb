@@ -8,6 +8,7 @@ const { startBackgroundJobs } = require('../jobs/backgroundJobs');
 const { sequelize } = require('../models');
 const { getRedis } = require('../utils/redis');
 const qrSocket = require('../services/qr_login.socket');
+const chatSocket = require('../services/chat.socket');
 
 // Khởi động tác vụ nền; các timer được dừng khi tiến trình nhận tín hiệu kết thúc.
 const stopBookingCleanup = startBookingCleanup();
@@ -30,7 +31,9 @@ app.set('port', port);
 
 var server = http.createServer(app);
 
-qrSocket.attach(server).catch((error) => console.error('[qr] Socket setup failed:', error.name));
+qrSocket.attach(server)
+  .then(() => chatSocket.attach(qrSocket.getIO()))
+  .catch((error) => console.error('[socket] Setup failed:', error.name));
 
 server.listen(port);
 server.on('error', onError);

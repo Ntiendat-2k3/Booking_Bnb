@@ -26,25 +26,14 @@ async function validateImageFile(file) {
   }
 }
 
-/** Tải ảnh từ tệp tạm lên Cloudinary theo luồng để không giữ toàn bộ ảnh trong RAM. */
-async function uploadFile(file, publicId) {
-  await validateImageFile(file);
+/** Dùng cùng luồng tải cho ảnh phòng công khai và media chat có kiểm quyền. */
+function uploadStream(file, options) {
   const cloudinary = getClient();
   return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        public_id: publicId,
-        overwrite: false,
-        resource_type: "image",
-        allowed_formats: ["jpg", "jpeg", "png", "webp"],
-        use_filename: false,
-        unique_filename: false,
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      }
-    );
+    const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+      if (error) return reject(error);
+      resolve(result);
+    });
     const source = fs.createReadStream(file.path);
     source.on("error", (error) => { stream.destroy(); reject(error); });
     stream.on("error", reject);
@@ -52,9 +41,46 @@ async function uploadFile(file, publicId) {
   });
 }
 
-async function destroy(publicId, resourceType = "image") {
-  const cloudinary = getClient();
-  return cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+/** Kiểm chữ ký container của bản ghi âm; MIME do browser gửi không đủ để xác thực. */
+async function validateAudioFile(file) {
+  const handle = await fs.promises.open(file.path, "r");
+  const signature = Buffer.alloc(12);
+  try { await handle.read(signature, 0, signature.length, 0); }
+  finally { await handle.close(); }
+  const valid = {
+    "audio/webm": signature.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3])),
+    "audio/ogg": signature.toString("ascii", 0, 4) === "OggS",
+    "audio/mp4": signature.toString("ascii", 4, 8) === "ftyp",
+  }[file.mimetype];
+  if (!valid) throw httpError(400, "Invalid audio content");
 }
 
-module.exports = { uploadFile, destroy };
+/** Tải ảnh phòng theo hợp đồng cũ. */
+async function uploadFile(file, publicId) {
+  await validateImageFile(file);
+  return uploadStream(file, { public_id: publicId, overwrite: false, resource_type: "image",
+    allowed_formats: ["jpg", "jpeg", "png", "webp"], use_filename: false, unique_filename: false });
+}
+
+/** Media chat luôn ở chế độ authenticated; không phát URL công khai trong message. */
+async function uploadChatFile(file, publicId) {
+  const resourceType = file.mimetype.startsWith("image/") ? "image" : "video";
+  if (resourceType === "image") await validateImageFile(file);
+  else await validateAudioFile(file);
+  return uploadStream(file, { public_id: publicId, overwrite: false, resource_type: resourceType,
+    type: "authenticated", use_filename: false, unique_filename: false });
+}
+
+function chatDownloadUrl(publicId, format, resourceType) {
+  return getClient().utils.private_download_url(publicId, format, {
+    resource_type: resourceType, type: "authenticated", secure: true,
+    expires_at: Math.floor(Date.now() / 1000) + 300,
+  });
+}
+
+async function destroy(publicId, resourceType = "image", deliveryType = "upload") {
+  const cloudinary = getClient();
+  return cloudinary.uploader.destroy(publicId, { resource_type: resourceType, type: deliveryType });
+}
+
+module.exports = { uploadFile, uploadChatFile, chatDownloadUrl, destroy };

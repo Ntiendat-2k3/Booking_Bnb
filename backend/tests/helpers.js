@@ -28,7 +28,7 @@ function loadBackend(file, models, overrides = {}, env = {}) {
     vm.runInNewContext(fs.readFileSync(filename, "utf8"), {
       module, exports: module.exports, require: requireMock, __filename: filename, __dirname: path.dirname(filename),
       process: { env: { JWT_SECRET: "test-secret-only", ...env } }, console: { log() {}, warn() {}, error() {} },
-      Buffer, Date, URL, URLSearchParams, AbortSignal, fetch, setInterval, clearInterval,
+      Buffer, Date, URL, URLSearchParams, AbortSignal, fetch, setInterval, clearInterval, setTimeout, clearTimeout,
     }, { filename });
     return module.exports;
   };

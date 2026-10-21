@@ -568,7 +568,6 @@ tbody tr:hover {
   background-repeat: no-repeat;
 }
 .admin-nav-link { min-height: 49px; font-size: .95rem; }
-.admin-nav-link[aria-current="page"] { color: var(--admin-sidebar-ink); }
 .admin-header { background: var(--admin-surface); }
 .dark .admin-header { background: linear-gradient(105deg, #10231b, #19362a 55%, #0b1e17); }
 .admin-main { max-width: none; padding-top: 27px; }

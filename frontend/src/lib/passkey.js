@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/api";
+export { afterLoginPath } from "./afterLoginPath.mjs";
 
 /** Trình duyệt giữ khóa riêng; máy chủ chỉ nhận dữ liệu WebAuthn để xác minh. */
 export async function registerPasskey(name) {
@@ -13,9 +14,4 @@ export async function loginWithPasskey() {
   const { data: options } = await apiFetch("/api/v1/auth/passkeys/login/options", { method: "POST", body: {} });
   const response = await startAuthentication({ optionsJSON: options });
   return apiFetch("/api/v1/auth/passkeys/login/verify", { method: "POST", body: { response } });
-}
-
-export function afterLoginPath() {
-  const code = window.sessionStorage.getItem("booking-qr-approval");
-  return code ? "/auth/qr/approve" : "/profile";
 }

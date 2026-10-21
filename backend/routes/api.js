@@ -11,5 +11,6 @@ router.use("/v1/uploads", require("./v1/upload.routes"));
 router.use("/v1", require("./v1/booking.routes"));
 router.use("/v1/admin", require("./v1/admin.routes"));
 router.use("/v1/notifications", require("./v1/notification.routes"));
+router.use("/v1/chat", require("./v1/chat.routes"));
 
 module.exports = router;

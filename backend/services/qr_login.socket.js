@@ -47,4 +47,4 @@ async function close() {
   clients = [];
 }
 
-module.exports = { attach, emitStatus, close };
+module.exports = { attach, emitStatus, close, getIO: () => io };

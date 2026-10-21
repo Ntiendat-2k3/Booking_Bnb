@@ -6,6 +6,7 @@ const { destroy } = require("../services/cloudinary.service");
 const { cleanupExpiredUploads } = require("../services/uploaded_asset.service");
 const { getStripe } = require("../config/stripe");
 const { randomUUID } = require("crypto");
+const calls = require("../services/call.service");
 
 async function execute(job) {
   const payload = job.payload;
@@ -13,7 +14,7 @@ async function execute(job) {
     case "send_email":
       return sendEmail(payload.to, payload.subject, payload.html);
     case "cloudinary_delete":
-      await destroy(payload.public_id, payload.resource_type);
+      await destroy(payload.public_id, payload.resource_type, payload.delivery_type || "upload");
       return UploadedAsset.destroy({ where: { public_id: payload.public_id } });
     case "stripe_expire_session": {
       const stripe = getStripe();
@@ -77,6 +78,7 @@ async function runNextJob() {
 function startBackgroundJobs(intervalMs = 1000) {
   let active;
   let activeCleanup;
+  let activeCalls;
   let stopped = false;
   const tick = () => {
     if (stopped || active) return;
@@ -94,11 +96,21 @@ function startBackgroundJobs(intervalMs = 1000) {
       .finally(() => { activeCleanup = null; });
   };
   const cleanupTimer = setInterval(cleanup, 60 * 1000);
+  const reconcileCalls = () => {
+    if (stopped || activeCalls) return;
+    activeCalls = calls.reconcileExpired().catch((error) => console.error("[calls] Không thể dọn cuộc gọi quá hạn:", {
+      name: error.name, code: error.parent?.code || error.code,
+    })).finally(() => { activeCalls = null; });
+  };
+  const callTimer = setInterval(reconcileCalls, 5000);
   timer.unref();
   cleanupTimer.unref();
+  callTimer.unref();
   tick();
   cleanup();
-  return async () => { stopped = true; clearInterval(timer); clearInterval(cleanupTimer); await Promise.allSettled([active, activeCleanup]); };
+  reconcileCalls();
+  return async () => { stopped = true; clearInterval(timer); clearInterval(cleanupTimer);
+    clearInterval(callTimer); await Promise.allSettled([active, activeCleanup, activeCalls]); };
 }
 
 module.exports = { startBackgroundJobs, runNextJob };

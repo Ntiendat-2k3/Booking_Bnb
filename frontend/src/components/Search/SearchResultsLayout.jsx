@@ -18,7 +18,7 @@ export default function SearchResultsLayout({ items, checkIn, checkOut, city, ma
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,38%)]">
       <div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((listing) => (

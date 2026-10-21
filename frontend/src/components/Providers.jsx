@@ -7,6 +7,7 @@ import { useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import { DEFAULT_THEME } from "@/lib/constants";
 import PasskeyOffer from "@/components/auth/PasskeyOffer";
+import { CallSessionProvider } from "@/features/chat/hooks/useCallSession";
 
 // Giữ snapshot SSR ban đầu dù bootstrap đã cập nhật store trước khi các vùng streaming hydrate.
 const serverState = store.getState();
@@ -17,8 +18,10 @@ export default function Providers({ locale, messages, children }) {
     <Provider store={store} serverState={serverState}>
       <LocaleProvider locale={locale} messages={messages}>
         <Toaster theme={resolvedTheme || DEFAULT_THEME} richColors position="top-right" />
-        {children}
-        <PasskeyOffer />
+        <CallSessionProvider>
+          {children}
+          <PasskeyOffer />
+        </CallSessionProvider>
       </LocaleProvider>
     </Provider>
   );
