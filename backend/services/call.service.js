@@ -46,7 +46,7 @@ async function publish(call) {
   await Promise.allSettled([call.caller_id, call.callee_id].map(async (userId) => {
     socket.emitToUsers([userId], "call:state", await forUser(call, userId));
   }));
-  if (call.ended_at && call.connected_at) {
+  if (call.ended_at) {
     try {
       const message = await ChatMessage.findOne({ where: {
         sender_id: call.caller_id, client_key: `call:${call.id}`,

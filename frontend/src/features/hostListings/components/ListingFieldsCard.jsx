@@ -72,6 +72,19 @@ export default function ListingFieldsCard({ form, setField, setForm, disabled = 
           <InputField label={t("host.roomType")} value={form.room_type} onChange={(e) => setField("room_type", e.target.value)} />
         </div>
       </section>
+
+      <section className="surface-panel space-y-4 p-4 sm:p-6">
+        <div><h2 className="text-base font-semibold">{t("cancellation.policyTitle")}</h2>
+          <p className="mt-1 text-sm text-muted-ink">{t("cancellation.hostPolicyHint")}</p></div>
+        <label className="grid gap-2 text-sm font-semibold text-ink">{t("cancellation.policyTitle")}
+          <select className="field-control" value={form.cancellation_policy_code || "moderate"}
+            onChange={(event) => setField("cancellation_policy_code", event.target.value)}>
+            {["flexible", "moderate", "strict"].map((code) =>
+              <option key={code} value={code}>{t(`cancellation.${code}`)}</option>)}
+          </select>
+        </label>
+        <p className="text-sm leading-6 text-muted-ink">{t(`cancellation.${form.cancellation_policy_code || "moderate"}Description`)}</p>
+      </section>
     </fieldset>
   );
 }

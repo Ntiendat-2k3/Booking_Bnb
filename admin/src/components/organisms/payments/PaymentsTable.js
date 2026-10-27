@@ -4,7 +4,6 @@ import { useLocale, useTranslations } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
 import UserAvatar from "@/components/atoms/UserAvatar";
-import CopyId from "@/components/molecules/CopyId";
 import Image from "next/image";
 import { Eye } from "lucide-react";
 
@@ -29,7 +28,7 @@ export default function PaymentsTable({ pagedItems, filtered, openDetail }) {
   const t = useTranslations();
   const { locale } = useLocale();
   const localeCode = locale === "vn" ? "vi-VN" : "en-US";
-  const date = new Intl.DateTimeFormat(localeCode, { day: "2-digit", month: "2-digit", year: "numeric" });
+  const date = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
   const time = new Intl.DateTimeFormat(localeCode, { hour: "2-digit", minute: "2-digit" });
   return (
     <div className="overflow-x-auto border ui-border ui-panel">
@@ -53,8 +52,10 @@ export default function PaymentsTable({ pagedItems, filtered, openDetail }) {
           {pagedItems.map((p) => (
             <tr key={p.id} className="border-t ui-border hover:bg-white/5">
               <td className="px-2">
-                <CopyId value={p.id} prefix="#" />
-                <div className="mt-1"><CopyId value={p.booking_id} prefix="↳ " /></div>
+                <div className="font-mono text-xs font-semibold" title={p.payment_code || p.id}>
+                  {p.payment_code || "—"}
+                </div>
+                <div className="mt-1 break-all font-mono text-xs ui-muted">↳ {p.booking?.booking_code || p.booking_code || "—"}</div>
               </td>
               <td className="px-2">
                 <div className="flex min-w-0 items-center gap-2">

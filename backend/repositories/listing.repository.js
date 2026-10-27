@@ -1,5 +1,7 @@
 const Repository = require("../core/repository");
 const { Listing, Sequelize } = require("../models");
+const BookingRepository = require("./booking.repository");
+const httpError = require("../utils/httpError");
 const { Op } = Sequelize;
 
 // Chuẩn hóa dấu tiếng Việt để tìm kiếm mà không cần extension PostgreSQL.
@@ -89,6 +91,24 @@ module.exports = class ListingRepository extends Repository {
 
     if (filters.room_type) where.room_type = { [Op.eq]: filters.room_type };
     if (filters.property_type) where.property_type = { [Op.eq]: filters.property_type };
+
+    if (filters.check_in || filters.check_out) {
+      const start = filters.check_in;
+      const end = filters.check_out;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(start || "") || !/^\d{4}-\d{2}-\d{2}$/.test(end || "") || end <= start)
+        throw httpError(400, "Invalid date range");
+      // Lọc trước phân trang; giữ chỗ hết hạn không tiếp tục chặn kết quả tìm kiếm.
+      and.push(Sequelize.literal(`NOT EXISTS (
+        SELECT 1 FROM bookings b WHERE b.listing_id = "Listing".id
+        AND b.check_in <= '${end}' AND b.check_out >= '${start}'
+        AND (b.status IN ('confirmed', 'completed') OR
+          (b.status = 'pending_payment' AND b.created_at > NOW() - (${BookingRepository.HOLD_MINUTES} * INTERVAL '1 minute')))
+      )`));
+      and.push(Sequelize.literal(`NOT EXISTS (
+        SELECT 1 FROM listing_calendar_blocks cb WHERE cb.listing_id = "Listing".id
+        AND cb.start_date <= '${end}' AND cb.end_date > '${start}'
+      )`));
+    }
 
     const hasCoords = this.hasCoords(filters);
     const lat = Number(filters.lat);

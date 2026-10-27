@@ -17,6 +17,8 @@ import RoomTabs from "@/components/RoomTabs";
 import Container from "@/components/layout/Container";
 import MapboxStaticMap from "@/components/MapboxStaticMap";
 import BookingCard from "@/components/Booking/BookingCard";
+import PublicRoomCalendar from "@/features/rooms/PublicRoomCalendar";
+import ListingViewTracker from "@/features/rooms/ListingViewTracker";
 import ReviewsSection from "@/components/Reviews";
 import ImageGallery from "@/components/Room/ImageGallery";
 import ContactHostButton from "@/components/ContactHostButton";
@@ -116,6 +118,7 @@ export default async function RoomDetailPage({ params, searchParams }) {
 
   return (
     <div className="nature-page room-page pb-10">
+      <ListingViewTracker listingId={listing.id} />
       {jsonLd && (
         <script
           type="application/ld+json"
@@ -212,6 +215,8 @@ export default async function RoomDetailPage({ params, searchParams }) {
               ))}
             </div>
           </section>
+
+          <PublicRoomCalendar listingId={listing.id} />
 
           <ReviewsSection
             listingId={listing.id}

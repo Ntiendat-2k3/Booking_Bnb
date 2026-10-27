@@ -9,7 +9,16 @@ module.exports = {
       bookingId: req.params.id,
       userId: req.user.user.id
     });
-    return successResponse(res, data, "Payment URL created");
+    res.set("Cache-Control", "no-store");
+    return successResponse(res, data, "Payment ready");
+  }),
+  reconcileStripe: asyncHandler(async (req, res) => {
+    const data = await paymentService.reconcileStripePayment({
+      bookingId: req.params.id,
+      userId: req.user.user.id,
+    });
+    res.set("Cache-Control", "no-store");
+    return successResponse(res, data);
   }),
   stripeWebhook: asyncHandler(async (req, res) => {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;

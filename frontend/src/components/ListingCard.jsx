@@ -80,11 +80,12 @@ export default function ListingCard({ listing, priority = false, checkIn, checkO
             <div className="text-sm text-ink">
               <span className="block text-lg font-bold tracking-tight">
                 {formatVND(
-                  listing?.price_per_night || listing?.price || 0,
+                  listing?.stay_price_total || listing?.price_per_night || listing?.price || 0,
                   locale === "en" ? "en-US" : "vi-VN",
                 )}
               </span>
-              <span className="text-xs text-muted-ink">{t("listing.perNight")}</span>
+              <span className="text-xs text-muted-ink">{listing?.stay_nights
+                ? t("pricing.forStay", { count: listing.stay_nights }) : t("listing.perNight")}</span>
             </div>
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-control bg-muted-surface text-ink transition group-hover:bg-ink group-hover:text-on-ink">
               {mapSelectable ? <MapTrifold aria-hidden size={20} /> : <ArrowUpRight aria-hidden size={20} />}

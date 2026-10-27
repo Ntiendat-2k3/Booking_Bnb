@@ -1,9 +1,21 @@
 const Repository = require("../core/repository");
 const { Payment, Booking, Listing, User, Sequelize } = require("../models");
+const { bookingReferenceFromCode, transformAdminBooking } = require("../transformers/booking.transformer");
+const { paymentReferenceFromCode } = require("../transformers/payment.transformer");
+
+/** Bổ sung mã booking cho giao dịch mà vẫn giữ UUID để tra cứu nội bộ. */
+function transformAdminPayment(payment) {
+  const plain = typeof payment.toJSON === "function" ? payment.toJSON() : { ...payment };
+  return { ...plain, ...(plain.booking ? { booking: transformAdminBooking(plain.booking) } : {}) };
+}
 
 module.exports = {
   async list({ status = null, provider = null, q = null, limit = 200, page = 1 } = {}) {
-    const where = Repository.searchWhere(q, ["Payment.id","Payment.booking_id","Payment.provider_txn_ref","Payment.provider_transaction_no","Payment.status","booking->guest.email","booking->listing.title"]);
+    const paymentReference = paymentReferenceFromCode(q);
+    const bookingReference = bookingReferenceFromCode(q);
+    const where = paymentReference ? { reference_number: paymentReference }
+      : bookingReference ? { "$booking.reference_number$": bookingReference }
+      : Repository.searchWhere(q, ["Payment.id","Payment.booking_id","Payment.provider_txn_ref","Payment.provider_transaction_no","Payment.status","booking->guest.email","booking->listing.title"]);
     if (status && status !== "all") where.status = status;
     if (provider && provider !== "all") where.provider = provider;
 
@@ -11,9 +23,9 @@ module.exports = {
         {
           model: Booking,
           as: "booking",
-          attributes: ["id", "status", "total_amount", "currency", "check_in", "check_out"],
+          attributes: ["id", "reference_number", "status", "total_amount", "currency", "check_in", "check_out"],
           include: [
-            { model: Listing, as: "listing", attributes: ["id", "title"] },
+            { model: Listing, as: "listing", attributes: ["id", "reference_number", "title"] },
             { model: User, as: "guest", attributes: ["id", "email", "full_name", "avatar_url"] },
           ],
         },
@@ -43,7 +55,7 @@ module.exports = {
     ]);
 
     return {
-      items: rows,
+      items: rows.map(transformAdminPayment),
       meta: {
         page, limit, total: Number(summary?.total || 0), total_pages: Math.ceil(Number(summary?.total || 0) / limit),
         summary: { succeeded: Number(summary?.succeeded || 0), pending: Number(summary?.pending || 0), revenue: Number(summary?.revenue || 0) },
@@ -69,6 +81,6 @@ module.exports = {
       err.status = 404;
       throw err;
     }
-    return { payment };
+    return { payment: transformAdminPayment(payment) };
   },
 };

@@ -136,3 +136,20 @@ test("Audio cần chữ ký container hợp lệ và được upload ở chế �
   assert.equal(options[0].resource_type, "video");
   assert.equal(options[0].type, "authenticated");
 });
+
+test("URL media chat có chữ ký và giữ đúng đuôi tệp raw", () => {
+  const client = require("cloudinary").v2;
+  client.config({ cloud_name: "test-cloud", api_key: "test-key", api_secret: "test-secret", secure: true });
+  const cloudinary = loadBackend("services/cloudinary.service.js", {}, {
+    "config/cloudinary.js": { initCloudinary: () => client },
+  });
+  const image = new URL(cloudinary.chatDownloadUrl("booking_bnb/chat/id/picture", "jpg", "image"));
+  const audio = new URL(cloudinary.chatDownloadUrl("booking_bnb/chat/id/voice", "webm", "video"));
+  const raw = new URL(cloudinary.chatDownloadUrl("booking_bnb/chat/id/document.pdf", "pdf", "raw"));
+  assert.match(image.pathname, /\/image\/authenticated\/s--[^/]+--\/v1\/booking_bnb\/chat\/id\/picture\.jpg$/);
+  assert.match(audio.pathname, /\/video\/authenticated\/s--[^/]+--\/v1\/booking_bnb\/chat\/id\/voice\.webm$/);
+  assert.match(raw.pathname, /\/raw\/authenticated\/s--[^/]+--\/v1\/booking_bnb\/chat\/id\/document\.pdf$/);
+  assert.equal(image.searchParams.has("expires_at"), false);
+  assert.equal(audio.searchParams.has("expires_at"), false);
+  assert.equal(raw.searchParams.has("expires_at"), false);
+});

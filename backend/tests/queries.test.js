@@ -190,6 +190,18 @@ test("API đổi vai trò không thể gán hoặc sửa tài khoản super_admi
   assert.equal(updated, false);
 });
 
+test("Admin không thể cấp vai trò cho tài khoản chưa xác minh email", async () => {
+  const id = "10000000-0000-4000-8000-000000000001";
+  let updated = false;
+  const service = loadBackend("services/admin_user.service.js", {
+    Sequelize,
+    User: { findByPk: async () => ({ role: "guest", status: "pending_verification",
+      update: async () => { updated = true; } }) },
+  });
+  await assert.rejects(service.setRole(id, "admin"), { status: 403 });
+  assert.equal(updated, false);
+});
+
 test("super_admin kế thừa quyền admin trên route", () => {
   const requireRole = loadBackend("middlewares/api/role.middleware.js", {});
   const res = { status(code) { this.code = code; return this; }, json() { return this; } };
@@ -209,6 +221,35 @@ test("Tìm kiếm Users, Listings và Amenities lọc bằng SQL trước LIMIT"
     assert.ok(sql.indexOf("ILIKE") < sql.lastIndexOf("LIMIT"), name);
     assert.ok(sql.includes("test\\%\\_"), name);
   }
+});
+
+test("Admin tìm phòng bằng mã ngắn trong SQL trước phân trang", async () => {
+  const db = queryFixture();
+  await loadBackend("services/admin_listing.service.js", db.models).list({ q: "room-00000010", page: 2, limit: 10 });
+  const sql = db.queries.find((query) => /FROM "listings"/.test(query) && /LIMIT 10 OFFSET 10/.test(query));
+  assert.match(sql, /"Listing"\."reference_number" = '36'/);
+});
+
+test("Admin tìm mã booking và phòng ở các danh sách trước khi phân trang", async () => {
+  for (const [serviceName, code, pattern] of [
+    ["admin_booking", "BNB-00000010", /"Booking"\."reference_number" = '36'/],
+    ["admin_booking", "ROOM-00000010", /"listing"\."reference_number" = '36'/],
+    ["admin_payment", "BNB-00000010", /"booking"\."reference_number" = '36'/],
+    ["admin_review", "BNB-00000010", /"booking"\."reference_number" = '36'/],
+    ["admin_review", "ROOM-00000010", /"listing"\."reference_number" = '36'/],
+  ]) {
+    const db = queryFixture();
+    await loadBackend(`services/${serviceName}.service.js`, db.models).list({ q: code, page: 2, limit: 10 });
+    const sql = db.queries.find((query) => /LIMIT 10 OFFSET 10/.test(query));
+    assert.match(sql, pattern, `${serviceName}: ${code}`);
+  }
+});
+
+test("Admin tìm giao dịch bằng mã TXN trước khi phân trang", async () => {
+  const db = queryFixture();
+  await loadBackend("services/admin_payment.service.js", db.models).list({ q: "txn-00000010", page: 2, limit: 10 });
+  const sql = db.queries.find((query) => /FROM "payments"/.test(query) && /LIMIT 10 OFFSET 10/.test(query));
+  assert.match(sql, /"Payment"\."reference_number" = '36'/);
 });
 
 test("Users, Listings và Amenities phân trang trong SQL và đếm toàn bộ kết quả khớp", async () => {

@@ -59,13 +59,13 @@ export default function ReviewDetailModal({ view, setView }) {
                 <span className="ui-muted">{t("common.listing")}:</span>{" "}
                 {view.listing?.title || "—"}{" "}
                 <span className="font-mono text-xs ui-muted">
-                  ({view.listing?.id || "—"})
+                  ({view.listing?.listing_code || "—"})
                 </span>
               </div>
               <div>
                 <span className="ui-muted">{t("common.booking")}:</span>{" "}
                 <span className="font-mono text-xs">
-                  {view.booking_id ?? "—"}
+                  {view.booking?.booking_code || "—"}
                 </span>
               </div>
             </div>

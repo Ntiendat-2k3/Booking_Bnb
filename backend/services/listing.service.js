@@ -1,5 +1,6 @@
 const { Listing, Sequelize, User, Amenity, ListingImage } = require("../models");
 const ListingRepository = require("../repositories/listing.repository");
+const pricing = require("./pricing.service");
 
 const listingRepo = new ListingRepository();
 const { literal } = Sequelize;
@@ -28,7 +29,9 @@ module.exports = {
     const limit = Math.min(50, Math.max(1, Number(filters.limit || 20)));
     const offset = (page - 1) * limit;
 
-    const where = listingRepo.buildWhere(filters);
+    const dated = Boolean(filters.check_in);
+    if (dated) pricing.assertDates(filters.check_in, filters.check_out);
+    const where = listingRepo.buildWhere(dated ? { ...filters, min_price: null, max_price: null } : filters);
 
     const hasCoordsFlag = listingRepo.hasCoords(filters);
     if (filters.sort === "distance_asc" && !hasCoordsFlag) {
@@ -65,16 +68,45 @@ module.exports = {
 
     const order = parseSort(filters.sort);
 
-    const { rows, count } = await Listing.findAndCountAll({
+    const query = {
       where,
       attributes: attrs,
       include: [
         { model: User, as: "host", attributes: ["id", "full_name", "avatar_url", "about", "location"] },
       ],
       order,
-      limit,
-      offset,
-    });
+    };
+    if (dated) {
+      const candidates = await Listing.findAll(query);
+      const data = await pricing.loadForListings(candidates.map((item) => item.id),
+        filters.check_in, filters.check_out);
+      const priced = [];
+      for (const item of candidates) {
+        let quote;
+        try {
+          quote = pricing.quoteFromData(item, filters.check_in, filters.check_out,
+            data.rules.get(String(item.id)) || [], data.dailyPrices.get(String(item.id)) || []);
+        } catch (error) {
+          if (error.status === 409) continue;
+          throw error;
+        }
+        const total = BigInt(quote.total);
+        const nights = BigInt(quote.nights.length);
+        if (filters.min_price != null && total < BigInt(filters.min_price) * nights) continue;
+        if (filters.max_price != null && total > BigInt(filters.max_price) * nights) continue;
+        priced.push({ ...item.toJSON(), stay_price_total: quote.total,
+          stay_nights: quote.nights.length });
+      }
+      if (filters.sort === "price_asc" || filters.sort === "price_desc")
+        priced.sort((a, b) => {
+          const difference = BigInt(a.stay_price_total) - BigInt(b.stay_price_total);
+          return (difference < 0n ? -1 : difference > 0n ? 1 : 0) *
+            (filters.sort === "price_asc" ? 1 : -1);
+        });
+      return { items: priced.slice(offset, offset + limit), meta: { page, limit,
+        total: priced.length, total_pages: Math.ceil(priced.length / limit) } };
+    }
+    const { rows, count } = await Listing.findAndCountAll({ ...query, limit, offset });
 
     return {
       items: rows,

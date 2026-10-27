@@ -71,5 +71,23 @@ const contactLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false,
   message: { status: "error", message: "Too many contact requests" },
 });
+const listingViewLimiter = rateLimit({
+  windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false,
+  message: { status: "error", message: "Too many listing view requests" },
+});
 
-module.exports = { authLoginLimiter, authRegisterLimiter, authRefreshLimiter, uploadLimiter, passwordResetLimiter, contactLimiter };
+const stayQrIssueLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, limit: 20,
+  keyGenerator: (req) => String(req.user.user.id),
+  standardHeaders: true, legacyHeaders: false,
+  message: { status: "error", message: "Too many QR requests" },
+});
+const stayQrScanLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, limit: 120,
+  keyGenerator: (req) => String(req.user.user.id),
+  standardHeaders: true, legacyHeaders: false,
+  message: { status: "error", message: "Too many QR scans" },
+});
+
+module.exports = { authLoginLimiter, authRegisterLimiter, authRefreshLimiter, uploadLimiter, passwordResetLimiter, contactLimiter,
+  stayQrIssueLimiter, stayQrScanLimiter, listingViewLimiter };

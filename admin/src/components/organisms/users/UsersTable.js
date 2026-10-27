@@ -50,7 +50,7 @@ export default function UsersTable({ pagedItems, filtered, setViewUser, openEdit
                   {u.role ? t(`roles.${u.role}`) : "—"}
                 </Badge>
               </td>
-              <td className="px-4 py-3"><Badge tone={u.status === "blocked" ? "rose" : "emerald"} className="whitespace-nowrap px-2 py-0.5">{t(`statuses.${u.status || "active"}`)}</Badge></td>
+              <td className="px-4 py-3"><Badge tone={u.status === "blocked" ? "rose" : u.status === "pending_verification" ? "amber" : "emerald"} className="whitespace-nowrap px-2 py-0.5">{t(`statuses.${u.status || "active"}`)}</Badge></td>
               <td className="px-4 py-3"><DateTimeCell value={u.created_at} locale={locale} /></td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-2">
@@ -62,14 +62,14 @@ export default function UsersTable({ pagedItems, filtered, setViewUser, openEdit
                     <Eye className="w-4 h-4" />
                     {t("common.view")}
                   </Button>
-                  <Button
+                  {u.status !== "pending_verification" ? <Button
                     variant="primary"
                     size="sm"
                     onClick={() => openEdit(u)}
                   >
                     <Pencil className="w-4 h-4" />
                     {t("users.editRole")}
-                  </Button>
+                  </Button> : null}
                 </div>
               </td>
             </tr>

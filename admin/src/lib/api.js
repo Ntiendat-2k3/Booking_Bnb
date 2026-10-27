@@ -1,4 +1,5 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:3000");
 
 let manualCsrfToken = null;
 
@@ -17,7 +18,8 @@ function getCookie(name) {
   return m ? decodeURIComponent(m[2]) : null;
 }
 
-export async function apiFetch(path, opts = {}) {
+/** Gửi yêu cầu cùng cookie phiên; khi CSRF hết hạn chỉ làm mới và thử lại một lần. */
+export async function apiFetch(path, opts = {}, csrfRetried = false) {
   const headers = new Headers(opts.headers || {});
   headers.set("Content-Type", "application/json");
 
@@ -26,14 +28,25 @@ export async function apiFetch(path, opts = {}) {
 
   if (unsafe && !headers.has("X-CSRF-Token")) {
     const csrf =
-      manualCsrfToken ||
-      getCookie(process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token");
+      getCookie(process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token") ||
+      manualCsrfToken;
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
 
   const res = await fetch(apiUrl(path), { credentials: "include", ...opts, headers });
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
+
+  if (unsafe && !csrfRetried && res.status === 403 &&
+    data?.message === "CSRF token invalid" && path !== "/api/v1/auth/csrf") {
+    const csrfRes = await apiFetch("/api/v1/auth/csrf");
+    const token = csrfRes?.data?.csrfToken || csrfRes?.csrfToken;
+    if (token) {
+      manualCsrfToken = token;
+      headers.set("X-CSRF-Token", token);
+      return apiFetch(path, { ...opts, headers }, true);
+    }
+  }
 
   if (!res.ok) {
     const message = data?.message || "Request failed";

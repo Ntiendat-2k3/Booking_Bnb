@@ -15,7 +15,8 @@ const DatePicker = lazy(() => Promise.all([
 /** Dùng chung lịch ngày/khoảng ngày; chỉ tải lịch khi mở và giữ nguyên ô nhập trong lúc chờ. */
 export default function DateField({
   id, label, variant, className, hint, placeholderText,
-  selected, startDate, endDate, selectsRange = false, dateFormat = "dd/MM/yyyy", ...props
+  selected, startDate, endDate, selectsRange = false, dateFormat = "dd/MM/yyyy",
+  withPortal, portalId = "booking-calendar-root", ...props
 }) {
   const generatedId = useId();
   const inputId = id || generatedId;
@@ -57,8 +58,8 @@ export default function DateField({
       popperClassName="booking-calendar-popper"
       showPopperArrow={false}
       // Chỉ xét viewport sau khi người dùng mở lịch, giữ HTML ban đầu nhất quán với SSR.
-      withPortal={typeof window !== "undefined" && window.matchMedia("(width < 768px)").matches}
-      portalId="booking-calendar-root"
+      withPortal={withPortal ?? (typeof window !== "undefined" && window.matchMedia("(width < 768px)").matches)}
+      portalId={portalId}
       customInput={input}
       customInputRef="inputRef"
       autoFocus

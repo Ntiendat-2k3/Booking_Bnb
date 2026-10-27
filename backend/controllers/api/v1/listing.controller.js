@@ -2,13 +2,20 @@ const listingService = require("../../../services/listing.service");
 const { successResponse, errorResponse } = require("../../../utils/response");
 const asyncHandler = require("../../../utils/asyncHandler");
 const { isUuid, toInt, toFloat } = require("../../../utils/validators");
+const analytics = require("../../../services/analytics.service");
 
 
 module.exports = {
+  recordView: asyncHandler(async (req, res) => {
+    await analytics.recordView(req.params.id, req.body.visitor_key);
+    return res.status(204).end();
+  }),
   list: asyncHandler(async (req, res) => {
     const filters = {
       city: req.query.city || null,
       country: req.query.country || null,
+      check_in: req.query.check_in || null,
+      check_out: req.query.check_out || null,
       min_price: toInt(req.query.min_price),
       max_price: toInt(req.query.max_price),
       guests: toInt(req.query.guests),

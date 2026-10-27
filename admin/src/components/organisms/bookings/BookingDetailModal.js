@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "@/i18n/LocaleProvider";
 import Modal from "@/components/molecules/Modal";
 import Button from "@/components/atoms/Button";
 import Badge from "@/components/atoms/Badge";
-import { statusTone, paymentTone, money, fmtDate } from "@/lib/BookingUtils";
+import { statusTone, paymentTone, money, fmtDate, formatDateOnly } from "@/lib/BookingUtils";
 
 export default function BookingDetailModal({ detailOpen, setDetailOpen, detail, detailLoading }) {
   const t = useTranslations();
@@ -14,7 +14,7 @@ export default function BookingDetailModal({ detailOpen, setDetailOpen, detail, 
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
         title={t("bookings.information")}
-        description={detail?.id ? `#${detail.id}` : ""}
+        description={detail?.booking_code || ""}
         size="lg"
         footer={
           <Button variant="secondary" onClick={() => setDetailOpen(false)}>
@@ -37,11 +37,11 @@ export default function BookingDetailModal({ detailOpen, setDetailOpen, detail, 
                 </div>
                 <div>
                   <span className="ui-muted">{t("common.checkIn")}:</span>{" "}
-                  {detail.check_in || "—"}
+                  {formatDateOnly(detail.check_in)}
                 </div>
                 <div>
                   <span className="ui-muted">{t("common.checkOut")}:</span>{" "}
-                  {detail.check_out || "—"}
+                  {formatDateOnly(detail.check_out)}
                 </div>
                 <div>
                   <span className="ui-muted">{t("common.total")}:</span>{" "}
@@ -70,7 +70,7 @@ export default function BookingDetailModal({ detailOpen, setDetailOpen, detail, 
                   <span className="ui-muted">{t("common.listing")}:</span>{" "}
                   {detail.listing?.title || "—"}{" "}
                   <span className="font-mono text-xs ui-muted">
-                    ({detail.listing?.id || "—"})
+                    ({detail.listing?.listing_code || "—"})
                   </span>
                 </div>
               </div>
@@ -82,7 +82,7 @@ export default function BookingDetailModal({ detailOpen, setDetailOpen, detail, 
                 <table className="w-full text-sm text-left">
                   <thead className="bg-white/5 ui-muted">
                     <tr>
-                      <th className="px-3 py-2">ID</th>
+                      <th className="px-3 py-2">{t("common.transactionId")}</th>
                       <th className="px-3 py-2">{t("common.provider")}</th>
                       <th className="px-3 py-2">{t("common.status")}</th>
                       <th className="px-3 py-2">{t("common.amount")}</th>
@@ -92,7 +92,7 @@ export default function BookingDetailModal({ detailOpen, setDetailOpen, detail, 
                   <tbody>
                     {(detail.payments || []).map((p) => (
                       <tr key={p.id} className="border-t ui-border">
-                        <td className="px-3 py-2 font-mono text-xs">{p.id}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{p.payment_code || "—"}</td>
                         <td className="px-3 py-2">{p.provider || "—"}</td>
                         <td className="px-3 py-2">
                           <Badge tone={paymentTone(p.status)}>

@@ -1,6 +1,6 @@
 // Các thay đổi lịch đặt phòng khóa listing trước booking để tránh đặt trùng và giữ cùng thứ tự khóa.
 const Repository = require("../core/repository");
-const { Booking, Listing, Payment, Sequelize } = require("../models");
+const { Booking, Listing, ListingCalendarBlock, Payment, Sequelize } = require("../models");
 const httpError = require("../utils/httpError");
 const { Op, literal } = Sequelize;
 const HOLD_MINUTES = Number(process.env.BOOKING_HOLD_MINUTES || 15);
@@ -29,30 +29,52 @@ class BookingRepository extends Repository {
     return { booking, listing };
   }
 
-  /** Listing phải được khóa trong cùng transaction trước khi kiểm tra khoảng ngày và ghi booking. */
-  async assertAvailability({ listingId, check_in, check_out, excludeBookingId }, transaction) {
-    const overlapping = await Booking.findOne({
+  /** Chưa có giờ nhận/trả phòng nên ngày trả phòng vẫn thuộc booking khi kiểm tra trùng lịch. */
+  activeOverlapWhere({ listingId, check_in, check_out, excludeBookingId }) {
+    return {
+      listing_id: listingId,
+      ...(excludeBookingId ? { id: { [Op.ne]: excludeBookingId } } : {}),
+      [Op.or]: [
+        { status: { [Op.in]: ["confirmed", "completed"] } },
+        { status: "pending_payment", created_at: { [Op.gt]: new Date(Date.now() - HOLD_MINUTES * 60000) } },
+      ],
+      check_in: { [Op.lte]: check_out }, check_out: { [Op.gte]: check_in },
+    };
+  }
+
+  findOverlappingBooking(range, transaction) {
+    return Booking.findOne({ where: this.activeOverlapWhere(range), transaction });
+  }
+
+  /** Listing phải được khóa trong transaction trước khi kiểm tra và ghi thay đổi lịch. */
+  async assertAvailability(range, transaction) {
+    if (await this.findOverlappingBooking(range, transaction))
+      throw httpError(409, "Dates are not available");
+    const blocked = await ListingCalendarBlock.findOne({
       where: {
-        listing_id: listingId,
-        ...(excludeBookingId ? { id: { [Op.ne]: excludeBookingId } } : {}),
-        [Op.or]: [
-          { status: { [Op.in]: ["confirmed", "completed"] } },
-          { status: "pending_payment", created_at: { [Op.gt]: new Date(Date.now() - HOLD_MINUTES * 60000) } },
-        ],
-        check_in: { [Op.lt]: check_out }, check_out: { [Op.gt]: check_in },
+        listing_id: range.listingId,
+        start_date: { [Op.lte]: range.check_out },
+        end_date: { [Op.gt]: range.check_in },
       }, transaction,
     });
-    if (overlapping) throw httpError(409, "Dates are not available");
+    if (blocked) throw httpError(409, "Dates are not available");
   }
 
   includeDetails() {
     return [
       { association: "listing", attributes: {
-        include: [[literal('(SELECT li.url FROM listing_images li WHERE li.listing_id = "listing".id ORDER BY li.is_cover DESC, li.sort_order ASC LIMIT 1)'), "cover_url"]],
+        include: [
+          [literal('(SELECT li.url FROM listing_images li WHERE li.listing_id = "listing".id ORDER BY li.is_cover DESC, li.sort_order ASC LIMIT 1)'), "cover_url"],
+          [literal('(SELECT COUNT(*)::integer FROM listing_images li WHERE li.listing_id = "listing".id)'), "image_count"],
+        ],
         exclude: ["deleted_at"],
       } },
-      { association: "payments", attributes: ["id", "provider", "status", "amount", "currency", "provider_txn_ref", "provider_transaction_no", "paid_at", "created_at"], separate: true, order: [["created_at", "DESC"]] },
+      { association: "payments", attributes: ["id", "reference_number", "provider", "status", "amount", "currency", "provider_txn_ref", "provider_transaction_no", "paid_at", "created_at"], separate: true, order: [["created_at", "DESC"]] },
+      { association: "cancellation", attributes: ["id", "paid_amount", "refund_amount", "non_refundable_amount", "currency", "created_at"], required: false },
+      { association: "refunds", attributes: ["id", "amount", "currency", "status", "created_at", "updated_at"], separate: true, order: [["created_at", "DESC"]] },
       { association: "review", attributes: ["id", "rating", "comment", "created_at"], required: false },
+      { association: "guest", attributes: ["full_name", "avatar_url", "phone"], required: false },
+      { association: "bookingProposal", attributes: ["renter_name", "renter_phone"], required: false },
     ];
   }
 
@@ -61,8 +83,10 @@ class BookingRepository extends Repository {
   }
 
   findPaid(bookingId, transaction) {
-    return Payment.findOne({ where: { booking_id: bookingId, status: "succeeded", provider: "stripe" }, transaction });
+    return Payment.findOne({ where: { booking_id: bookingId, status: "succeeded",
+      provider: { [Op.in]: ["stripe", "property"] } }, transaction });
   }
 }
 
+BookingRepository.HOLD_MINUTES = HOLD_MINUTES;
 module.exports = BookingRepository;

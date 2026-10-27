@@ -1,5 +1,5 @@
 const Joi = require("joi");
-const { uuid } = require("./common.schema");
+const { uuid, dateOnly } = require("./common.schema");
 
 const fields = {
   title: Joi.string().trim().min(1).max(255), description: Joi.string().max(10000).allow(null, ""),
@@ -7,6 +7,8 @@ const fields = {
   lat: Joi.number().min(-90).max(90).allow(null, ""), lng: Joi.number().min(-180).max(180).allow(null, ""),
   property_type: Joi.string().max(80).allow(null, ""), room_type: Joi.string().max(80).allow(null, ""),
   price_per_night: Joi.number().integer().min(1).max(Number.MAX_SAFE_INTEGER), max_guests: Joi.number().integer().min(1).max(100),
+  cancellation_policy_code: Joi.string().valid("flexible", "moderate", "strict"),
+  allow_pay_at_property: Joi.boolean(),
   bedrooms: Joi.number().integer().min(0).max(100), beds: Joi.number().integer().min(0).max(100), bathrooms: Joi.number().min(0).max(99.9).precision(1),
 };
 const createListingSchema = Joi.object({ ...fields, title: fields.title.required(), city: fields.city.required(), country: fields.country.required(), price_per_night: fields.price_per_night.required(), max_guests: fields.max_guests.required() });
@@ -17,12 +19,14 @@ const imageSchema = Joi.object({
 });
 const listingQuerySchema = Joi.object({
   city: Joi.string().max(120), country: Joi.string().max(120),
+  check_in: dateOnly, check_out: dateOnly,
   min_price: Joi.number().integer().min(0), max_price: Joi.number().integer().min(0),
   guests: Joi.number().integer().min(1).max(100), bedrooms: Joi.number().integer().min(0).max(100),
   room_type: Joi.string().max(80), property_type: Joi.string().max(80),
   lat: Joi.number().min(-90).max(90), lng: Joi.number().min(-180).max(180), radius_km: Joi.number().positive().max(20000),
   sort: Joi.string().valid("distance_asc", "price_asc", "price_desc", "newest", "rating_desc"),
   page: Joi.number().integer().min(1).max(100000).default(1), limit: Joi.number().integer().min(1).max(50).default(20),
-}).and("lat", "lng");
+}).and("lat", "lng").and("check_in", "check_out").custom((value, helpers) =>
+  value.check_in && value.check_out <= value.check_in ? helpers.error("any.invalid") : value);
 
 module.exports = { createListingSchema, updateListingSchema, amenitiesSchema, imageSchema, listingQuerySchema };

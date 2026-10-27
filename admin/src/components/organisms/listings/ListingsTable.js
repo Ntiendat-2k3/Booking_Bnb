@@ -86,7 +86,7 @@ export default function ListingsTable({
                       type="button"
                       onClick={() => toggleRow(x.id)}
                       disabled={saving}
-                      aria-label={t("common.selectItem", { id: x.id })}
+                      aria-label={t("common.selectItem", { id: x.listing_code || x.id })}
                       aria-pressed={isSelected}
                       className="mt-1 shrink-0 lg:mt-0"
                     >
@@ -106,7 +106,7 @@ export default function ListingsTable({
                         {x.title || t("common.untitled")}
                       </div>
                       <StatusBadge status={x.status} />
-                      <span className="font-mono text-xs ui-muted">#{x.id}</span>
+                      <span className="font-mono text-xs ui-muted">{x.listing_code || x.id}</span>
                     </div>
 
                     <div className="mt-1 text-sm ui-muted">

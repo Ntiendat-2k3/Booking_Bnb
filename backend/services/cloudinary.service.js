@@ -71,10 +71,11 @@ async function uploadChatFile(file, publicId) {
     type: "authenticated", use_filename: false, unique_filename: false });
 }
 
+/** URL có chữ ký chỉ được dùng trong proxy chat sau khi kiểm tra quyền; không phụ thuộc đồng hồ của backend. */
 function chatDownloadUrl(publicId, format, resourceType) {
-  return getClient().utils.private_download_url(publicId, format, {
-    resource_type: resourceType, type: "authenticated", secure: true,
-    expires_at: Math.floor(Date.now() / 1000) + 300,
+  return getClient().url(publicId, {
+    resource_type: resourceType, type: "authenticated", sign_url: true, secure: true,
+    ...(resourceType === "raw" ? {} : { format }),
   });
 }
 

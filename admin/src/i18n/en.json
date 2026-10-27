@@ -29,9 +29,23 @@
   },
   "nav": {
     "overview": "Overview", "users": "Users", "listings": "Listings", "amenities": "Amenities",
-    "bookings": "Bookings", "payments": "Payments", "reviews": "Reviews", "adminConsole": "Admin console",
+    "bookings": "Bookings", "payments": "Payments", "coupons": "Coupons", "refunds": "Refunds", "disputes": "Disputes", "reviews": "Reviews", "adminConsole": "Admin console",
     "adminNavigation": "Admin navigation", "openNavigation": "Open navigation", "closeNavigation": "Close navigation",
     "systemAdmin": "System Admin", "fullAccess": "Full Access", "logout": "Logout"
+  },
+  "coupons": {
+    "title": "Coupons & promotions", "description": "Create discount codes and track paid campaign revenue.",
+    "create": "Create coupon", "created": "Coupon created", "loadFailed": "Could not load coupons",
+    "saveFailed": "Could not save coupon", "saving": "Saving...", "loading": "Loading coupons...",
+    "code": "Code", "campaign_name": "Campaign", "discount_type": "Discount type",
+    "discount_value": "Discount", "percent": "Percent", "fixed": "Fixed amount",
+    "max_discount": "Maximum discount", "min_subtotal": "Minimum booking amount",
+    "starts_at": "Starts at", "ends_at": "Ends at", "max_total_uses": "Total use limit",
+    "max_uses_per_user": "Per account limit", "listing_id": "Listing ID", "host_id": "Host ID",
+    "city": "City", "audience": "Audience", "allGuests": "All guests", "newGuests": "New guests", "returningGuests": "Returning guests",
+    "notify": "Notify eligible users who accept offers", "campaigns": "Campaigns", "codes": "Codes",
+    "reserved": "Reserved", "used": "Paid uses", "revenue": "Paid revenue",
+    "discountTotal": "Total discounts", "status": "Status", "activate": "Activate", "deactivate": "Deactivate"
   },
   "login": {
     "heroTitle": "A clear space for every admin task.",
@@ -40,6 +54,19 @@
     "description": "Use an account with admin access to continue.", "password": "Password",
     "signIn": "Sign in", "signingIn": "Signing in...", "welcome": "Welcome back",
     "noAccess": "This account does not have admin access.", "failed": "Login failed"
+  },
+  "analytics": {
+    "title": "Revenue analytics", "description": "Track collected revenue and booking activity by period.",
+    "period": "Period", "date": "Reference date", "day": "Day", "month": "Month",
+    "quarter": "Quarter", "year": "Year", "loadFailed": "Could not load analytics",
+    "gross": "Gross revenue", "refunds": "Settled refunds", "net": "Revenue after refunds",
+    "successful": "Successful bookings", "successfulHint": "Created in this period and now confirmed or completed", "cancelled": "Cancelled", "completed": "Completed",
+    "occupancy": "Occupancy", "nights": "nights", "adr": "Average value per sold night", "revpar": "Average value per available night", "conversion": "View conversion",
+    "views": "Views", "starts": "Booking starts", "cancellationRate": "Cancellation rate",
+    "platformFees": "Platform fees", "feeUnconfigured": "No platform fee configured",
+    "previousNet": "Prior period net", "chart": "Net revenue over time",
+    "topListings": "Top earning listings", "highDemand": "High demand days", "moreDetails": "View detailed metrics",
+    "definition": "Revenue after refunds is collected payments minus settled refunds by transaction date; payments under reconciliation are excluded. Occupancy is sold nights divided by available nights. Nightly value is allocated from confirmed bookings; historical figures can change with listing status and blocked dates."
   },
   "dashboard": {
     "workspaceOverview": "Workspace overview", "description": "A clear view of bookings, listings and platform activity.",
@@ -51,12 +78,33 @@
     "monthlyRevenueChart": "Monthly revenue chart", "noRevenue": "Revenue data will appear here when payments are recorded.",
     "quickLinks": "Quick links", "jumpToArea": "Jump to a management area"
   },
+  "disputes": {
+    "description": "Track Stripe disputes and save internal resolution notes.",
+    "detail": "Dispute details", "noItems": "No disputes yet.",
+    "status": "Stripe status", "reason": "Reason", "due": "Evidence deadline",
+    "note": "Internal note", "save": "Save note", "saved": "Note saved",
+    "loadFailed": "Could not load disputes", "saveFailed": "Could not save note",
+    "openStripe": "Open Stripe to submit evidence or resolve the dispute",
+    "providerStatus": { "warning_needs_response": "Warning needs response", "warning_under_review": "Warning under review", "warning_closed": "Warning closed", "needs_response": "Needs response", "under_review": "Under review", "won": "Won", "lost": "Lost" }
+  },
+  "refunds": {
+    "description": "Track refunds, Stripe failures and cases requiring intervention.",
+    "all": "All", "requested": "Requested", "processing": "Processing",
+    "succeeded": "Confirmed", "failed": "Failed", "manual_review": "Needs review",
+    "bookingCode": "Booking code", "amount": "Refund amount", "payment": "Payment",
+    "detail": "Refund details", "history": "Activity history", "noItems": "No refunds yet.",
+    "retry": "Retry", "review": "Mark for review", "note": "Resolution note",
+    "saveAction": "Confirm action", "actionSuccess": "Refund request updated",
+    "actionFailed": "Could not update the refund request", "loadFailed": "Could not load refunds",
+    "providerId": "Stripe refund ID", "reason": "Failure reason", "source": "Request source",
+    "events": { "requested": "Requested", "processing": "Processing", "succeeded": "Stripe confirmed refund", "failed": "Refund failed", "manual_review": "Needs review", "admin_retry": "Admin retried", "admin_review": "Admin marked for review" }
+  },
   "roles": { "admin": "Admin", "host": "Host", "guest": "Guest" },
   "statuses": {
     "all": "All", "pending": "Pending", "published": "Published", "paused": "Paused", "draft": "Draft",
     "rejected": "Rejected", "pending_payment": "Pending payment", "confirmed": "Confirmed",
     "cancelled": "Cancelled", "completed": "Completed", "success": "Success", "failed": "Failed",
-    "refunded": "Refunded", "succeeded": "Succeeded", "active": "Active", "blocked": "Blocked", "inactive": "Inactive", "visible": "Visible", "hidden": "Hidden"
+    "refunded": "Refunded", "succeeded": "Succeeded", "active": "Active", "blocked": "Blocked", "pending_verification": "Awaiting email verification", "inactive": "Inactive", "visible": "Visible", "hidden": "Hidden"
   },
   "users": {
     "search": "Search name, email or role...", "empty": "No users found.", "information": "User information",
@@ -83,10 +131,10 @@
     "groupExample": "Basic, Safety, Bedroom...", "deactivateTitle": "Deactivate amenity?",
     "activateTitle": "Activate amenity?"
   },
-  "bookings": { "search": "Search ID, guest or listing...", "empty": "No bookings found.", "information": "Booking information", "nightsCount": "{count} nights", "noPayments": "No payments.", "noReview": "No review." },
+  "bookings": { "search": "Search ID, guest or listing...", "tripCode": "Trip code", "empty": "No bookings found.", "information": "Booking information", "nightsCount": "{count} nights", "noPayments": "No payments.", "noReview": "No review." },
   "payments": {
     "search": "Search transaction ID, email or booking ID...", "allStatuses": "All statuses",
-    "empty": "No payments found.", "information": "Payment information", "transactionBooking": "Transaction / Booking"
+    "empty": "No payments found.", "information": "Payment information", "transactionBooking": "Transaction / Booking", "providerReference": "Stripe reference"
   },
   "ui": {
     "usersDescription": "Manage Booking BnB accounts and roles.",

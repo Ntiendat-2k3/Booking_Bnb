@@ -1,0 +1,70 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: booking_bnb_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d booking_bnb_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            admin/package-lock.json
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix frontend
+      - run: npm ci --prefix admin
+      - run: npm run check --prefix backend
+      - run: npm test --prefix backend
+      - run: npm run lint --prefix frontend
+      - run: npm test --prefix frontend
+      - run: npm run build --prefix frontend
+      - run: npm run lint --prefix admin
+      - run: npm test --prefix admin
+      - run: npm run build --prefix admin
+      - name: Migrate isolated PostgreSQL database
+        run: npm run db:migrate --prefix backend
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: '5432'
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_TEST_NAME: booking_bnb_ci
+          DB_DIALECT: postgres
+      - name: Exercise booking, payment, chat and call against PostgreSQL
+        run: npm run test:integration --prefix backend
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: '5432'
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_TEST_NAME: booking_bnb_ci
+          DB_DIALECT: postgres
+          BOOKING_TEST_DATABASE: '1'
+          CHAT_TEST_DATABASE: '1'
+          REDIS_DISABLED: 'true'
+          JWT_SECRET: ci-only-secret-at-least-sixteen-characters
+          CORS_ORIGINS: http://localhost:3001

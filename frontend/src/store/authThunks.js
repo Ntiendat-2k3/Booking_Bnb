@@ -41,13 +41,38 @@ export const registerLocal = (body) => async (dispatch) => {
       body: body,
     });
 
+    dispatch(setStatus("idle"));
+    return { ok: true, email: res.data.email };
+  } catch (e) {
+    const pending = e.status === 409 && e.data?.message === "Email verification pending";
+    dispatch(setError(pending ? null : "auth.registerFailed"));
+    dispatch(setStatus(pending ? "idle" : "error"));
+    return { ok: false, invalidFields: validationFields(e), conflictField: registrationConflictField(e),
+      pending };
+  }
+};
+
+export const verifyRegistration = (body) => async (dispatch) => {
+  dispatch(setStatus("loading"));
+  try {
+    await dispatch(ensureCsrf());
+    const res = await apiFetch("/api/v1/auth/register/verify", { method: "POST", body });
     dispatch(setUser(res.data.user));
     dispatch(setStatus("idle"));
     return { ok: true };
-  } catch (e) {
-    dispatch(setError("auth.registerFailed"));
+  } catch (error) {
     dispatch(setStatus("error"));
-    return { ok: false, invalidFields: validationFields(e), conflictField: registrationConflictField(e) };
+    return { ok: false, invalidFields: validationFields(error), status: error.status };
+  }
+};
+
+export const resendRegistrationCode = (email) => async (dispatch) => {
+  try {
+    await dispatch(ensureCsrf());
+    await apiFetch("/api/v1/auth/register/resend", { method: "POST", body: { email } });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, status: error.status };
   }
 };
 

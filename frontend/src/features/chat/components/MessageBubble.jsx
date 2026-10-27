@@ -1,15 +1,19 @@
 import { useLocale } from "@/i18n/LocaleProvider";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowBendUpLeft, DotsThree, Smiley, VideoCamera } from "@phosphor-icons/react";
+import { ArrowBendUpLeft, CalendarPlus, DotsThree, PhoneX, Smiley } from "@phosphor-icons/react";
 import { useEffect, useRef, useState } from "react";
 import IconButton from "@/components/atoms/IconButton";
+import Avatar from "@/components/atoms/Avatar";
 import { chatApi } from "../api/chatApi";
+import EmojiText from "./EmojiText";
+import BookingProposalCard from "./BookingProposalCard";
 
 const reactionChoices = ["❤️", "👍", "😂", "😮", "🙏"];
 
 export default function MessageBubble({ message, mine, userId, otherName,
-  onRetry, onReply, onReaction, onEdit, onRecall, onPin, pinned, blocked }) {
+  otherAvatar, onCallAgain, callDisabled, onRetry, onReply, onReaction, onEdit, onRecall, onPin, pinned, blocked,
+  bookingRefresh, onProposalUpdate, onEditProposal, canSupportBooking, onSupportBooking }) {
   const { locale, t } = useLocale();
   const [reactionOpen, setReactionOpen] = useState(false);
   const [actionOpen, setActionOpen] = useState(false);
@@ -18,7 +22,7 @@ export default function MessageBubble({ message, mine, userId, otherName,
   const actionsRef = useRef(null);
   const actionButtonRef = useRef(null);
   const canChange = mine && !blocked && !message.status && !message.recalled_at && message.type === "text";
-  const canRecall = mine && !blocked && !message.status && !message.recalled_at;
+  const canRecall = mine && !blocked && !message.status && !message.recalled_at && message.type !== "booking_proposal";
   const canAct = !blocked && !message.status && !message.recalled_at;
   useEffect(() => {
     if (!reactionOpen && !actionOpen) return;
@@ -40,18 +44,30 @@ export default function MessageBubble({ message, mine, userId, otherName,
   if (message.type === "call") {
     const seconds = Math.max(0, Math.floor(Number(message.context?.duration_seconds) || 0));
     const minutes = Math.floor(seconds / 60);
+    const status = message.context?.status || "ended";
+    const titleKey = status === "no_answer" ? (mine ? "chat.callUnanswered" : "chat.callMissed")
+      : status === "declined" ? (mine ? "chat.callDeclined" : "chat.callDeclinedByYou")
+        : status === "cancelled" ? "chat.callCancelled"
+          : status === "failed" ? "chat.callFailed" : "chat.callFinished";
     const duration = seconds >= 3600
-      ? `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`
-      : `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
-    return <li id={`message-${message.id}`} className="flex justify-center py-1">
-      <div className="flex max-w-full items-center gap-3 rounded-2xl bg-muted-surface px-4 py-3 text-sm text-ink">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand/15 text-brand">
-          <VideoCamera aria-hidden size={20} weight="fill" /></span>
-        <span className="min-w-0"><strong className="block font-semibold">
-          {t(mine ? "chat.callOutgoing" : "chat.callIncoming", { name: otherName })}</strong>
-          <span className="block text-xs text-muted-ink">{t("chat.callDuration", { duration })} · <time dateTime={message.created_at}>
-            {new Date(message.created_at).toLocaleTimeString(locale === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" })}
-          </time></span></span>
+      ? t("chat.callDurationHours", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+      : seconds >= 60 ? t("chat.callDurationMinutes", { count: minutes })
+        : t("chat.callDurationSeconds", { count: seconds });
+    return <li id={`message-${message.id}`} className={`flex items-end gap-2 py-1 ${mine ? "justify-end" : "justify-start"}`}>
+      {!mine && <Avatar src={otherAvatar} name={otherName} size={32} />}
+      <div className="w-64 max-w-[calc(100%_-_2.5rem)] rounded-[1.4rem] bg-[#20203d] p-3.5 text-sm text-white shadow-soft sm:w-72">
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/20">
+            <PhoneX aria-hidden size={23} weight="fill" /></span>
+          <span className="min-w-0"><strong className="block font-semibold leading-5">{t(titleKey)}</strong>
+            <span className="block text-xs text-white/70">{seconds > 0 && <>{duration} · </>}
+              <time dateTime={message.created_at}>
+                {new Date(message.created_at).toLocaleTimeString(locale === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" })}
+              </time></span></span>
+        </div>
+        <button type="button" onClick={onCallAgain} disabled={callDisabled}
+          className="mt-3 w-full rounded-lg bg-white/20 px-3 py-2 text-center font-semibold text-white transition hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-50">
+          {t("chat.callAgain")}</button>
       </div>
     </li>;
   }
@@ -66,19 +82,19 @@ export default function MessageBubble({ message, mine, userId, otherName,
   const media = !message.status && !message.recalled_at && ["image", "audio", "video"].includes(message.type)
     ? chatApi.mediaUrl(message.conversation_id, message.id) : null;
   return <li id={`message-${message.id}`} className={`flex min-w-0 ${mine ? "justify-end" : "justify-start"}`}>
-    <div className={`flex min-w-0 max-w-[85%] flex-col ${mine ? "items-end" : "items-start"} sm:max-w-[70%]`}>
+    <div className={`flex min-w-0 flex-col ${mine ? "items-end" : "items-start"} ${message.type === "booking_proposal" ? "w-full max-w-md" : "max-w-[85%] sm:max-w-[70%]"}`}>
       {!mine && message.sender_name && <p className="mb-1 px-2 text-xs font-semibold text-muted-ink">{message.sender_name}</p>}
       {message.reply_to_id && <button type="button"
         onClick={() => document.getElementById(`message-${message.reply_to_id}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
         className="mb-1 max-w-full rounded-xl border-l-2 border-brand bg-muted-surface px-3 py-1.5 text-left text-xs">
         <strong className="block text-brand">{message.replyTo?.sender_id === userId ? t("chat.you") :
           message.replyTo?.sender_name || otherName}</strong>
-        <span className="block truncate text-muted-ink">{!message.replyTo || message.replyTo.recalled_at
+        <span className="block truncate text-muted-ink"><EmojiText text={!message.replyTo || message.replyTo.recalled_at
           ? t("chat.replyUnavailable") : message.replyTo.body || t(message.replyTo.type === "image" ? "chat.sentImage" :
             message.replyTo.type === "audio" ? "chat.voiceMessage" :
               message.replyTo.type === "video" ? "chat.shared.video" :
               message.replyTo.type === "file" ? "chat.sentFiles" :
-                message.replyTo.type === "shared_context" ? "chat.sharedListing" : "chat.replyUnavailable")}</span>
+                message.replyTo.type === "shared_context" ? "chat.sharedListing" : "chat.replyUnavailable")} /></span>
       </button>}
       {message.recalled_at ? <p className="w-fit max-w-full rounded-2xl bg-muted-surface px-3.5 py-2.5 text-sm italic text-muted-ink">{t("chat.recalled")}</p> :
         editing ? <form onSubmit={async (event) => {
@@ -94,18 +110,28 @@ export default function MessageBubble({ message, mine, userId, otherName,
             <button type="submit" disabled={!draft.trim()}>{t("chat.saveEdit")}</button>
           </div>
         </form> :
+        message.type === "booking_proposal" ? <BookingProposalCard message={message} userId={userId}
+          blocked={blocked} refreshKey={bookingRefresh} onMessageUpdate={onProposalUpdate}
+          onEdit={onEditProposal} /> :
         message.type === "shared_context" && message.context?.type === "listing" && message.context.id ?
-          <Link href={`/rooms/${encodeURIComponent(message.context.id)}`}
-            aria-label={t("chat.viewListing", { title: message.context.title || t("chat.sharedListing") })}
-            className="block overflow-hidden rounded-2xl border border-line bg-muted-surface text-ink hover:border-brand">
-            {/^https:\/\//i.test(message.context.image_url || "") && <Image src={message.context.image_url}
-              alt={message.context.title || t("chat.sharedListing")} unoptimized width={440} height={240}
-              className="max-h-44 w-full object-cover" />}
-            <span className="block p-3"><strong className="block break-words text-sm">{message.context.title || t("chat.sharedListing")}</strong>
-              {message.context.location && <span className="mt-1 block text-xs text-muted-ink">{message.context.location}</span>}
-              <span className="mt-2 block text-xs font-semibold text-brand">{t("chat.openListing")}</span>
-            </span>
-          </Link> :
+          <div className="overflow-hidden rounded-2xl border border-line bg-muted-surface text-ink">
+            <Link href={`/rooms/${encodeURIComponent(message.context.id)}`}
+              aria-label={t("chat.viewListing", { title: message.context.title || t("chat.sharedListing") })}
+              className="block hover:bg-line/40">
+              {/^https:\/\//i.test(message.context.image_url || "") && <Image src={message.context.image_url}
+                alt={message.context.title || t("chat.sharedListing")} unoptimized width={440} height={240}
+                className="max-h-44 w-full object-cover" />}
+              <span className="block p-3"><strong className="block break-words text-sm">{message.context.title || t("chat.sharedListing")}</strong>
+                {message.context.location && <span className="mt-1 block text-xs text-muted-ink">{message.context.location}</span>}
+                <span className="mt-2 block text-xs font-semibold text-brand">{t("chat.openListing")}</span>
+              </span>
+            </Link>
+            {canSupportBooking && !message.status && <button type="button"
+              onClick={() => onSupportBooking(message.context.id)}
+              aria-label={`${t("chat.proposal.support")}: ${message.context.title || t("chat.sharedListing")}`}
+              className="flex w-full items-center gap-2 border-t border-line px-3 py-2 text-left text-xs font-semibold text-brand hover:bg-line/40 focus-visible:ring-2 focus-visible:ring-brand">
+              <CalendarPlus aria-hidden size={17} />{t("chat.proposal.support")}</button>}
+          </div> :
         message.type === "image" && media ? <a href={media} target="_blank" rel="noopener noreferrer"
           aria-label={t("chat.openImage")} className="block overflow-hidden rounded-2xl">
           <Image src={media} alt={t("chat.sentImage")} unoptimized
@@ -124,10 +150,10 @@ export default function MessageBubble({ message, mine, userId, otherName,
               {file.name || t("chat.sentFiles")}</a>)}
           </div> :
           <p className={`w-fit max-w-full whitespace-pre-wrap break-words rounded-[1.15rem] px-3.5 py-2 text-sm leading-6 ${mine ? "rounded-br-md bg-brand text-on-brand" : "rounded-bl-md bg-muted-surface text-ink"}`}>
-            {["image", "audio", "video", "file", "shared_context"].includes(message.type)
+            <EmojiText text={["image", "audio", "video", "file", "shared_context"].includes(message.type)
               ? t(message.type === "image" ? "chat.sentImage" : message.type === "file" ? "chat.sentFiles" :
                 message.type === "video" ? "chat.shared.video" :
-                  message.type === "shared_context" ? "chat.sharedListing" : "chat.voiceMessage") : message.body}
+                  message.type === "shared_context" ? "chat.sharedListing" : "chat.voiceMessage") : message.body} />
           </p>}
       {link && !editing && <a href={link.href} target="_blank" rel="noopener noreferrer"
         className="mt-1 block max-w-full overflow-hidden rounded-xl border border-line bg-muted-surface p-3 text-xs text-ink hover:border-brand">
@@ -138,7 +164,7 @@ export default function MessageBubble({ message, mine, userId, otherName,
         {reactions.map(([emoji, count]) => <button key={emoji} type="button" disabled={blocked || Boolean(message.status)}
           onClick={() => onReaction(message, emoji)} aria-label={`${emoji} ${count}`}
           className={`rounded-full border px-2 py-0.5 text-xs ${message.reactions.some((r) => r.user_id === userId && r.emoji === emoji)
-            ? "border-brand bg-brand/10" : "border-line bg-muted-surface"}`}>{emoji} {count}</button>)}
+            ? "border-brand bg-brand/10" : "border-line bg-muted-surface"}`}><EmojiText text={emoji} /> {count}</button>)}
       </div>}
       <div ref={actionsRef} className="relative mt-0.5 flex min-h-7 items-center gap-0.5 text-[11px] text-muted-ink">
         <time className="px-1" dateTime={message.created_at}>{new Date(message.created_at).toLocaleTimeString(locale === "en" ? "en-US" : "vi-VN", { hour: "2-digit", minute: "2-digit" })}</time>
@@ -160,7 +186,7 @@ export default function MessageBubble({ message, mine, userId, otherName,
           aria-label={t("chat.react")}>
           {reactionChoices.map((emoji) => <button key={emoji} type="button" aria-label={`${t("chat.react")} ${emoji}`}
             onClick={() => { onReaction(message, emoji); setReactionOpen(false); }}
-            className="rounded-full p-1 text-lg leading-none hover:bg-muted-surface">{emoji}</button>)}
+            className="rounded-full p-1 text-lg leading-none hover:bg-muted-surface"><EmojiText text={emoji} /></button>)}
         </div>}
         {actionOpen && <div id={`actions-${message.id}`} className={`absolute bottom-full z-20 mb-1 min-w-36 rounded-xl border border-line bg-surface p-1 text-sm text-ink shadow-float ${mine ? "right-0" : "left-0"}`}>
           {canChange && <button type="button" onClick={() => { setDraft(message.body || ""); setEditing(true); setActionOpen(false); }}

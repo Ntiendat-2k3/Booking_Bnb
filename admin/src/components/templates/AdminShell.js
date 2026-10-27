@@ -18,11 +18,13 @@ import {
   Sparkles,
   CalendarCheck,
   CreditCard,
+  RotateCcw,
   Star,
   LogOut,
   Menu,
   X,
   Mountain,
+  TicketPercent,
 } from "lucide-react";
 
 const navItems = [
@@ -32,6 +34,9 @@ const navItems = [
   { href: "/dashboard/amenities", label: "nav.amenities", icon: Sparkles },
   { href: "/dashboard/bookings", label: "nav.bookings", icon: CalendarCheck },
   { href: "/dashboard/payments", label: "nav.payments", icon: CreditCard },
+  { href: "/dashboard/coupons", label: "nav.coupons", icon: TicketPercent },
+    { href: "/dashboard/refunds", label: "nav.refunds", icon: RotateCcw },
+    { href: "/dashboard/disputes", label: "nav.disputes", icon: CreditCard },
   { href: "/dashboard/reviews", label: "nav.reviews", icon: Star },
 ];
 

@@ -17,6 +17,24 @@ export const chatApi = {
   }).then((res) => res.data),
   detail: (id) => apiFetch(`${root}/${id}`).then((res) => res.data),
   messages: (id, params) => apiFetch(`${root}/${id}/messages`, { params }).then((res) => res.data),
+  proposalCandidates: (id, search, signal) => apiFetch(`${root}/${id}/booking-proposals/candidates`, {
+    params: { search }, signal,
+  }).then((res) => res.data),
+  proposalQuote: (id, body) => apiFetch(`${root}/${id}/booking-proposals/quote`, {
+    method: "POST", body,
+  }).then((res) => res.data),
+  createProposal: (id, body) => apiFetch(`${root}/${id}/booking-proposals`, {
+    method: "POST", body,
+  }).then((res) => res.data),
+  proposalDetail: (id, proposalId) => apiFetch(`${root}/${id}/booking-proposals/${proposalId}`)
+    .then((res) => res.data),
+  updateProposal: (id, proposalId, body) => apiFetch(`${root}/${id}/booking-proposals/${proposalId}`, {
+    method: "PATCH", body,
+  }).then((res) => res.data),
+  proposalAction: (id, proposalId, action, body) =>
+    apiFetch(`${root}/${id}/booking-proposals/${proposalId}/${action}`, {
+      method: "POST", body,
+    }).then((res) => res.data),
   searchMessages: (id, search, page = 1) => apiFetch(`${root}/${id}/messages/search`, {
     params: { search, page },
   }).then((res) => res.data),

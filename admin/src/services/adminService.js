@@ -9,6 +9,15 @@ function listPath(path, params) {
 }
 
 export const adminService = {
+  getAnalytics: async (period, date, signal) => apiFetch(
+    listPath("/api/v1/admin/dashboard/analytics", { period, date }), { method: "GET", signal }),
+  getCoupons: async () => apiFetch("/api/v1/admin/coupons", { method: "GET" }),
+  createCoupon: async (data) => apiFetch("/api/v1/admin/coupons", {
+    method: "POST", body: JSON.stringify(data),
+  }),
+  setCouponActive: async (id, is_active) => apiFetch(`/api/v1/admin/coupons/${id}/active`, {
+    method: "PATCH", body: JSON.stringify({ is_active }),
+  }),
   // ---- Listings ----
   getListings: async ({ status = "all", q = "", page = 1, limit = 10, signal } = {}) => {
     return await apiFetch(listPath("/api/v1/admin/listings", { status, q: q.trim(), page, limit }), { method: "GET", signal });
@@ -137,6 +146,19 @@ export const adminService = {
       method: "GET",
     });
   },
+
+  getRefunds: async ({ status = "all", page = 1, limit = 20, signal } = {}) =>
+    apiFetch(listPath("/api/v1/admin/refunds", { status, page, limit }), { method: "GET", signal }),
+  getRefundDetail: async (id) => apiFetch(`/api/v1/admin/refunds/${id}`, { method: "GET" }),
+    actOnRefund: async (id, action, note) => apiFetch(`/api/v1/admin/refunds/${id}/action`, {
+      method: "POST", body: JSON.stringify({ action, note }),
+    }),
+    getDisputes: async ({ page = 1, limit = 20, signal } = {}) =>
+      apiFetch(listPath("/api/v1/admin/disputes", { page, limit }), { method: "GET", signal }),
+    getDisputeDetail: async (id) => apiFetch(`/api/v1/admin/disputes/${id}`, { method: "GET" }),
+    noteDispute: async (id, note) => apiFetch(`/api/v1/admin/disputes/${id}/note`, {
+      method: "POST", body: JSON.stringify({ note }),
+    }),
 
   // ---- Dashboard ----
   getDashboardStats: async () => {

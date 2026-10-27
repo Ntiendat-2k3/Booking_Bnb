@@ -6,7 +6,7 @@ const authMiddleware = require("../../middlewares/api/auth.middleware");
 const csrfMiddleware = require("../../middlewares/csrf.middleware");
 const { authLoginLimiter, authRegisterLimiter, authRefreshLimiter } = require("../../middlewares/rateLimit");
 const validate = require("../../middlewares/api/validation.middleware");
-const { registerSchema, loginSchema, googleLinkSchema, forgotPasswordSchema, resetPasswordSchema } = require("../../requests/api/v1/auth.schema");
+const { registerSchema, verifyRegistrationSchema, resendRegistrationSchema, loginSchema, googleLinkSchema, forgotPasswordSchema, resetPasswordSchema } = require("../../requests/api/v1/auth.schema");
 const { passwordResetLimiter } = require("../../middlewares/rateLimit");
 const { errorResponse } = require("../../utils/response");
 
@@ -21,6 +21,8 @@ function recentAuth(req, res, next) {
 router.get("/csrf", authController.csrf);
 
 router.post("/register", authRegisterLimiter, validate(registerSchema), authController.register);
+router.post("/register/verify", authLoginLimiter, csrfMiddleware, validate(verifyRegistrationSchema), authController.verifyRegistration);
+router.post("/register/resend", authRegisterLimiter, csrfMiddleware, validate(resendRegistrationSchema), authController.resendRegistrationCode);
 router.post("/login", authLoginLimiter, validate(loginSchema), authController.login);
 router.post("/forgot-password", passwordResetLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
 router.post("/reset-password", passwordResetLimiter, validate(resetPasswordSchema), authController.resetPassword);

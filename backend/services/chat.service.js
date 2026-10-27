@@ -36,6 +36,7 @@ async function discardMedia(publicId, resourceType) {
 
 module.exports = {
   requireMember,
+  publishMessage: emitMessage,
   callPeer(userId, conversationId) { return chat.callPeer(userId, conversationId); },
   /** Mở hội thoại trực tiếp giữa hai tài khoản; thông tin phòng được chia sẻ riêng khi liên hệ chủ nhà. */
   async createDirect(userId, otherId) {

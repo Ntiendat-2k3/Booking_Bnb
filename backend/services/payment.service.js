@@ -1,20 +1,26 @@
 const {
   Payment,
+  Booking,
   User,
   Notification,
   sequelize,
   Sequelize,
 } = require("../models");
 const BookingRepository = require("../repositories/booking.repository");
+const { bookingCode } = require("../transformers/booking.transformer");
 const { getStripe } = require("../config/stripe");
 const { enqueue } = require("./background_job.service");
 const notifications = require("./notification.service");
 const preferences = require("./notification-preference.service");
 const { message } = require("../templates/emails");
+const bookingQr = require("./booking_qr.service");
 const httpError = require("../utils/httpError");
 const { isUuid } = require("../utils/validators");
 const bookingRepo = new BookingRepository();
+  const refunds = require("./refund.service");
+  const disputes = require("./payment_dispute.service");
 const { Op } = Sequelize;
+const coupons = require("./coupon.service");
 
 function snapshotOf(booking) {
   return {
@@ -60,6 +66,10 @@ async function notifyConfirmed(booking, listing, transaction) {
         { transaction },
       );
     }
+    if (isGuest) {
+      await bookingQr.queueConfirmation(booking, transaction);
+      continue;
+    }
     await enqueue(
       "send_email",
       {
@@ -67,7 +77,7 @@ async function notifyConfirmed(booking, listing, transaction) {
         subject: title,
         html: message(title, [
           text,
-          `Mã đơn: ${booking.id}`,
+          `Mã đơn: ${bookingCode(booking.reference_number)}`,
           `Ngày nhận phòng: ${booking.check_in}`,
           `Ngày trả phòng: ${booking.check_out}`,
         ]),
@@ -78,7 +88,7 @@ async function notifyConfirmed(booking, listing, transaction) {
 }
 
 module.exports = {
-  /** Tạo session ngoài transaction; payment ID làm idempotency key cho cả retry và request đồng thời. */
+  /** Tạo PaymentIntent cho đúng đơn đang giữ chỗ; ID payment cố định giúp các lần thử lại không tạo giao dịch trùng. */
   async createStripePayment({ bookingId, userId }) {
     const payment = await sequelize.transaction(async (transaction) => {
       const { booking, listing } = await bookingRepo.lockForMutation(
@@ -102,13 +112,19 @@ module.exports = {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
-      if (
-        pending &&
-        matchesSnapshot(pending, booking) &&
-        String(pending.amount) === String(booking.total_amount) &&
-        pending.currency === booking.currency
-      )
-        return pending;
+      if (pending) {
+        const matches = matchesSnapshot(pending, booking) &&
+          String(pending.amount) === String(booking.total_amount) &&
+          pending.currency === booking.currency;
+        if (matches && !pending.payload?.request?.url &&
+          (!pending.provider_txn_ref || pending.provider_txn_ref.startsWith("pi_"))) return pending;
+        await pending.update({ status: "cancelled" }, { transaction });
+        if (pending.provider_txn_ref) {
+          await enqueue(pending.provider_txn_ref.startsWith("pi_") ? "stripe_cancel_intent" : "stripe_expire_session",
+            pending.provider_txn_ref.startsWith("pi_")
+              ? { intentId: pending.provider_txn_ref } : { sessionId: pending.provider_txn_ref }, transaction);
+        }
+      }
       return Payment.create(
         {
           booking_id: booking.id,
@@ -121,33 +137,31 @@ module.exports = {
         { transaction },
       );
     });
-    if (payment.payload?.request?.url)
-      return { payment, payment_url: payment.payload.request.url };
-    const frontendBase =
-      process.env.FRONTEND_BASE_URL ||
-      process.env.FRONTEND_URL ||
-      "http://localhost:3001";
-    const session = await getStripe().checkout.sessions.create(
-      {
-        payment_method_types: ["card"],
-        line_items: [
-          {
-            price_data: {
-              currency: payment.currency.toLowerCase(),
-              product_data: { name: `Booking ${payment.booking_id}` },
-              unit_amount: Number(payment.amount),
-            },
-            quantity: 1,
-          },
-        ],
-        mode: "payment",
-        success_url: `${frontendBase}/trips?payment=success&bookingId=${payment.booking_id}`,
-        cancel_url: `${frontendBase}/trips?payment=failed&bookingId=${payment.booking_id}`,
-        client_reference_id: payment.id,
-        metadata: { bookingId: payment.booking_id, paymentId: payment.id },
-      },
-      { idempotencyKey: `checkout:${payment.id}` },
-    );
+    let intent;
+    try {
+      intent = payment.payload?.intent?.id
+        ? await getStripe().paymentIntents.retrieve(payment.payload.intent.id)
+        : await getStripe().paymentIntents.create({
+          amount: Number(payment.amount),
+          currency: payment.currency.toLowerCase(),
+          payment_method_types: ["card"],
+          description: `Booking ${payment.booking_id}`,
+          metadata: { bookingId: payment.booking_id, paymentId: payment.id },
+        }, { idempotencyKey: `intent:${payment.id}` });
+    } catch (error) {
+      // Lỗi kết nối tạm thời giữ payment ở trạng thái pending để lần thử sau dùng lại cùng khóa Stripe.
+      if (["StripeConnectionError", "StripeAPIError", "StripeRateLimitError"].includes(error.type)) {
+        throw httpError(503, "Payment provider is temporarily unavailable. Please try again.");
+      }
+      throw error;
+    }
+    if (intent.status === "canceled") {
+      await Payment.update({ status: "cancelled" }, { where: { id: payment.id, status: "pending" } });
+      return this.createStripePayment({ bookingId, userId });
+    }
+    if (!intent.client_secret || intent.amount !== Number(payment.amount) ||
+      intent.currency?.toUpperCase() !== payment.currency?.toUpperCase())
+      throw httpError(409, "Payment intent no longer matches booking");
     const result = await sequelize.transaction(async (transaction) => {
       const { booking } = await bookingRepo.lockForMutation(
         bookingId,
@@ -160,10 +174,10 @@ module.exports = {
       });
       await current.update(
         {
-          provider_txn_ref: session.id,
+          provider_txn_ref: intent.id,
           payload: {
             ...current.payload,
-            request: { id: session.id, url: session.url },
+            intent: { id: intent.id },
           },
         },
         { transaction },
@@ -175,8 +189,8 @@ module.exports = {
         matchesSnapshot(current, booking);
       if (!active)
         await enqueue(
-          "stripe_expire_session",
-          { sessionId: session.id },
+          "stripe_cancel_intent",
+          { intentId: intent.id },
           transaction,
         );
       return { payment: current, active };
@@ -186,25 +200,66 @@ module.exports = {
         409,
         "Booking changed while creating payment; please try again",
       );
-    return { payment: result.payment, payment_url: session.url };
+    return { payment: result.payment, client_secret: intent.client_secret, status: intent.status };
+  },
+
+  /** Đối soát từ Stripe cho khách đang xem đơn; chỉ dữ liệu lấy bằng secret key mới được chuyển vào luồng webhook. */
+  async reconcileStripePayment({ bookingId, userId }) {
+    const booking = await Booking.findOne({
+      where: { id: bookingId, guest_id: userId },
+      attributes: ["id", "status"],
+    });
+    if (!booking) throw httpError(404, "Booking not found");
+    const payment = await Payment.findOne({
+      where: { booking_id: bookingId, provider: "stripe" },
+      order: [["created_at", "DESC"]],
+    });
+    if (!payment?.provider_txn_ref?.startsWith("pi_"))
+      return { booking_status: booking.status, payment_status: "pending" };
+    let intent;
+    try {
+      intent = await getStripe().paymentIntents.retrieve(payment.provider_txn_ref);
+    } catch (error) {
+      if (["StripeConnectionError", "StripeAPIError", "StripeRateLimitError"].includes(error.type))
+        throw httpError(503, "Payment provider is temporarily unavailable. Please try again.");
+      throw error;
+    }
+    if (intent.id !== payment.provider_txn_ref || intent.metadata?.paymentId !== payment.id)
+      throw httpError(409, "Payment reference does not match");
+    if (intent.status === "succeeded") {
+      await this.handleStripeWebhook({
+        id: "reconcile:" + intent.id,
+        type: "payment_intent.succeeded",
+        data: { object: intent },
+      });
+    }
+    const current = await Booking.findByPk(bookingId, { attributes: ["status"] });
+    return { booking_status: current.status, payment_status: intent.status };
   },
 
   /** Ghi payment, booking và tác vụ hậu xử lý nguyên tử; thanh toán cũ được hoàn tiền thay vì phục hồi lịch đã hủy. */
   async handleStripeWebhook(event) {
+    if (["refund.created", "refund.updated", "refund.failed"].includes(event.type))
+      return refunds.handleStripeEvent(event);
+    if (event.type?.startsWith("charge.dispute."))
+      return disputes.handleStripeEvent(event);
+    const isIntent = event.type === "payment_intent.succeeded";
     if (
       ![
+        "payment_intent.succeeded",
         "checkout.session.completed",
         "checkout.session.async_payment_succeeded",
       ].includes(event.type)
     )
       return { success: true, ignored: true };
-    const session = event.data?.object;
+    const source = event.data?.object;
+    const paymentId = isIntent ? source?.metadata?.paymentId : source?.client_reference_id;
     if (
-      !isUuid(session?.client_reference_id) ||
-      session.payment_status !== "paid"
+      !isUuid(paymentId) ||
+      (isIntent ? source.status !== "succeeded" : source.payment_status !== "paid")
     )
       return { success: true, ignored: true };
-    const paymentSnapshot = await Payment.findByPk(session.client_reference_id);
+    const paymentSnapshot = await Payment.findByPk(paymentId);
     if (!paymentSnapshot) return { success: true, ignored: true };
     return sequelize.transaction(async (transaction) => {
       const { booking, listing } = await bookingRepo.lockForMutation(
@@ -217,9 +272,9 @@ module.exports = {
       });
       if (
         payment.provider !== "stripe" ||
-        payment.provider_txn_ref !== session.id
+        payment.provider_txn_ref !== source.id
       )
-        throw httpError(400, "Payment session does not match");
+        throw httpError(400, "Payment reference does not match");
       if (payment.status === "refunded" || payment.payload?.refund_requested)
         return { success: true, alreadyPaid: true };
       if (
@@ -227,16 +282,17 @@ module.exports = {
         booking.status !== "pending_payment"
       )
         return { success: true, alreadyPaid: true };
-      const paymentIntent =
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : session.payment_intent?.id;
+      const paymentIntent = isIntent ? source.id :
+        typeof source.payment_intent === "string" ? source.payment_intent : source.payment_intent?.id;
       if (!paymentIntent) throw httpError(400, "Payment intent is required");
+      const paidAmount = isIntent ? source.amount_received : source.amount_total;
       let refundReason;
-      if (
-        !Number.isSafeInteger(session.amount_total) ||
-        String(session.amount_total) !== String(payment.amount) ||
-        session.currency?.toUpperCase() !== payment.currency?.toUpperCase()
+      if (!["pending", "succeeded"].includes(payment.status))
+        refundReason = "payment_not_pending";
+      else if (
+        !Number.isSafeInteger(paidAmount) ||
+        String(paidAmount) !== String(payment.amount) ||
+        source.currency?.toUpperCase() !== payment.currency?.toUpperCase()
       )
         refundReason = "payment_amount_mismatch";
       else if (
@@ -283,20 +339,18 @@ module.exports = {
           provider_transaction_no: paymentIntent,
           payload: {
             ...payment.payload,
-            webhook: { eventId: event.id, sessionId: session.id },
+            webhook: { eventId: event.id, ...(isIntent ? { intentId: source.id } : { sessionId: source.id }) },
             ...(refundReason ? { refund_requested: refundReason } : {}),
           },
         },
         { transaction },
       );
       if (refundReason) {
-        await enqueue(
-          "stripe_refund",
-          { paymentId: payment.id, paymentIntent },
-          transaction,
-        );
+        await refunds.requestReconciliation({ booking, payment, amount: paidAmount,
+          reason: refundReason, transaction });
         return { success: true, refundRequested: true };
       }
+      await coupons.confirmForBooking(booking, transaction);
       await booking.update({ status: "confirmed" }, { transaction });
       notifications.publishBookingChanged(transaction, booking, listing);
       await notifyConfirmed(booking, listing, transaction);

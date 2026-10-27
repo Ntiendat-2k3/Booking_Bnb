@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { ArrowLeft, DotsThree, ImageSquare, MagnifyingGlass, PushPin, UserCircle, VideoCamera, X } from "@phosphor-icons/react";
 import IconButton from "@/components/atoms/IconButton";
 import { useLocale } from "@/i18n/LocaleProvider";
@@ -13,17 +14,22 @@ import { useCallSession } from "../hooks/useCallSession";
 import MessageBubble from "./MessageBubble";
 import MessageComposer from "./MessageComposer";
 import ChatAvatar from "./ChatAvatar";
+import EmojiText from "./EmojiText";
+import { canManageListings } from "@/lib/roles";
 
 const sharedTypes = ["image", "video", "file", "link"];
+const BookingProposalForm = dynamic(() => import("./BookingProposalForm"), { ssr: false });
 
 /** Gộp lịch sử chat với các bảng đọc riêng cho hồ sơ, tìm kiếm, media và tin đã ghim. */
-export default function ConversationView({ conversation, userId, onActivity, onDetailChange }) {
-  const { locale, t } = useLocale();
+export default function ConversationView({ conversation, userId, userRole, onActivity, onDetailChange }) {
+  const { t } = useLocale();
   const { call, busy: callBusy, startCall } = useCallSession();
   const { items, cursor, loading, olderLoading, error, reload, loadOlder, receive,
     receiveUpdate, receiveReaction, send } = useMessages(conversation.id);
   const [readError, setReadError] = useState(false);
   const [actionError, setActionError] = useState(false);
+  const [proposalEditor, setProposalEditor] = useState(null);
+  const [bookingRefresh, setBookingRefresh] = useState(0);
   const [replyTo, setReplyTo] = useState(null);
   const [panel, setPanel] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -47,6 +53,7 @@ export default function ConversationView({ conversation, userId, onActivity, onD
   const detailsRef = useRef(null);
   const detailsButtonRef = useRef(null);
   const blocked = conversation.blocked_by_me || conversation.blocked_me;
+  const callDisabled = blocked || callBusy || Boolean(call && !call.ended_at);
   const refreshPins = useCallback(() => chatApi.pinnedMessages(conversation.id)
     .then((data) => { setPins(data); setPanelError(false); })
     .catch(() => setPanelError(true)), [conversation.id]);
@@ -64,6 +71,7 @@ export default function ConversationView({ conversation, userId, onActivity, onD
     }
     if (event === "chat:reaction" && data.conversation_id === conversation.id) receiveReaction(data);
     if (event === "chat:pin" && data.conversation_id === conversation.id) void refreshPins();
+    if (event === "booking:status") setBookingRefresh((value) => value + 1);
   });
 
   useEffect(() => {
@@ -93,10 +101,7 @@ export default function ConversationView({ conversation, userId, onActivity, onD
     return () => { active = false; };
   }, [panel, conversation.other_id]);
   useEffect(() => {
-    if (panel !== "search" || searchText.trim().length < 2) {
-      setResults([]); setSearchHasMore(false); setSearchLoading(false); return;
-    }
-    setResults([]); setSearchHasMore(false); setSearchLoading(true); setPanelError(false);
+    if (panel !== "search" || searchText.trim().length < 2) return;
     let active = true;
     const timer = window.setTimeout(() => {
       chatApi.searchMessages(conversation.id, searchText.trim()).then((page) => {
@@ -108,7 +113,6 @@ export default function ConversationView({ conversation, userId, onActivity, onD
   }, [panel, conversation.id, searchText]);
   useEffect(() => {
     if (panel !== "shared") return;
-    setShared([]); setSharedHasMore(false); setSharedLoading(true); setPanelError(false);
     let active = true;
     chatApi.sharedMessages(conversation.id, sharedType).then((page) => {
       if (active) { setShared(page.items); setSharedPage(1);
@@ -133,6 +137,13 @@ export default function ConversationView({ conversation, userId, onActivity, onD
     const sent = await send(userId, draft);
     if (sent) { setReplyTo(null); onActivity(); }
     return sent;
+  };
+  const proposalSaved = (result) => {
+    if (result.message) {
+      if (proposalEditor?.id) receiveUpdate(result.message);
+      else receive(result.message);
+    } else void reload();
+    setProposalEditor(null); onActivity();
   };
   const reactTo = async (message, emoji) => {
     const active = !(message.reactions || []).some((reaction) => reaction.user_id === userId && reaction.emoji === emoji);
@@ -183,7 +194,18 @@ export default function ConversationView({ conversation, userId, onActivity, onD
   const pinPreview = (message) => message.context?.title || message.body ||
     t(message.type === "image" ? "chat.sentImage" : message.type === "audio" ? "chat.voiceMessage" :
       message.type === "video" ? "chat.shared.video" : message.type === "shared_context" ? "chat.sharedListing" : "chat.sentFiles");
-  const openProfile = () => { setPanel("profile"); setDetailsOpen(true); };
+  const selectPanel = (name) => {
+    if (name === panel) return;
+    setPanel(name); setPanelError(false);
+    if (name === "search") {
+      setResults([]); setSearchPage(1); setSearchHasMore(false);
+      setSearchLoading(searchText.trim().length >= 2);
+    }
+    if (name === "shared") {
+      setShared([]); setSharedPage(1); setSharedHasMore(false); setSharedLoading(true);
+    }
+  };
+  const openProfile = () => { selectPanel("profile"); setDetailsOpen(true); };
   return <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface" aria-label={t("chat.conversationWith", { name: conversation.other_name })}>
     <header className="flex min-h-[4.5rem] shrink-0 items-center gap-3 border-b border-line px-3 sm:px-5">
       <Link href="/messages" className="grid h-10 w-10 place-items-center rounded-full hover:bg-muted-surface md:hidden"
@@ -196,7 +218,7 @@ export default function ConversationView({ conversation, userId, onActivity, onD
         <p role="status" className="truncate text-xs text-muted-ink">{!connected ? t("chat.reconnecting") : presenceLabel}</p>
       </button>
       <IconButton label={t("chat.videoCall")} title={t("chat.videoCall")}
-        disabled={blocked || callBusy || Boolean(call && !call.ended_at)} onClick={() => void startCall(conversation.id)}
+        disabled={callDisabled} onClick={() => void startCall(conversation.id)}
         className="!h-10 !w-10 !border-0 !bg-muted-surface !text-brand"><VideoCamera aria-hidden size={23} weight="fill" /></IconButton>
       <IconButton ref={detailsButtonRef} label={t("chat.details")} title={t("chat.details")}
         aria-expanded={detailsOpen} aria-controls="chat-details" onClick={() => { setPanel("profile"); setDetailsOpen((open) => !open); }}
@@ -209,7 +231,7 @@ export default function ConversationView({ conversation, userId, onActivity, onD
       className="flex min-h-14 w-full shrink-0 items-center gap-3 border-b border-line bg-muted-surface/60 px-4 text-left transition hover:bg-muted-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand sm:px-6">
       <PushPin aria-hidden size={19} weight="fill" className="shrink-0 text-brand" />
       <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-brand">{t("chat.panel.pins")}</span>
-        <span className="block truncate text-sm text-ink">{pinPreview(latestPinned)}</span></span>
+        <span className="block truncate text-sm text-ink"><EmojiText text={pinPreview(latestPinned)} /></span></span>
       {pins.length > 1 && <span aria-hidden className="rounded-full bg-surface px-2 py-0.5 text-xs font-semibold text-muted-ink">{pins.length}</span>}
     </button>}
     <div className="flex min-h-0 flex-1">
@@ -227,8 +249,14 @@ export default function ConversationView({ conversation, userId, onActivity, onD
       {!loading && !error && !items.length && <p className="py-10 text-center text-sm text-muted-ink">{t("chat.emptyConversation")}</p>}
       <ol className="flex flex-col gap-4">{items.map((message) => <MessageBubble key={message.id} message={message}
         mine={message.sender_id === userId} userId={userId} otherName={conversation.other_name}
+        otherAvatar={conversation.other_avatar} onCallAgain={() => void startCall(conversation.id)}
+        callDisabled={callDisabled}
         onReply={setReplyTo} onReaction={reactTo} onEdit={editMessage} onRecall={recallMessage}
         onPin={pinMessage} pinned={pinnedIds.has(message.id)} blocked={blocked}
+        canSupportBooking={canManageListings(userRole) && !blocked}
+        onSupportBooking={(listingId) => setProposalEditor({ initialListingId: listingId })}
+        bookingRefresh={bookingRefresh} onProposalUpdate={receiveUpdate}
+        onEditProposal={setProposalEditor}
         onRetry={(item) => send(userId, item)} />)}</ol>
       {readError && <p role="alert" className="mt-3 text-center text-xs text-danger">{t("chat.readFailed")}</p>}
       {actionError && <p role="alert" className="mt-3 text-center text-xs text-danger">{t(actionError)}</p>}
@@ -236,8 +264,13 @@ export default function ConversationView({ conversation, userId, onActivity, onD
     {blocked && <p role="status" className="border-t border-line p-3 text-center text-sm text-muted-ink">
       {t("chat.blockedConversation")}</p>}
     <MessageComposer onSend={submit} replyTo={replyTo} disabled={blocked}
+      canSupportBooking={canManageListings(userRole)} onSupportBooking={() => setProposalEditor({})}
       replyName={replyTo?.sender_id === userId ? t("chat.you") : replyTo?.sender_name || conversation.other_name}
       onClearReply={() => setReplyTo(null)} />
+    {proposalEditor && <BookingProposalForm key={`${conversation.id}:${proposalEditor.id || proposalEditor.initialListingId || "new"}`}
+      conversationId={conversation.id} initialListingId={proposalEditor.initialListingId}
+      proposal={proposalEditor.id ? proposalEditor : null} onSaved={proposalSaved}
+      onClose={() => setProposalEditor(null)} />}
     </div>
     {detailsOpen && <aside ref={detailsRef} id="chat-details" tabIndex={-1}
       className="flex min-h-0 w-full shrink-0 flex-col bg-surface outline-none xl:w-80 xl:border-l xl:border-line"
@@ -255,7 +288,7 @@ export default function ConversationView({ conversation, userId, onActivity, onD
       </div>
       <nav className="grid gap-0.5 border-b border-line p-2" aria-label={t("chat.details")}>
         {[["profile", UserCircle], ["search", MagnifyingGlass], ["shared", ImageSquare], ["pins", PushPin]].map(([name, Icon]) =>
-          <button key={name} type="button" onClick={() => { setPanel(name); setPanelError(false); }}
+          <button key={name} type="button" onClick={() => selectPanel(name)}
             aria-pressed={panel === name}
             className={`flex min-h-10 items-center gap-3 rounded-xl px-3 text-left text-sm font-medium transition focus-visible:ring-2 focus-visible:ring-brand ${panel === name ? "bg-muted-surface text-brand" : "text-ink hover:bg-muted-surface/70"}`}>
             <Icon aria-hidden size={19} /><span>{t(`chat.panel.${name}`)}</span>
@@ -279,19 +312,27 @@ export default function ConversationView({ conversation, userId, onActivity, onD
         </div> : !panelError && <p className="text-muted-ink">{t("common.loading")}</p>)}
         {panel === "search" && <>
           <label htmlFor="chat-content-search" className="sr-only">{t("chat.searchMessages")}</label>
-          <input id="chat-content-search" type="search" value={searchText} onChange={(event) => setSearchText(event.target.value)}
+          <input id="chat-content-search" type="search" value={searchText} onChange={(event) => {
+            const value = event.target.value;
+            setSearchText(value); setResults([]); setSearchPage(1); setSearchHasMore(false);
+            setSearchLoading(value.trim().length >= 2); setPanelError(false);
+          }}
             placeholder={t("chat.searchMessages")} className="field-control w-full" />
           <ul className="mt-3 space-y-2">{results.map((message) => <li key={message.id}
             className="rounded-xl bg-muted-surface p-3"><time className="block text-xs text-muted-ink"
-              dateTime={message.created_at}>{new Date(message.created_at).toLocaleString(locale === "en" ? "en-US" : "vi-VN")}</time>
-            <p className="mt-1 whitespace-pre-wrap break-words">{message.body}</p></li>)}</ul>
+              dateTime={message.created_at}>{new Date(message.created_at).toLocaleString("en-GB")}</time>
+            <p className="mt-1 whitespace-pre-wrap break-words"><EmojiText text={message.body} /></p></li>)}</ul>
           {searchLoading && <p role="status" className="mt-4 text-muted-ink">{t("common.loading")}</p>}
           {searchText.trim().length >= 2 && !results.length && !searchLoading && !panelError && <p className="mt-4 text-muted-ink">{t("chat.noMessageResults")}</p>}
           {searchHasMore && <button type="button" onClick={moreSearch} className="mt-3 font-semibold text-brand hover:underline">{t("chat.loadMore")}</button>}
         </>}
         {panel === "shared" && <>
           <div className="flex flex-wrap gap-1.5">{sharedTypes.map((type) => <button key={type} type="button"
-            onClick={() => setSharedType(type)} aria-pressed={sharedType === type}
+            onClick={() => {
+              if (type === sharedType) return;
+              setSharedType(type); setShared([]); setSharedPage(1); setSharedHasMore(false);
+              setSharedLoading(true); setPanelError(false);
+            }} aria-pressed={sharedType === type}
             className={`rounded-full px-3 py-1.5 text-xs font-semibold ${sharedType === type ? "bg-brand text-on-brand" : "bg-muted-surface text-ink hover:bg-line"}`}>
             {t(`chat.shared.${type}`)}</button>)}</div>
           {sharedLoading && <p role="status" className="mt-4 text-muted-ink">{t("common.loading")}</p>}
@@ -307,18 +348,18 @@ export default function ConversationView({ conversation, userId, onActivity, onD
                   className="block break-words px-3 pt-3 font-medium text-brand underline">{file.name || t("chat.sentFiles")}</a>)
                 : message.type === "text" ? <a href={message.body?.match(/https?:\/\/[^\s<>]+/i)?.[0]}
                   target="_blank" rel="noopener noreferrer" className="block break-words px-3 pt-3 font-medium text-brand underline">
-                  {message.body}</a>
+                  <EmojiText text={message.body} /></a>
                   : <video controls preload="metadata" src={chatApi.mediaUrl(conversation.id, message.id)}
                     aria-label={t("chat.shared.video")} className="max-h-36 w-full rounded-lg" />}
               <time className="block px-3 py-2 text-[11px] text-muted-ink" dateTime={message.created_at}>
-                {new Date(message.created_at).toLocaleDateString(locale === "en" ? "en-US" : "vi-VN")}</time>
+                {new Date(message.created_at).toLocaleDateString("en-GB")}</time>
             </li>)}</ul>
           {sharedHasMore && <button type="button" onClick={moreShared} className="mt-3 font-semibold text-brand hover:underline">{t("chat.loadMore")}</button>}
         </>}
         {panel === "pins" && <>
           {!pins.length && !panelError && <p className="text-muted-ink">{t("chat.noPins")}</p>}
           <ul className="space-y-2">{pins.map((message) => <li key={message.id}
-            className="rounded-xl bg-muted-surface p-3"><p className="break-words">{pinPreview(message)}</p>
+            className="rounded-xl bg-muted-surface p-3"><p className="break-words"><EmojiText text={pinPreview(message)} /></p>
             {!blocked && <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold">
               <button type="button" onClick={() => void pinMessage(message, false)} className="text-brand hover:underline">
                 {t("chat.unpinMessage")}</button>

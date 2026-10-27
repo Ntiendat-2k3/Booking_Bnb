@@ -9,6 +9,8 @@ import { ThemeProvider } from "next-themes";
 import { DEFAULT_THEME } from "@/lib/constants";
 import Footer from "@/components/organisms/Footer";
 import { getServerTranslator } from "@/i18n/server";
+import { AiSearchProvider } from "@/features/aiSearch/AiSearchProvider";
+import FloatingAiAssistant from "@/features/aiSearch/FloatingAiAssistant";
 
 const beVietnamPro = localFont({
   src: [
@@ -102,14 +104,17 @@ export default async function RootLayout({ children }) {
           storageKey="booking-theme"
         >
           <Providers locale={locale} messages={messages}>
-            <BootstrapClient />
-            <Suspense fallback={null}>
-              <Navbar />
-            </Suspense>
-            <main id="main-content" className="min-h-[calc(100dvh-140px)] py-6 sm:py-8">
-              <Container>{children}</Container>
-            </main>
-            <Footer />
+            <AiSearchProvider>
+              <BootstrapClient />
+              <Suspense fallback={null}>
+                <Navbar />
+              </Suspense>
+              <main id="main-content" className="min-h-[calc(100dvh-140px)] py-6 sm:py-8">
+                <Container>{children}</Container>
+              </main>
+              <Footer />
+              <FloatingAiAssistant />
+            </AiSearchProvider>
           </Providers>
         </ThemeProvider>
       </body>

@@ -71,9 +71,10 @@ async function change(callId, userId, mutate) {
     if (patch.ended_at) await sequelize.query("DELETE FROM call_active_users WHERE call_id = :callId", {
       replacements: { callId }, transaction,
     });
-    if (patch.ended_at && call.connected_at) {
-      // Ghi lịch sử cùng giao dịch kết thúc để retry hoặc timeout không tạo hai mục chat.
-      const durationSeconds = Math.max(0, Math.floor((new Date(call.ended_at) - new Date(call.connected_at)) / 1000));
+    if (patch.ended_at) {
+      // Ghi mọi kết quả cuộc gọi cùng giao dịch kết thúc để retry hoặc timeout không tạo hai mục chat.
+      const durationSeconds = call.connected_at
+        ? Math.max(0, Math.floor((new Date(call.ended_at) - new Date(call.connected_at)) / 1000)) : 0;
       await ChatMessage.create({ conversation_id: call.conversation_id, sender_id: call.caller_id,
         type: "call", client_key: `call:${call.id}`, created_at: call.ended_at,
         context: { call_id: call.id, status: call.status, duration_seconds: durationSeconds },

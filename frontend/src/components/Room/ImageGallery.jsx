@@ -13,6 +13,7 @@ import { useTranslations } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
 import IconButton from "@/components/atoms/IconButton";
 import FavoriteButton from "@/components/FavoriteButton";
+import PhotoCarousel from "@/components/Room/PhotoCarousel";
 import { notifyError, notifySuccess } from "@/lib/notify";
 
 export default function ImageGallery({ images, title, listingId }) {
@@ -28,7 +29,6 @@ export default function ImageGallery({ images, title, listingId }) {
     seenUrls.add(image.url);
     return true;
   });
-  const thumbnails = allImages.slice(1, 5);
 
   async function shareListing() {
     try {
@@ -90,49 +90,12 @@ export default function ImageGallery({ images, title, listingId }) {
   return (
     <>
       <div id="photos" className="room-gallery-hero group relative scroll-mt-28">
-        <button
-          type="button"
-          className="room-cover relative block h-[420px] w-full overflow-hidden rounded-feature text-left lg:h-[580px]"
-          onClick={() => openLightbox(0)}
-          aria-label={t("room.imageNumber", { title, number: 1 })}
-        >
-          <Image
-            src={cover?.url || "/placeholder-room.svg"}
-            alt={title}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover transition duration-300 hover:brightness-90 motion-reduce:transition-none"
-          />
-        </button>
+        <PhotoCarousel images={allImages} title={title} activeIndex={currentIndex} paused={lightboxOpen} onOpen={openLightbox} onSelect={setCurrentIndex} />
         {listingId && <div className="room-hero-actions absolute bottom-6 right-6 flex gap-2">
           <FavoriteButton listingId={listingId} variant="inverse" />
           <IconButton variant="inverse" label={t("room.share")} onClick={shareListing}><UploadSimple aria-hidden size={21} /></IconButton>
         </div>}
-        {thumbnails.length ? <div className="room-gallery-thumbnails absolute left-6 top-24 grid gap-3">
-          {thumbnails.map((im, idx) => (
-            <button
-              type="button"
-              key={im.id}
-              className="relative h-20 w-20 overflow-hidden rounded-control border-2 border-white/60 text-left shadow-sm"
-              onClick={() => openLightbox(idx + 1)}
-              aria-label={t("room.imageNumber", {
-                title,
-                number: idx + 2,
-              })}
-            >
-              <Image
-                src={im.url}
-                alt={title}
-                fill
-                sizes="80px"
-                className="object-cover transition duration-300 hover:brightness-90 motion-reduce:transition-none"
-              />
-            </button>
-          ))}
-        </div> : null}
-
-        <Button variant="secondary" size="sm" className="gallery-count absolute bottom-6 left-6" onClick={() => openLightbox(0)}>
+        <Button variant="secondary" size="sm" className="gallery-count absolute bottom-6 left-6" onClick={() => openLightbox(currentIndex)}>
           <ImagesSquare aria-hidden size={18} />{t("room.showAllPhotos")} ({allImages.length})
         </Button>
       </div>

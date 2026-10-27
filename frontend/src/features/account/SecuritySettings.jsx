@@ -159,7 +159,7 @@ export default function SecuritySettings({ user }) {
       <ul className="mt-4 space-y-3">{sessions.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line p-3">
         <div>
           <p className="font-medium">{item.browser} · {item.os}{item.current ? ` — ${t("sessions.current")}` : ""}</p>
-          <p className="text-sm text-muted-ink">{t("sessions.lastActive")}: {new Date(item.lastActiveAt).toLocaleString()}</p>
+          <p className="text-sm text-muted-ink">{t("sessions.lastActive")}: {new Date(item.lastActiveAt).toLocaleString("en-GB")}</p>
         </div>
         <Button type="button" variant="secondary" disabled={sessionsBusy} onClick={() => removeSession(item)}>{t("sessions.remove")}</Button>
       </li>)}</ul>

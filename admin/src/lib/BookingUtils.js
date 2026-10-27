@@ -21,9 +21,16 @@ export function money(v, locale = "vn") {
   return n.toLocaleString(locale === "vn" ? "vi-VN" : "en-US");
 }
 
-export function fmtDate(v, locale = "vn") {
+/** Định dạng DATEONLY theo ngày/tháng/năm mà không đổi ngày vì múi giờ. */
+export function formatDateOnly(value) {
+  if (!value) return "—";
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : String(value);
+}
+
+export function fmtDate(v) {
   if (!v) return "—";
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return String(v);
-  return d.toLocaleString(locale === "vn" ? "vi-VN" : "en-US");
+  return d.toLocaleString("en-GB");
 }

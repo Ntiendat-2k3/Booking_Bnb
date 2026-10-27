@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useLocale } from "@/i18n/LocaleProvider";
 import ChatAvatar from "./ChatAvatar";
+import EmojiText from "./EmojiText";
 
 export default function ConversationItem({ conversation, active }) {
   const { locale, t } = useLocale();
@@ -21,7 +22,7 @@ export default function ConversationItem({ conversation, active }) {
       <span className="flex items-center justify-between gap-2"><strong className="truncate text-sm text-ink">{conversation.other_name}</strong>
         {conversation.last_message_at && <time className="shrink-0 text-xs text-muted-ink" dateTime={conversation.last_message_at}>{new Date(conversation.last_message_at).toLocaleDateString(locale === "en" ? "en-US" : "vi-VN", { day: "numeric", month: "short" })}</time>}
       </span>
-      <span className="mt-1 flex items-center justify-between gap-2"><span className="truncate text-xs text-muted-ink">{preview}</span>
+      <span className="mt-1 flex items-center justify-between gap-2"><span className="truncate text-xs text-muted-ink"><EmojiText text={preview} /></span>
         {unreadCount > 0 && <span className="min-w-5 rounded-full bg-brand px-1.5 py-0.5 text-center text-[11px] font-bold text-on-brand" aria-label={t("chat.unreadCount", { count: unreadCount })}>{unreadCount > 99 ? "99+" : unreadCount}</span>}
       </span>
     </span>

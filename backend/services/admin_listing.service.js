@@ -6,13 +6,17 @@ const {
 } = Sequelize;
 const { isUuid } = require("../utils/validators");
 const Repository = require("../core/repository");
+const { listingReferenceFromCode } = require("../transformers/listing.transformer");
 
 module.exports = {
 
   async list({ status, q = null, page = 1, limit = 300 } = {}) {
+    const referenceNumber = listingReferenceFromCode(q);
     const searchWhere = {
       deleted_at: null,
-      ...Repository.searchWhere(q, ["Listing.id", "Listing.title", "Listing.city", "host.email", "host.full_name"]),
+      ...(referenceNumber
+        ? { reference_number: referenceNumber }
+        : Repository.searchWhere(q, ["Listing.id", "Listing.title", "Listing.city", "host.email", "host.full_name"])),
     };
     const where = { ...searchWhere };
     if (status && status !== "all") where.status = status;
@@ -87,7 +91,8 @@ module.exports = {
       const host = await User.findByPk(listing.host_id, { attributes: ["email"], transaction });
       const title = status === "published" ? "Chỗ nghỉ đã được duyệt!" : "Chỗ nghỉ bị từ chối duyệt";
       const text = status === "published" ? "Chỗ nghỉ đã hiển thị trên website." : reason;
-      await Notification.create({ user_id: listing.host_id, type: status === "published" ? "listing_approved" : "listing_rejected", title, message: text }, { transaction });
+      await Notification.create({ user_id: listing.host_id, type: status === "published" ? "listing_approved" : "listing_rejected",
+        title, message: text, resource_type: "listing", resource_id: listing.id }, { transaction });
       if (host) await enqueue("send_email", { to: host.email, subject: title, html: message(title, [listing.title, text]) }, transaction);
       return { listing };
     });

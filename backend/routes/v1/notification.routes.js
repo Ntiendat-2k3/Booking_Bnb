@@ -7,11 +7,13 @@ const authMiddleware = require("../../middlewares/api/auth.middleware");
 const csrfMiddleware = require("../../middlewares/csrf.middleware");
 const validate = require("../../middlewares/api/validation.middleware");
 const preferenceSchema = require("../../requests/api/v1/notification.schema");
+const feedSchema = require("../../requests/api/v1/notification-feed.schema");
 const { idParams } = require("../../requests/api/v1/common.schema");
 const preferenceLimit = rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: true,
   legacyHeaders: false, keyGenerator: (req) => req.user.user.id });
 
 router.get("/me", authMiddleware, NotificationController.getMyNotifications);
+router.get("/feed", authMiddleware, validate(feedSchema, "query"), NotificationController.getFeed);
 router.get("/preferences", authMiddleware, NotificationController.getPreferences);
 router.put("/preferences", authMiddleware, csrfMiddleware, preferenceLimit,
   validate(preferenceSchema), NotificationController.updatePreferences);

@@ -13,6 +13,15 @@ const { safeDevice } = require("../utils/device");
 
 const userRepo = new UserRepository();
 const refreshRepo = new RefreshTokenRepository();
+const REGISTRATION_CODE_TTL_MS = 10 * 60_000;
+const REGISTRATION_RESEND_WAIT_MS = 60_000;
+const REGISTRATION_MAX_ATTEMPTS = 5;
+
+/** Băm mã trên bản ghi tài khoản bằng khóa máy chủ để tránh dò ngoại tuyến từ bảng users. */
+function registrationCodeHash(email, code) {
+  return crypto.createHmac("sha256", process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET)
+    .update(`registration:${email.toLowerCase()}:${code}`).digest("hex");
+}
 
 function refreshExpiresAt() {
   const exp = process.env.JWT_REFRESH_TOKEN_EXPIRES || "30d";
@@ -32,27 +41,34 @@ function sanitizeUser(user) {
 }
 
 module.exports = {
-  registerLocal: async ({ email, username, password, full_name }, meta = {}) => {
+  registerLocal: async ({ email, username, password, full_name }) => {
     if (!email || !password || !full_name) {
       const err = new Error("Email, password, full_name are required");
       err.status = 400;
       throw err;
     }
 
+    email = email.trim().toLowerCase();
     const exists = await userRepo.findByEmail(email);
     if (exists) {
-      const err = new Error("Email already exists");
+      const err = new Error(exists.status === "pending_verification" ? "Email verification pending" : "Email already exists");
       err.status = 409;
       throw err;
     }
 
-    if (username && await userRepo.findByUsername(username)) {
+    // Hồ sơ bỏ dở chỉ nhường username khi mã đã hết hạn; tài khoản hoạt động luôn giữ tên.
+    const usernameOwner = username ? await userRepo.findByUsername(username) : null;
+    if (usernameOwner && (usernameOwner.status !== "pending_verification" ||
+        !usernameOwner.registration_code_sent_at ||
+        Date.now() - new Date(usernameOwner.registration_code_sent_at).getTime() < REGISTRATION_CODE_TTL_MS)) {
       throw httpError(409, "Username already exists");
     }
 
     const password_hash = await bcrypt.hash(password, 10);
+    const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+    const now = new Date();
     return sequelize.transaction(async (transaction) => {
-      const user = await User.create({
+      const fields = {
         email,
         username: username || generatedUsername(),
         password_hash,
@@ -60,11 +76,79 @@ module.exports = {
         provider: "local",
         provider_id: null,
         role: "guest",
-        status: "active",
-      }, { transaction });
+        status: "pending_verification",
+        registration_code_hash: registrationCodeHash(email, code),
+        registration_code_expires: new Date(now.getTime() + REGISTRATION_CODE_TTL_MS),
+        registration_code_sent_at: now,
+        registration_code_attempts: 0,
+      };
+      let user;
+      if (usernameOwner) {
+        user = await User.findByPk(usernameOwner.id, { transaction, lock: transaction.LOCK.UPDATE });
+        if (!user || user.status !== "pending_verification" || !user.registration_code_sent_at ||
+            now - new Date(user.registration_code_sent_at) < REGISTRATION_CODE_TTL_MS) {
+          throw httpError(409, "Username already exists");
+        }
+        await user.update(fields, { transaction });
+      } else {
+        user = await User.create(fields, { transaction });
+      }
+      await enqueue("send_email", {
+        to: email,
+        subject: "Mã xác minh đăng ký - Booking BnB",
+        html: emails.registrationCode(code),
+      }, transaction);
+      return { email: user.email, expiresIn: REGISTRATION_CODE_TTL_MS / 1000 };
+    });
+  },
 
+  /** Khóa tài khoản khi so mã để giới hạn lượt thử và chỉ cấp một phiên sau xác minh. */
+  verifyRegistration: async ({ email, code }, meta = {}) => {
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: { email: email.toLowerCase(), provider: "local", status: "pending_verification" },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!user || !user.registration_code_hash || !user.registration_code_expires ||
+          new Date(user.registration_code_expires) <= new Date()) {
+        return { error: httpError(400, "Verification code is invalid or expired") };
+      }
+      const expected = Buffer.from(user.registration_code_hash, "hex");
+      const actual = Buffer.from(registrationCodeHash(user.email, code), "hex");
+      if (!crypto.timingSafeEqual(expected, actual)) {
+        const attempts = Number(user.registration_code_attempts || 0) + 1;
+        await user.update({ registration_code_attempts: attempts,
+          ...(attempts >= REGISTRATION_MAX_ATTEMPTS ? { registration_code_hash: null, registration_code_expires: null } : {}) }, { transaction });
+        return { error: httpError(400, "Verification code is invalid or expired") };
+      }
+      await user.update({ status: "active", registration_code_hash: null,
+        registration_code_expires: null, registration_code_sent_at: null,
+        registration_code_attempts: 0 }, { transaction });
       const tokens = await module.exports.issueTokens(user, meta, { transaction });
       return { user: sanitizeUser(user), ...tokens };
+    });
+    if (result.error) throw result.error;
+    return result;
+  },
+
+  /** Gửi mã mới sau khoảng chờ; mã cũ hết hiệu lực ngay khi mã mới được lưu. */
+  resendRegistrationCode: async (email) => {
+    return sequelize.transaction(async (transaction) => {
+      const user = await User.findOne({
+        where: { email: email.toLowerCase(), provider: "local", status: "pending_verification" },
+        transaction, lock: transaction.LOCK.UPDATE,
+      });
+      if (!user) return;
+      const now = new Date();
+      if (user.registration_code_sent_at && now - new Date(user.registration_code_sent_at) < REGISTRATION_RESEND_WAIT_MS) {
+        throw httpError(429, "Please wait before requesting another code");
+      }
+      const code = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+      await user.update({ registration_code_hash: registrationCodeHash(user.email, code),
+        registration_code_expires: new Date(now.getTime() + REGISTRATION_CODE_TTL_MS),
+        registration_code_sent_at: now, registration_code_attempts: 0 }, { transaction });
+      await enqueue("send_email", { to: user.email, subject: "Mã xác minh đăng ký - Booking BnB",
+        html: emails.registrationCode(code) }, transaction);
     });
   },
 

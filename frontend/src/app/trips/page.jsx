@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Lightbulb, SuitcaseRolling } from "@phosphor-icons/react";
+import Image from "next/image";
+import { CalendarCheck, CheckCircle, Clock, House, Lightbulb, SuitcaseRolling, XCircle } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
 import { getMyBookings } from "@/services/bookingService";
 import Button from "@/components/atoms/Button";
@@ -9,9 +10,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { notifyError, notifyInfo, notifySuccess } from "@/lib/notify";
 import { useSelector } from "react-redux";
 import TripCard from "@/features/trips/TripCard";
+import CancellationDialog from "@/features/trips/CancellationDialog";
+import { useChatSocket } from "@/features/chat/hooks/useChatSocket";
 import Container from "@/components/layout/Container";
 import EmptyState from "@/components/molecules/EmptyState";
 import { useTranslations } from "@/i18n/LocaleProvider";
+
+const tripFilters = [
+  { id: "all", label: "trips.filterAll", Icon: House },
+  { id: "confirmed", label: "trips.statusConfirmed", Icon: CalendarCheck },
+  { id: "cancelled", label: "trips.statusCancelled", Icon: XCircle },
+  { id: "upcoming", label: "trips.filterUpcoming", Icon: Clock },
+  { id: "completed", label: "trips.statusCompleted", Icon: CheckCircle },
+];
 
 function TripsContent() {
   const router = useRouter();
@@ -26,6 +37,13 @@ function TripsContent() {
   const [attempt, setAttempt] = useState(0);
   const [payment] = useState(() => ({ status: sp.get("payment"), id: sp.get("bookingId"), code: sp.get("code") }));
   const [busy, setBusy] = useState({ repayId: null, cancelId: null, checkoutId: null });
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [cancellationBookingId, setCancellationBookingId] = useState(null);
+
+  useChatSocket(user?.id, (event, connected) => {
+    if (event === "booking:status" || (event === "connection" && connected))
+      setAttempt((value) => value + 1);
+  });
 
   // Đồng bộ trạng thái giao dịch sau khi quay lại từ cổng thanh toán.
   useEffect(() => {
@@ -110,7 +128,7 @@ function TripsContent() {
         return;
       }
       setLoadError(true);
-      notifyError(e?.message || t("trips.loadFailed"));
+      notifyError(t("trips.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -128,10 +146,10 @@ function TripsContent() {
       .then((bookings) => {
         if (active) { setItems(bookings); setLoadError(false); }
       })
-      .catch((error) => {
+      .catch(() => {
         if (!active) return;
         setLoadError(true);
-        notifyError(error?.message || t("trips.loadFailed"));
+        notifyError(t("trips.loadFailed"));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -143,38 +161,26 @@ function TripsContent() {
   }, [isInitialized, router, t, user, attempt]);
 
   const pending = useMemo(() => items.filter((b) => b.status === "pending_payment"), [items]);
+  const today = new Date().toISOString().slice(0, 10);
+  const filterCounts = useMemo(() => ({
+    all: items.length,
+    confirmed: items.filter((booking) => booking.status === "confirmed").length,
+    cancelled: items.filter((booking) => booking.status === "cancelled").length,
+    upcoming: items.filter((booking) => booking.status === "confirmed" && booking.check_in > today).length,
+    completed: items.filter((booking) => booking.status === "completed").length,
+  }), [items, today]);
+  const visibleItems = useMemo(() => items.filter((booking) => {
+    if (activeFilter === "all") return true;
+    if (activeFilter === "upcoming") return booking.status === "confirmed" && booking.check_in > today;
+    return booking.status === activeFilter;
+  }), [activeFilter, items, today]);
 
   async function repay(bookingId) {
-    try {
-      setBusy((s) => ({ ...s, repayId: bookingId }));
-      const p = await apiFetch(`/api/v1/bookings/${bookingId}/payments/stripe`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-      const url = p.data?.payment_url;
-      if (!url) throw new Error(t("trips.paymentUrlFailed"));
-      window.location.href = url;
-    } catch (e) {
-      notifyError(e?.message || t("trips.repayFailed"));
-    } finally {
-      setBusy((s) => ({ ...s, repayId: null }));
-    }
+    router.push(`/checkout/${bookingId}`);
   }
 
   async function cancel(bookingId) {
-    try {
-      setBusy((s) => ({ ...s, cancelId: bookingId }));
-      await apiFetch(`/api/v1/bookings/${bookingId}/cancel`, {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-      notifySuccess(t("trips.cancelled"));
-      await load();
-    } catch (e) {
-      notifyError(e?.message || t("trips.cancelFailed"));
-    } finally {
-      setBusy((s) => ({ ...s, cancelId: null }));
-    }
+    setCancellationBookingId(bookingId);
   }
 
   async function checkout(bookingId) {
@@ -191,26 +197,47 @@ function TripsContent() {
       );
       load();
     } catch (e) {
-      notifyError(e?.message || t("trips.checkoutFailed"));
+      notifyError(t(e?.message === "Stay has not ended yet" ? "trips.checkoutTooEarly" : "trips.checkoutFailed"));
     } finally {
       setBusy((s) => ({ ...s, checkoutId: null }));
     }
   }
 
   return (
-    <Container className="w-full py-4 sm:py-6">
-      <div className="mb-8 w-full">
-        <h1 className="page-heading">
-          {t("trips.title")}
-        </h1>
-        <p className="mt-2 text-base text-muted-ink">
-          {t("trips.description")}
-        </p>
-      </div>
+    <div className="trips-page">
+      {cancellationBookingId && <CancellationDialog bookingId={cancellationBookingId}
+        onClose={() => setCancellationBookingId(null)}
+        onCancelled={() => { setCancellationBookingId(null); notifySuccess(t("trips.cancelled")); void load(); }} />}
+      <section className="relative isolate overflow-hidden bg-[#14251b] text-white">
+        <Image src="/nature-hero.webp" alt="" fill priority sizes="100vw" className="-z-10 object-cover object-[center_58%]" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#07160e]/90 via-[#0b1d14]/65 to-[#0a1b12]/35" />
+        <Container className="flex min-h-36 items-center justify-between gap-8 py-6 sm:min-h-64 sm:py-12">
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-0.05em] sm:text-5xl">{t("trips.title")}</h1>
+            <p className="mt-1.5 max-w-xl text-sm text-white/85 sm:mt-3 sm:text-base">{t("trips.description")}</p>
+          </div>
+          <p aria-hidden="true" className="hidden max-w-60 -rotate-6 text-center font-serif text-2xl italic leading-snug text-white/90 lg:block">{t("trips.heroAside")}</p>
+        </Container>
+      </section>
 
-      <div className="w-full min-h-[600px] flex flex-col">
+      <Container className="relative -mt-3 pb-8 sm:-mt-4 sm:pb-12">
+      <nav aria-label={t("trips.filterLabel")} className="mb-3 flex gap-1 overflow-x-auto rounded-2xl border border-line bg-surface/95 p-1 shadow-soft sm:mb-5 sm:rounded-full sm:p-1.5">
+        {tripFilters.map(({ id, label, Icon }) => <button
+          key={id}
+          type="button"
+          aria-pressed={activeFilter === id}
+          onClick={() => setActiveFilter(id)}
+          className={`flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:min-h-12 sm:flex-1 sm:gap-2 sm:rounded-full sm:px-4 sm:text-sm ${activeFilter === id ? "bg-brand text-on-brand" : "text-muted-ink hover:bg-muted-surface hover:text-ink"}`}
+        >
+          <Icon aria-hidden size={19} weight={activeFilter === id ? "fill" : "regular"} className="hidden sm:block" />
+          <span>{t(label)}</span>
+          <span className={`inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-xs font-semibold ${activeFilter === id ? "bg-on-brand/15" : "bg-muted-surface"}`}>{filterCounts[id]}</span>
+        </button>)}
+      </nav>
+
+      <div className="flex min-h-[240px] w-full flex-col sm:min-h-[400px]">
         {loading ? (
-          <div className="surface-panel flex w-full flex-1 items-center justify-center p-10 sm:p-20">
+          <div className="surface-panel flex w-full flex-1 items-center justify-center p-6 sm:p-20">
             <div className="flex flex-col items-center gap-4">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
               <p className="font-medium text-muted-ink">{t("trips.loading")}</p>
@@ -230,12 +257,15 @@ function TripsContent() {
               </Button>
             }
           />
+        ) : visibleItems.length === 0 ? (
+          <EmptyState className="flex-1 justify-center" icon={<SuitcaseRolling aria-hidden size={30} />} title={t("trips.filterEmpty")} action={<Button variant="secondary" onClick={() => setActiveFilter("all")}>{t("trips.filterAll")}</Button>} />
         ) : (
-          <div className="space-y-6 w-full flex-1">
-            {items.map((b) => (
+          <div className="w-full flex-1 space-y-3 sm:space-y-4">
+            {visibleItems.map((b) => (
               <TripCard
                 key={b.id}
                 booking={b}
+                booker={user}
                 busy={busy}
                 onCheckout={checkout}
                 onRepay={repay}
@@ -246,15 +276,16 @@ function TripsContent() {
         )}
       </div>
 
-      {pending.length > 0 && (
-        <div className="mt-8 flex gap-4 rounded-2xl border border-caution/20 bg-caution/10 p-5 text-caution">
+      {activeFilter === "all" && pending.length > 0 && (
+        <div className="mt-5 flex gap-3 rounded-2xl border border-caution/20 bg-caution/10 p-3 text-caution sm:mt-7 sm:gap-4 sm:p-5">
           <Lightbulb aria-hidden size={22} className="shrink-0" />
           <p className="text-sm leading-6">
             {t("trips.pendingHint")}
           </p>
         </div>
       )}
-    </Container>
+      </Container>
+    </div>
   );
 }
 

@@ -115,13 +115,13 @@ Backend được xây dựng với cấu trúc chặt chẽ, dễ dàng mở r�
 Booking-bnb/
 ├── admin/          # Giao diện Dashboard quản trị (Next.js)
 ├── backend/        # API Server (Express + Sequelize)
-│   ├── src/
-│   │   ├── controllers/   # Điều phối Request/Response
-│   │   ├── services/      # Business Logic
-│   │   ├── repositories/  # Giao tiếp Database
-│   │   ├── models/        # Định nghĩa Schema (Sequelize)
-│   │   ├── routes/        # Định tuyến API (v1)
-│   │   └── middlewares/   # Auth, Upload, Validation
+│   ├── controllers/   # Điều phối Request/Response
+│   ├── services/      # Business Logic
+│   ├── repositories/  # Giao tiếp Database
+│   ├── models/        # Định nghĩa Schema (Sequelize)
+│   ├── migrations/    # Thay đổi schema
+│   ├── routes/        # Định tuyến API (v1)
+│   └── middlewares/   # Auth, Upload, Validation
 ├── frontend/       # Giao diện Khách hàng & Chủ nhà (Next.js)
 │   ├── src/
 │   │   ├── app/           # Next.js App Router (Pages)
@@ -137,25 +137,23 @@ Booking-bnb/
 
 ### Yêu cầu môi trường
 
-- Node.js (>= 18.x)
+- Node.js (>= 20.x)
 - PostgreSQL đang chạy (Local hoặc Docker)
-- Redis Server đang chạy
+- Redis Server cho Passkey và QR Login; cache có thể chạy không cần Redis
 - Các tài khoản dịch vụ bên thứ 3: Cloudinary, Stripe, VNPay, Google Cloud Console (cho OAuth)
 
 ### 1. Cài đặt Backend
 
 ```bash
 cd backend
-npm install
+npm ci
 
 # Sao chép và cấu hình biến môi trường
 cp .env.example .env
 # Chỉnh sửa file .env với thông tin DB, Redis, JWT Secret, Cloudinary, Stripe keys...
 
-# Khởi tạo Database
-npx sequelize-cli db:create
-npx sequelize-cli db:migrate
-npx sequelize-cli db:seed:all
+# Tạo database rỗng theo DB_NAME trước khi chạy migration
+npm run db:migrate
 
 # Khởi chạy server API
 npm run dev
@@ -165,11 +163,11 @@ npm run dev
 
 ```bash
 cd frontend
-npm install
+npm ci
 
 # Cấu hình biến môi trường
 cp .env.example .env
-# (Cần cấu hình NEXT_PUBLIC_API_URL, NEXT_PUBLIC_MAPBOX_TOKEN,...)
+# Cấu hình các khóa tích hợp cần dùng; API local mặc định ở http://localhost:3000.
 
 # Khởi chạy ứng dụng
 npm run dev
@@ -179,11 +177,18 @@ npm run dev
 
 ```bash
 cd admin
-npm install
+npm ci
 
-# Cấu hình biến môi trường nếu cần thiết
+# Sao chép .env.example và cấu hình backend khi cần
+cp .env.example .env
 npm run dev
 ```
+
+---
+
+## Kiểm tra trước khi phát hành
+
+GitHub Actions trong `.github/workflows/verify.yml` chạy test, lint, build cho ba ứng dụng và migration cùng test tích hợp trên PostgreSQL thử riêng. Chạy cùng các lệnh đó trước khi đưa thay đổi lên staging. Với thanh toán thật, xác nhận webhook Stripe, hoàn tiền và đối soát trên staging trước khi triển khai production; không dùng database production để chạy test tích hợp.
 
 ---
 
@@ -194,4 +199,4 @@ npm run dev
 - **Quản lý Process**: PM2 cho Backend NodeJS
 - **Frontend Hosting**: Vercel hoặc tự host bằng PM2/Docker
 - **Containerization**: Khuyến khích sử dụng **Docker** và **Docker Compose** để build tự động và thống nhất môi trường.
-- **CI/CD**: Tích hợp GitHub Actions để tự động deploy khi có thay đổi.
+- **CI**: GitHub Actions kiểm tra mã và migration khi push hoặc tạo pull request; deploy được cấu hình riêng.

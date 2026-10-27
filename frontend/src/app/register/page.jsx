@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { registerLocal } from "@/store/authThunks";
+import { registerLocal, verifyRegistration, resendRegistrationCode } from "@/store/authThunks";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, EnvelopeSimple, LockKey, User } from "@phosphor-icons/react";
@@ -27,10 +27,24 @@ export default function RegisterPage() {
   const [agreed, setAgreed] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [notice, setNotice] = useState("");
+  const [resending, setResending] = useState(false);
   const busy = status === "loading";
   useEffect(() => { if (isInitialized && user && !busy) router.replace(afterLoginPath()); }, [isInitialized, user, busy, router]);
   async function onSubmit(event) {
     event.preventDefault();
+    if (pendingEmail) {
+      if (!/^\d{6}$/.test(code)) { setFormError("auth.codeFormat"); return; }
+      setFormError("");
+      const result = await dispatch(verifyRegistration({ email: pendingEmail, code }));
+      if (result.ok) {
+        window.sessionStorage.setItem("booking-passkey-offer", "1");
+        router.push(afterLoginPath());
+      } else setFormError("auth.codeInvalid");
+      return;
+    }
     const errors = {
       full_name: validateFullName(fullName),
       username: validateUsername(username),
@@ -45,8 +59,15 @@ export default function RegisterPage() {
     const result = await dispatch(registerLocal({ email: email.trim(), username: username.trim().toLowerCase(),
       password, full_name: fullName.trim() }));
     if (result.ok) {
-      window.sessionStorage.setItem("booking-passkey-offer", "1");
-      router.push(afterLoginPath());
+      setPendingEmail(result.email);
+      setPassword("");
+      setConfirmPassword("");
+    } else if (result.pending) {
+      const address = email.trim().toLowerCase();
+      setPendingEmail(address);
+      setNotice("auth.codeAlreadySent");
+      setPassword("");
+      setConfirmPassword("");
     } else {
       const errorsFromServer = serverFieldErrors(result.invalidFields || [], {
         full_name: "auth.validation.nameLength",
@@ -60,9 +81,27 @@ export default function RegisterPage() {
       if (!Object.keys(errorsFromServer).length) setFormError("auth.registerFailed");
     }
   }
+  async function resendCode() {
+    setResending(true);
+    setFormError("");
+    setNotice("");
+    const result = await dispatch(resendRegistrationCode(pendingEmail));
+    if (result.ok) setNotice("auth.codeResent");
+    else setFormError(result.status === 429 ? "auth.codeWait" : "auth.requestFailed");
+    setResending(false);
+  }
   return (
-    <AuthTemplate title={t("auth.registerTitle")} description={t("auth.registerDescription")} coverAlt={t("auth.coverAlt")} homeLabel={t("common.backHome")}>
+    <AuthTemplate title={t(pendingEmail ? "auth.verifyEmailTitle" : "auth.registerTitle")} description={t(pendingEmail ? "auth.verifyEmailDescription" : "auth.registerDescription")} coverAlt={t("auth.coverAlt")} homeLabel={t("common.backHome")}>
       <form onSubmit={onSubmit} className="auth-form" noValidate>
+        {pendingEmail ? <>
+          <p className="text-sm text-muted-ink">{pendingEmail}</p>
+          <InputField className="auth-field" label={t("auth.verificationCode")} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => { setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setFormError(""); }} required disabled={busy} />
+          {notice ? <p role="status" className="text-sm text-muted-ink">{t(notice)}</p> : null}
+          {formError ? <p role="alert" className="rounded-xl bg-danger/10 p-3 text-sm text-danger">{t(formError)}</p> : null}
+          <Button type="submit" loading={busy} className="auth-submit w-full">{t(busy ? "auth.verifyingCode" : "auth.verifyCode")}</Button>
+          <button type="button" className="auth-link text-sm" onClick={resendCode} disabled={busy || resending}>{t(resending ? "auth.sending" : "auth.resendCode")}</button>
+          <button type="button" className="auth-link text-sm" onClick={() => { setPendingEmail(""); setCode(""); setNotice(""); setFormError(""); }}>{t("auth.changeEmail")}</button>
+        </> : <>
         <InputField className="auth-field" label={t("auth.fullName")} prefix={<User size={21} />} autoComplete="name" value={fullName} onChange={(e) => { setFullName(e.target.value); setFieldErrors((current) => ({ ...current, full_name: null })); setFormError(""); }} error={fieldErrors.full_name ? t(fieldErrors.full_name) : null} placeholder={t("auth.namePlaceholder")} required disabled={busy} />
         <InputField className="auth-field" label={t("auth.username")} prefix={<User size={21} />} autoComplete="username" value={username} onChange={(e) => { setUsername(e.target.value.toLowerCase()); setFieldErrors((current) => ({ ...current, username: null })); setFormError(""); }} error={fieldErrors.username ? t(fieldErrors.username) : null} placeholder={t("auth.usernamePlaceholder")} pattern="[a-z0-9_]{3,40}" minLength={3} maxLength={40} required disabled={busy} />
         <InputField className="auth-field" label={t("auth.email")} prefix={<EnvelopeSimple size={21} />} type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setFieldErrors((current) => ({ ...current, email: null })); setFormError(""); }} error={fieldErrors.email ? t(fieldErrors.email) : null} placeholder={t("auth.emailPlaceholder")} required disabled={busy} />
@@ -74,8 +113,9 @@ export default function RegisterPage() {
         </div>
         {formError ? <p role="alert" className="rounded-xl bg-danger/10 p-3 text-sm text-danger">{t(formError)}</p> : null}
         <Button type="submit" loading={busy} className="auth-submit w-full">{t(busy ? "auth.creating" : "auth.register")}<ArrowRight aria-hidden size={21} /></Button>
+        </>}
       </form>
-      <AuthSocial />
+      {!pendingEmail ? <AuthSocial /> : null}
       <p className="auth-switch">{t("auth.hasAccount")} <Link href="/login" className="auth-link">{t("auth.loginNow")}</Link></p>
     </AuthTemplate>
   );

@@ -30,13 +30,15 @@ npm.cmd run db:migrate
 npm.cmd start
 ```
 
-Migrations hiện tại bổ sung cho database đã có các bảng nghiệp vụ; chúng chưa phải bộ bootstrap đầy đủ cho database trống. Các SQL cũ trong `database/` là tài liệu lịch sử, cần đối chiếu schema trước khi áp dụng, không chạy toàn bộ seed vào dữ liệu đang sử dụng.
+Migration `20260301000000-create-core-schema.js` tạo các bảng nghiệp vụ còn thiếu khi chạy trên database trống và giữ nguyên bảng đã có. Các SQL cũ trong `database/` là tài liệu lịch sử, cần đối chiếu schema trước khi áp dụng, không chạy toàn bộ seed vào dữ liệu đang sử dụng.
 
 Migration `20260929000000-create-assets-and-background-jobs.js` tạo `uploaded_assets` và `background_jobs`, yêu cầu đã có `users` và `listings`. Chạy migration trước khi khởi động phiên bản mới. Không dùng `sequelize.sync({ alter: true })` thay migration.
 
 Migration `20260930000000-track-attached-uploads.js` đánh dấu ảnh đã gắn vào phòng để tác vụ nền chỉ dọn ảnh tải lên quá 24 giờ mà chưa gắn. Chạy migration này trước khi khởi động backend phiên bản mới.
 
 Migration `20260929001000-expand-payment-method-providers.js` bổ sung các provider đã được giao diện hỗ trợ nếu enum hiện có còn thiếu. Rollback không xóa enum value vì có thể đã có dữ liệu sử dụng.
+
+Migration `20260930002000-protect-core-data.js` giữ một ảnh bìa theo thứ tự hiển thị nếu dữ liệu cũ có nhiều ảnh bìa, rồi thêm unique index cho ảnh bìa và phương thức thanh toán mặc định. Migration cũng chặn giá/số lượng không hợp lệ và đổi các khóa ngoại của booking, payment, review từ xóa dây chuyền sang chặn xóa cứng để giữ lịch sử. Migration này không hỗ trợ rollback tự động vì không thể phục hồi cờ ảnh bìa cũ một cách tin cậy.
 
 Cấu hình cần kiểm tra trong `.env`:
 
@@ -45,7 +47,9 @@ Cấu hình cần kiểm tra trong `.env`:
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`; webhook `/api/v1/payments/stripe/webhook` yêu cầu raw JSON và chữ ký hợp lệ. Thiếu secret trả 503.
 - Cloudinary: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
 - Email: SMTP hoặc `GAS_MAIL_URL`; thiếu cấu hình thì job được retry, không giả báo gửi thành công.
-- Redis: `REDIS_URL` hoặc host/port; có thể dùng `REDIS_DISABLED=true`. Cache thất bại không làm hỏng request nghiệp vụ.
+- Redis: `REDIS_URL` hoặc host/port; có thể dùng `REDIS_DISABLED=true`. Passkey và QR Login cần Redis hoạt động; khi Redis mất kết nối hai cách đăng nhập này trả lỗi tạm thời, các cách khác vẫn hoạt động.
+- Passkey: chạy migration `20261003000000-create-passkey-credentials.js`; đặt `PASSKEY_EXPECTED_ORIGIN` đúng origin frontend và `PASSKEY_RP_ID` đúng hostname của origin. Production cần HTTPS. Không đổi RP ID sau khi người dùng tạo Passkey.
+- QR Login: Socket.IO chạy trên cùng cổng backend; frontend production đặt `NEXT_PUBLIC_REALTIME_URL` thành URL HTTPS trực tiếp của backend. Cấu hình `CORS_ORIGINS` chứa origin frontend. Mã QR hết hạn sau 120 giây và cần điện thoại đã đăng nhập phê duyệt.
 - `BOOKING_HOLD_MINUTES`: số phút giữ lịch chờ thanh toán, mặc định 15; phải là số dương.
 
 ## Các bất biến nghiệp vụ
@@ -73,4 +77,15 @@ npm.cmd test
 npm.cmd run check
 ```
 
-Tests chạy source thật với model/provider được thay thế, mô phỏng khóa từng row và commit/rollback. Kiểm tra HTTP dùng Express thật; kiểm tra SQL dùng model/association Sequelize thật và chặn trước driver. Chúng không đọc `.env`, không kết nối DB hay gọi Stripe/Cloudinary/SMTP. Cần kiểm tra migration và webhook Stripe trên môi trường staging riêng trước triển khai.
+`npm test` chạy toàn bộ test đơn vị và HTTP trong `tests/`; các test tích hợp PostgreSQL được bỏ qua nếu chưa bật cờ riêng. Test đơn vị dùng source thật với model/provider thay thế, mô phỏng khóa từng row và commit/rollback. Chúng không gọi Stripe/Cloudinary/SMTP thật.
+
+Để kiểm tra với PostgreSQL thử riêng, tạo database rỗng, đặt `NODE_ENV=test`, `DB_TEST_NAME`, thông tin kết nối DB và `JWT_SECRET` tối thiểu 16 ký tự. Sau đó chạy:
+
+```powershell
+npm.cmd run db:migrate
+$env:BOOKING_TEST_DATABASE = '1'
+$env:CHAT_TEST_DATABASE = '1'
+npm.cmd run test:integration
+```
+
+Test tích hợp tạo dữ liệu thử trong database này. CI tạo PostgreSQL dùng một lần, chạy toàn bộ migration rồi kiểm tra đặt trùng lịch, webhook lặp, hủy/hoàn tiền, chat và call. Trước khi phát hành vẫn cần kiểm tra callback và đối soát với Stripe ở môi trường staging có cấu hình riêng; CI không gọi Stripe thật.

@@ -5,7 +5,7 @@ const { randomUUID } = require("node:crypto");
 test("Call PostgreSQL: chỉ một active/user, state nguyên tử và timeout server", {
   skip: process.env.CHAT_TEST_DATABASE !== "1" || process.env.NODE_ENV !== "test",
 }, async () => {
-  const { User, ChatConversation, CallSession, sequelize, Sequelize } = require("../models");
+  const { User, ChatConversation, ChatMessage, CallSession, sequelize, Sequelize } = require("../models");
   const chat = require("../services/chat.service");
   const calls = require("../services/call.service");
   const suffix = randomUUID().slice(0, 8);
@@ -70,6 +70,9 @@ test("Call PostgreSQL: chỉ một active/user, state nguyên tử và timeout s
     assert.equal(connected.status, "connected");
     const ended = await calls.command(caller, first.id, "end");
     assert.equal(ended.status, "ended");
+    const completedHistory = await ChatMessage.findOne({ where: { client_key: `call:${first.id}` } });
+    assert.equal(completedHistory.context.status, "ended");
+    assert.ok(completedHistory.context.duration_seconds >= 0);
     await assert.rejects(calls.signalingPeer(caller, first.id, first.caller_instance_id, "webrtc:offer"), { status: 409 });
     assert.equal((await calls.command(caller, first.id, "end")).ended_at.toISOString(), ended.ended_at.toISOString());
     await assert.rejects(calls.report(caller, first.id, first.caller_instance_id, "connected"), { status: 409 });
@@ -78,6 +81,9 @@ test("Call PostgreSQL: chỉ một active/user, state nguyên tử và timeout s
     await CallSession.update({ ring_expires_at: new Date(Date.now() - 1000) }, { where: { id: second.id } });
     await calls.reconcileExpired();
     assert.equal((await calls.get(outsider, second.id)).status, "no_answer");
+    const missedHistory = await ChatMessage.findOne({ where: { client_key: `call:${second.id}` } });
+    assert.equal(missedHistory.context.status, "no_answer");
+    assert.equal(missedHistory.context.duration_seconds, 0);
     await assert.rejects(calls.command(users[1].id, second.id, "accept", randomUUID()), { status: 409 });
     assert.equal(await calls.active(users[1].id), null);
   } finally {

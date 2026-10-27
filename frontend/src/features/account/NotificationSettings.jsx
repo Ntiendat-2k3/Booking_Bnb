@@ -16,15 +16,16 @@ export default function NotificationSettings() {
   const userId = useSelector((state) => state.auth.user?.id);
   const [saved, setSaved] = useState(null);
   const [draft, setDraft] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [settledKey, setSettledKey] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const [revision, setRevision] = useState(0);
+  const requestKey = `${userId}:${revision}`;
+  const loading = Boolean(userId) && settledKey !== requestKey;
 
   useEffect(() => {
     if (!userId) return;
     let active = true;
-    setLoading(true);
     async function load() {
       try {
         let data = (await apiFetch("/api/v1/notifications/preferences")).data;
@@ -46,14 +47,14 @@ export default function NotificationSettings() {
         }
         if (active) { setSaved(data); setDraft(null); setError(false); }
       } catch { if (active) setError(true); }
-      finally { if (active) setLoading(false); }
+      finally { if (active) setSettledKey(requestKey); }
     }
     void load();
     return () => { active = false; };
-  }, [userId, revision]);
+  }, [userId, revision, requestKey]);
 
   const save = async () => {
-    if (!draft || saving) return;
+    if (!userId || !draft || saving || loading) return;
     setSaving(true);
     try {
       const result = (await apiFetch("/api/v1/notifications/preferences", {
@@ -64,7 +65,7 @@ export default function NotificationSettings() {
     } catch { notifyError(t("common.saveFailed")); }
     finally { setSaving(false); }
   };
-  const preferences = draft || saved;
+  const preferences = userId && !error && !loading ? draft || saved : null;
   return <section className="surface-panel p-5 sm:p-8">
     <h2 className="flex items-center gap-2 text-xl font-bold"><Bell aria-hidden size={24} className="text-brand" />{t("notificationSettings.title")}</h2>
     <p className="mt-2 text-sm text-muted-ink">{t("notificationSettings.description")}</p>
@@ -80,6 +81,6 @@ export default function NotificationSettings() {
           checked={Boolean(preferences[category])}
           onChange={(event) => setDraft({ ...preferences, [category]: event.target.checked })} />
       </label>)}</div>}
-    <Button className="mt-6" onClick={save} disabled={!draft || saving}>{t("profile.save")}</Button>
+    <Button className="mt-6" onClick={save} disabled={!preferences || !draft || saving}>{t("profile.save")}</Button>
   </section>;
 }

@@ -50,6 +50,29 @@
 @layer base {
   * {
     border-color: rgb(var(--color-line));
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--color-accent) / 0.42) transparent;
+  }
+
+  /* Giữ thanh cuộn mảnh và cùng màu theme trên các trình duyệt dùng WebKit. */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgb(var(--color-accent) / 0.42) padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--color-accent) / 0.68);
   }
 
   html {
@@ -218,6 +241,10 @@
 
 .site-footer { --color-ink: 247 244 237; --color-muted-ink: 192 203 187; --color-surface: 19 36 25; --color-muted-surface: 36 54 39; --color-line: 61 78 58; --color-accent: 198 214 177; --color-on-ink: 24 37 20; }
 
+/* Hero chuyến đi trải hết chiều ngang, còn bộ lọc và thẻ đặt phòng giữ cùng lề với nội dung website. */
+body:has(.trips-page) #main-content { padding-top: 0; }
+body:has(.trips-page) #main-content > .site-container { max-width: none; padding-inline: 0; }
+
 /* Gallery, tóm tắt và đặt phòng giữ cùng thứ tự đọc; desktop đặt sidebar cạnh nội dung. */
 body:has(.room-page) #main-content { padding-top: 0; }
 body:has(.room-gallery-hero) #main-content > .site-container { max-width: none; }
@@ -313,8 +340,9 @@ body:has(.room-gallery-hero) .room-header .header-actions .hidden select { borde
   .nature-header .site-container { height: 80px; }
   body:has(.home-hero-photo) .nature-header .site-wordmark { color: #fffdf4; font-size: 25px; }
   .nature-header .brand-mark { color: #e7bd70; }
-  .nature-header .header-notifications, .nature-header .navbar-menu-trigger img,
+  .nature-header .navbar-menu-trigger img,
   .nature-header .navbar-menu-trigger [aria-label] { display: none; }
+  .nature-header .header-notifications > div > button > span { border: 1px solid rgb(255 255 255 / 0.28); background: rgb(17 29 20 / 0.6); color: #fffdf4; backdrop-filter: blur(10px); }
   .nature-header .navbar-menu-trigger, .nature-header .mobile-header-search { display: flex; width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; border: 1px solid rgb(255 255 255 / 0.28); border-radius: 50%; background: rgb(17 29 20 / 0.6); color: #fffdf4; backdrop-filter: blur(10px); }
   .nature-header .header-actions { gap: 8px; }
   .room-header .brand-mark { display: none; }
@@ -353,10 +381,12 @@ body:has(.room-gallery-hero) .room-header .header-actions .hidden select { borde
 }
 
 @media (width < 768px) {
-  body:has(.nature-page) { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
-  .mobile-dock { position: fixed; z-index: 40; inset: auto 12px max(12px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 12px 6px; border: 1px solid rgb(232 236 221 / 0.16); border-radius: 22px; background: rgb(14 28 20 / 0.96); box-shadow: 0 12px 30px rgb(14 28 20 / 0.2); backdrop-filter: blur(12px); }
-  .mobile-dock a { display: grid; justify-items: center; gap: 5px; min-height: 46px; color: #d4dacf; font-size: 10px; }
+  body:has(.mobile-dock) { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+  .mobile-dock { position: fixed; z-index: 40; inset: auto 12px max(12px, env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 8px 6px; border: 1px solid rgb(232 236 221 / 0.16); border-radius: 22px; background: rgb(14 28 20 / 0.96); box-shadow: 0 12px 30px rgb(14 28 20 / 0.2); backdrop-filter: blur(12px); }
+  .mobile-dock a { display: grid; min-width: 0; min-height: 56px; align-content: center; justify-items: center; gap: 4px; padding: 4px 2px; color: #d4dacf; font-size: 10px; line-height: 1.2; text-align: center; }
   .mobile-dock a[aria-current] { color: #f1c77e; }
+  body:has(input:focus, textarea:focus, [contenteditable="true"]:focus) .mobile-dock { display: none; }
+  body:has(.chat-page):has(.mobile-dock) #main-content { height: calc(100dvh - var(--header-height) - 104px - env(safe-area-inset-bottom)); }
   .home-page > :not(.home-hero) { margin-top: 36px; }
   .home-page .listing-section { gap: 20px; }
   .home-page .listing-section > div:first-child { align-items: center; gap: 12px; }
@@ -391,13 +421,28 @@ body:has(.room-gallery-hero) .room-header .header-actions .hidden select { borde
 @media (width < 360px) {
   body:has(.home-hero-photo) .nature-header .site-wordmark { font-size: 21px; }
   .brand-mark { width: 24px; }
-  .room-header .site-wordmark { font-size: 19px; }
+  .room-header .site-wordmark { font-size: 16px; }
   .room-capacity { gap: 5px; }
   .room-capacity span { padding: 8px 5px; gap: 5px; }
   .listing-card-content { padding: 16px; }
   .listing-card-title { font-size: 23px; }
   .listing-card-price span.block { font-size: 15px; }
 }
+
+@media (width < 380px) {
+  .site-wordmark-text { display: none; }
+}
+
+@media (width < 768px) {
+  body:has(.mobile-dock) .ai-mascot-dock:not(.ai-mascot-dock--moved) { bottom: calc(104px + env(safe-area-inset-bottom)); }
+  body:has(.mobile-dock) .ai-mascot-dock [role="dialog"] { max-height: min(calc(100dvh - 15rem - env(safe-area-inset-bottom)), var(--ai-panel-space, 100dvh)); }
+  body:has(.ai-mascot-dock textarea:focus) .ai-mascot-dock:not(.ai-mascot-dock--moved) { bottom: calc(12px + env(safe-area-inset-bottom)); }
+  body:has(.ai-mascot-dock textarea:focus) .ai-mascot-dock [role="dialog"] { max-height: min(calc(100dvh - 10rem - env(safe-area-inset-bottom)), var(--ai-panel-space, 100dvh)); }
+}
+
+.ai-mascot-dock [role="dialog"] { max-height: min(72dvh, var(--ai-panel-space, calc(100dvh - 10rem))); }
+.ai-mascot-dock .ai-mascot-button { cursor: grab !important; }
+.ai-mascot-dock .ai-mascot-button:active { cursor: grabbing !important; }
 
 @media (prefers-reduced-transparency: reduce) {
   .mobile-dock { background: #0e1c14; backdrop-filter: none; }
@@ -432,8 +477,7 @@ body:has(.auth-experience) #main-content > .site-container { max-width: none; pa
 /* Trang tin nhắn chiếm trọn vùng hiển thị bên dưới thanh điều hướng. */
 body:has(.chat-page) #main-content { height: calc(100dvh - var(--header-height)); min-height: 0; padding: 0; overflow: hidden; }
 body:has(.chat-page) #main-content > .site-container { width: 100%; max-width: none; height: 100%; padding: 0; }
-body:has(.chat-page) .site-footer,
-body:has(.chat-page) .mobile-dock { display: none; }
+body:has(.chat-page) .site-footer { display: none; }
 .chat-page { width: 100%; height: 100%; min-height: 0; }
 
 .auth-experience {

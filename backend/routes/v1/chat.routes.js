@@ -39,6 +39,22 @@ router.post("/listings/:listingId", csrf, writeLimit,
 router.post("/:conversationId/calls", csrf, writeLimit, validate(schema.conversationParams, "params"), validate(schema.createCall), controller.createCall);
 router.get("/:conversationId", validate(schema.conversationParams, "params"), controller.detail);
 router.get("/:conversationId/messages", validate(schema.conversationParams, "params"), validate(schema.messagesQuery, "query"), controller.messages);
+router.get("/:conversationId/booking-proposals/candidates", validate(schema.conversationParams, "params"),
+  validate(schema.proposalCandidatesQuery, "query"), controller.proposalCandidates);
+router.post("/:conversationId/booking-proposals/quote", csrf, writeLimit,
+  validate(schema.conversationParams, "params"), validate(schema.proposalQuote), controller.proposalQuote);
+router.post("/:conversationId/booking-proposals", csrf, writeLimit,
+  validate(schema.conversationParams, "params"), validate(schema.createProposal), controller.createProposal);
+router.get("/:conversationId/booking-proposals/:proposalId",
+  validate(schema.proposalParams, "params"), controller.proposalDetail);
+router.patch("/:conversationId/booking-proposals/:proposalId", csrf, writeLimit,
+  validate(schema.proposalParams, "params"), validate(schema.updateProposal), controller.updateProposal);
+router.post("/:conversationId/booking-proposals/:proposalId/confirm", csrf, writeLimit,
+  validate(schema.proposalParams, "params"), validate(schema.proposalVersion), controller.confirmProposal);
+router.post("/:conversationId/booking-proposals/:proposalId/request-changes", csrf, writeLimit,
+  validate(schema.proposalParams, "params"), validate(schema.proposalChanges), controller.requestProposalChanges);
+router.post("/:conversationId/booking-proposals/:proposalId/reject", csrf, writeLimit,
+  validate(schema.proposalParams, "params"), validate(schema.proposalReject), controller.rejectProposal);
 router.get("/:conversationId/messages/search", validate(schema.conversationParams, "params"),
   validate(schema.contentQuery, "query"), controller.searchMessages);
 router.get("/:conversationId/shared", validate(schema.conversationParams, "params"),

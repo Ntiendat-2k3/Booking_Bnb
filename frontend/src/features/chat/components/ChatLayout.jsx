@@ -117,6 +117,7 @@ export default function ChatLayout() {
     <div className={`${conversationId ? "flex" : "hidden md:flex"} min-w-0 flex-1`}>
       {conversationId ? (detailOwner === user.id && detail?.id === conversationId
         ? <ConversationView key={`${user.id}:${conversationId}`} conversation={detail} userId={user.id}
+          userRole={user.role}
           onActivity={reload} onDetailChange={() => loadDetail(true)} />
         : <div className="m-auto p-6 text-center text-sm text-muted-ink">
           {detailOwner === user.id && detailError ? <><p role="alert">{detailError.status === 404 ? t("chat.notFound") : t("chat.loadFailed")}</p>

@@ -7,12 +7,17 @@ const { cleanupExpiredUploads } = require("../services/uploaded_asset.service");
 const { getStripe } = require("../config/stripe");
 const { randomUUID } = require("crypto");
 const calls = require("../services/call.service");
+const { createReminders } = require("../services/notification-reminder.service");
 
 async function execute(job) {
   const payload = job.payload;
   switch (job.type) {
     case "send_email":
       return sendEmail(payload.to, payload.subject, payload.html);
+    case "booking_confirmation":
+      return require("../services/booking_qr.service").sendConfirmation(payload);
+    case "promotion_notify":
+      return require("../services/coupon.service").notifyEligible(payload.couponId);
     case "cloudinary_delete":
       await destroy(payload.public_id, payload.resource_type, payload.delivery_type || "upload");
       return UploadedAsset.destroy({ where: { public_id: payload.public_id } });
@@ -20,9 +25,25 @@ async function execute(job) {
       const stripe = getStripe();
       const session = await stripe.checkout.sessions.retrieve(payload.sessionId);
       if (session.status === "open") await stripe.checkout.sessions.expire(session.id);
+      else if (session.payment_status === "paid") await require("../services/payment.service").handleStripeWebhook({
+        id: "reconcile:" + session.id, type: "checkout.session.completed", data: { object: session },
+      });
+      return;
+    }
+    case "stripe_cancel_intent": {
+      const stripe = getStripe();
+      const intent = await stripe.paymentIntents.retrieve(payload.intentId);
+      if (["requires_payment_method", "requires_confirmation", "requires_action", "requires_capture"].includes(intent.status)) {
+        await stripe.paymentIntents.cancel(intent.id);
+      }
+      else if (intent.status === "succeeded") await require("../services/payment.service").handleStripeWebhook({
+        id: "reconcile:" + intent.id, type: "payment_intent.succeeded", data: { object: intent },
+      });
       return;
     }
     case "stripe_refund": {
+      if (payload.refundId)
+        return require("../services/refund.service").processRefund(payload.refundId);
       const payment = await Payment.findByPk(payload.paymentId);
       if (!payment || payment.status === "refunded") return;
       const stripe = getStripe();
@@ -79,6 +100,7 @@ function startBackgroundJobs(intervalMs = 1000) {
   let active;
   let activeCleanup;
   let activeCalls;
+  let activeReminders;
   let stopped = false;
   const tick = () => {
     if (stopped || active) return;
@@ -103,14 +125,24 @@ function startBackgroundJobs(intervalMs = 1000) {
     })).finally(() => { activeCalls = null; });
   };
   const callTimer = setInterval(reconcileCalls, 5000);
+  const remind = () => {
+    if (stopped || activeReminders) return;
+    activeReminders = createReminders().catch((error) => console.error("[notifications] Không thể tạo nhắc lịch:", {
+      name: error.name, code: error.parent?.code || error.code,
+    })).finally(() => { activeReminders = null; });
+  };
+  const reminderTimer = setInterval(remind, 15 * 60 * 1000);
   timer.unref();
   cleanupTimer.unref();
   callTimer.unref();
+  reminderTimer.unref();
   tick();
   cleanup();
   reconcileCalls();
+  remind();
   return async () => { stopped = true; clearInterval(timer); clearInterval(cleanupTimer);
-    clearInterval(callTimer); await Promise.allSettled([active, activeCleanup, activeCalls]); };
+    clearInterval(callTimer); clearInterval(reminderTimer);
+    await Promise.allSettled([active, activeCleanup, activeCalls, activeReminders]); };
 }
 
 module.exports = { startBackgroundJobs, runNextJob };

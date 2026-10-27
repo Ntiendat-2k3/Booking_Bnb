@@ -18,6 +18,7 @@ export default function CallOverlay({ session }) {
     micEnabled, cameraEnabled, audioOnly, resendSignaling, resumePlayback,
     toggleMic, toggleCamera } = rtc;
   const callId = call?.id;
+  const ended = isTerminalCall(call);
 
   useEffect(() => {
     if (!callId) return;
@@ -25,9 +26,14 @@ export default function CallOverlay({ session }) {
     dialogRef.current?.focus();
     return () => previous?.focus?.();
   }, [callId]);
+  useEffect(() => {
+    if (!ended) return;
+    // Giữ trạng thái kết thúc đủ lâu để đọc rồi trả người dùng về lịch sử chat.
+    const timer = window.setTimeout(dismiss, 3000);
+    return () => window.clearTimeout(timer);
+  }, [callId, ended, dismiss]);
   if (!call || !userId || (call.caller_id !== userId && call.callee_id !== userId)) return null;
 
-  const ended = isTerminalCall(call);
   const caller = call.caller_id === userId;
   const owner = caller ? call.caller_instance_id === instanceId : call.callee_instance_id === instanceId;
   const incoming = call.status === "ringing" && !caller;

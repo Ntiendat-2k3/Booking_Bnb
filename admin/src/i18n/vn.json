@@ -28,9 +28,23 @@
   },
   "nav": {
     "overview": "Tổng quan", "users": "Người dùng", "listings": "Chỗ ở", "amenities": "Tiện ích",
-    "bookings": "Đặt phòng", "payments": "Thanh toán", "reviews": "Đánh giá", "adminConsole": "Bảng quản trị",
+    "bookings": "Đặt phòng", "payments": "Thanh toán", "coupons": "Mã giảm giá", "refunds": "Hoàn tiền", "disputes": "Tranh chấp", "reviews": "Đánh giá", "adminConsole": "Bảng quản trị",
     "adminNavigation": "Điều hướng quản trị", "openNavigation": "Mở điều hướng", "closeNavigation": "Đóng điều hướng",
     "systemAdmin": "Quản trị viên", "fullAccess": "Toàn quyền", "logout": "Đăng xuất"
+  },
+  "coupons": {
+    "title": "Mã giảm giá và khuyến mãi", "description": "Tạo mã và theo dõi doanh thu đã thanh toán theo chiến dịch.",
+    "create": "Tạo mã giảm giá", "created": "Đã tạo mã", "loadFailed": "Không tải được mã giảm giá",
+    "saveFailed": "Không lưu được mã", "saving": "Đang lưu...", "loading": "Đang tải mã...",
+    "code": "Mã", "campaign_name": "Chiến dịch", "discount_type": "Loại giảm giá",
+    "discount_value": "Mức giảm", "percent": "Phần trăm", "fixed": "Số tiền cố định",
+    "max_discount": "Giảm tối đa", "min_subtotal": "Đơn tối thiểu",
+    "starts_at": "Bắt đầu", "ends_at": "Kết thúc", "max_total_uses": "Giới hạn tổng lượt",
+    "max_uses_per_user": "Giới hạn mỗi tài khoản", "listing_id": "ID phòng", "host_id": "ID Host",
+    "city": "Địa điểm", "audience": "Nhóm khách", "allGuests": "Tất cả khách", "newGuests": "Khách mới", "returningGuests": "Khách quay lại",
+    "notify": "Thông báo cho khách phù hợp đã bật nhận ưu đãi", "campaigns": "Chiến dịch", "codes": "Các mã",
+    "reserved": "Đang giữ", "used": "Đã thanh toán", "revenue": "Doanh thu đã thanh toán",
+    "discountTotal": "Tổng tiền giảm", "status": "Trạng thái", "activate": "Bật", "deactivate": "Tắt"
   },
   "login": {
     "heroTitle": "Không gian rõ ràng cho mọi công việc quản trị.",
@@ -39,6 +53,19 @@
     "description": "Sử dụng tài khoản có quyền admin để tiếp tục.", "password": "Mật khẩu",
     "signIn": "Đăng nhập", "signingIn": "Đang đăng nhập...", "welcome": "Chào mừng trở lại",
     "noAccess": "Tài khoản này không có quyền quản trị.", "failed": "Đăng nhập thất bại"
+  },
+  "analytics": {
+    "title": "Phân tích doanh thu", "description": "Theo dõi tiền đã thu và hoạt động đặt phòng theo kỳ.",
+    "period": "Kỳ xem", "date": "Ngày tham chiếu", "day": "Ngày", "month": "Tháng",
+    "quarter": "Quý", "year": "Năm", "loadFailed": "Không tải được phân tích",
+    "gross": "Doanh thu gộp", "refunds": "Đã hoàn tiền", "net": "Doanh thu sau hoàn tiền",
+    "successful": "Booking thành công", "successfulHint": "Đơn tạo trong kỳ, hiện đã xác nhận hoặc hoàn thành", "cancelled": "Đã hủy", "completed": "Hoàn thành",
+    "occupancy": "Lấp đầy", "nights": "đêm", "adr": "Giá trị trung bình mỗi đêm đã bán", "revpar": "Giá trị trung bình mỗi đêm có thể bán", "conversion": "Chuyển đổi từ lượt xem",
+    "views": "Lượt xem", "starts": "Bắt đầu đặt", "cancellationRate": "Tỷ lệ hủy",
+    "platformFees": "Phí nền tảng", "feeUnconfigured": "Chưa cấu hình thu phí",
+    "previousNet": "Doanh thu ròng kỳ trước", "chart": "Doanh thu ròng theo thời gian",
+    "topListings": "Phòng có doanh thu cao", "highDemand": "Ngày nhu cầu cao", "moreDetails": "Xem chỉ số chi tiết",
+    "definition": "Doanh thu sau hoàn tiền = tiền đã thu trừ khoản hoàn thành công theo ngày giao dịch; giao dịch đang đối soát chưa được tính. Lấp đầy = đêm đã bán / đêm có thể bán. Giá trị mỗi đêm được phân bổ từ booking đã xác nhận; số liệu lịch sử có thể thay đổi theo trạng thái phòng và lịch khóa."
   },
   "dashboard": {
     "workspaceOverview": "Tổng quan hệ thống", "description": "Theo dõi đặt phòng, chỗ ở và hoạt động nền tảng.",
@@ -50,12 +77,33 @@
     "monthlyRevenueChart": "Biểu đồ doanh thu theo tháng", "noRevenue": "Dữ liệu doanh thu sẽ xuất hiện khi có thanh toán.",
     "quickLinks": "Truy cập nhanh", "jumpToArea": "Đi tới khu vực quản lý"
   },
+  "disputes": {
+    "description": "Theo dõi tranh chấp Stripe và lưu ghi chú xử lý nội bộ.",
+    "detail": "Chi tiết tranh chấp", "noItems": "Chưa có tranh chấp.",
+    "status": "Trạng thái Stripe", "reason": "Lý do", "due": "Hạn nộp bằng chứng",
+    "note": "Ghi chú nội bộ", "save": "Lưu ghi chú", "saved": "Đã lưu ghi chú",
+    "loadFailed": "Không tải được tranh chấp", "saveFailed": "Không lưu được ghi chú",
+    "openStripe": "Mở Stripe để gửi bằng chứng hoặc xử lý tranh chấp",
+    "providerStatus": { "warning_needs_response": "Cần phản hồi cảnh báo", "warning_under_review": "Đang xem xét cảnh báo", "warning_closed": "Cảnh báo đã đóng", "needs_response": "Cần phản hồi", "under_review": "Đang xem xét", "won": "Đã thắng", "lost": "Đã thua" }
+  },
+  "refunds": {
+    "description": "Theo dõi hoàn tiền, lỗi Stripe và các trường hợp cần can thiệp.",
+    "all": "Tất cả", "requested": "Đã yêu cầu", "processing": "Đang xử lý",
+    "succeeded": "Đã xác nhận", "failed": "Thất bại", "manual_review": "Cần kiểm tra",
+    "bookingCode": "Mã đặt phòng", "amount": "Số tiền hoàn", "payment": "Thanh toán",
+    "detail": "Chi tiết hoàn tiền", "history": "Lịch sử xử lý", "noItems": "Chưa có yêu cầu hoàn tiền.",
+    "retry": "Thử lại", "review": "Đánh dấu cần kiểm tra", "note": "Ghi chú xử lý",
+    "saveAction": "Xác nhận thao tác", "actionSuccess": "Đã cập nhật yêu cầu hoàn tiền",
+    "actionFailed": "Không thể cập nhật yêu cầu hoàn tiền", "loadFailed": "Không tải được danh sách hoàn tiền",
+    "providerId": "Mã hoàn tiền Stripe", "reason": "Lý do lỗi", "source": "Nguồn yêu cầu",
+    "events": { "requested": "Đã yêu cầu", "processing": "Đang xử lý", "succeeded": "Stripe xác nhận hoàn tiền", "failed": "Hoàn tiền thất bại", "manual_review": "Cần kiểm tra", "admin_retry": "Admin thử lại", "admin_review": "Admin đánh dấu cần kiểm tra" }
+  },
   "roles": { "admin": "Quản trị viên", "host": "Chủ nhà", "guest": "Khách" },
   "statuses": {
     "all": "Tất cả", "pending": "Chờ xử lý", "published": "Đang hiển thị", "paused": "Tạm dừng", "draft": "Bản nháp",
     "rejected": "Bị từ chối", "pending_payment": "Chờ thanh toán", "confirmed": "Đã xác nhận",
     "cancelled": "Đã hủy", "completed": "Hoàn tất", "success": "Thành công", "failed": "Thất bại",
-    "refunded": "Đã hoàn tiền", "succeeded": "Thành công", "active": "Hoạt động", "blocked": "Bị khóa", "inactive": "Ngừng hoạt động", "visible": "Hiển thị", "hidden": "Đã ẩn"
+    "refunded": "Đã hoàn tiền", "succeeded": "Thành công", "active": "Hoạt động", "blocked": "Bị khóa", "pending_verification": "Chờ xác minh email", "inactive": "Ngừng hoạt động", "visible": "Hiển thị", "hidden": "Đã ẩn"
   },
   "users": {
     "search": "Tìm tên, email hoặc vai trò...", "empty": "Không có người dùng.", "information": "Thông tin người dùng",
@@ -82,10 +130,10 @@
     "groupExample": "Cơ bản, An toàn, Phòng ngủ...", "deactivateTitle": "Vô hiệu hóa tiện ích?",
     "activateTitle": "Kích hoạt tiện ích?"
   },
-  "bookings": { "search": "Tìm ID, khách hoặc chỗ ở...", "empty": "Không có đặt phòng.", "information": "Thông tin đặt phòng", "nightsCount": "{count} đêm", "noPayments": "Không có thanh toán.", "noReview": "Không có đánh giá." },
+  "bookings": { "search": "Tìm ID, khách hoặc chỗ ở...", "tripCode": "Mã chuyến đi", "empty": "Không có đặt phòng.", "information": "Thông tin đặt phòng", "nightsCount": "{count} đêm", "noPayments": "Không có thanh toán.", "noReview": "Không có đánh giá." },
   "payments": {
     "search": "Tìm mã giao dịch, email hoặc mã đặt phòng...", "allStatuses": "Mọi trạng thái",
-    "empty": "Không có giao dịch.", "information": "Thông tin thanh toán", "transactionBooking": "Giao dịch / Đặt phòng"
+    "empty": "Không có giao dịch.", "information": "Thông tin thanh toán", "transactionBooking": "Giao dịch / Đặt phòng", "providerReference": "Mã Stripe"
   },
   "ui": {
     "usersDescription": "Quản lý tài khoản người dùng trong hệ thống Booking BnB.",

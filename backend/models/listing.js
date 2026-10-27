@@ -1,8 +1,14 @@
 "use strict";
 const { Model } = require("sequelize");
+const { transformListing } = require("../transformers/listing.transformer");
 
 module.exports = (sequelize, DataTypes) => {
   class Listing extends Model {
+    /** Chuyển phòng sang dữ liệu API, giữ UUID cho các thao tác và ẩn số tham chiếu nội bộ. */
+    toJSON() {
+      return transformListing(super.toJSON());
+    }
+
     static associate(models) {
       Listing.belongsTo(models.User, { foreignKey: "host_id", as: "host" });
 
@@ -42,6 +48,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
       },
+      reference_number: { type: DataTypes.BIGINT, autoIncrement: true, allowNull: false, unique: true },
       host_id: { type: DataTypes.UUID, allowNull: false },
 
       title: { type: DataTypes.STRING(255), allowNull: false },
@@ -57,6 +64,8 @@ module.exports = (sequelize, DataTypes) => {
       room_type: { type: DataTypes.STRING(80), allowNull: true },
 
       price_per_night: { type: DataTypes.BIGINT, allowNull: false },
+      allow_pay_at_property: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+      cancellation_policy_code: { type: DataTypes.STRING(20), allowNull: false, defaultValue: "moderate" },
       max_guests: { type: DataTypes.INTEGER, allowNull: false },
 
       bedrooms: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
@@ -73,6 +82,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "draft",
       },
 
+      show_public_calendar: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
       reject_reason: { type: DataTypes.TEXT, allowNull: true },
 
       deleted_at: { type: DataTypes.DATE, allowNull: true },

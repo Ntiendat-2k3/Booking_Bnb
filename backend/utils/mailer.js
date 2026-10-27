@@ -11,7 +11,7 @@ function createTransporter() {
 const transporter = createTransporter();
 
 /** Lỗi gửi mail phải được trả về worker để retry; không báo gửi thành công khi chưa có cấu hình. */
-async function sendEmail(to, subject, html) {
+async function sendEmail(to, subject, html, options = {}) {
   if (process.env.GAS_MAIL_URL) {
     const response = await fetch(process.env.GAS_MAIL_URL, {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -24,6 +24,7 @@ async function sendEmail(to, subject, html) {
   }
   if (!transporter) throw new Error("Email is not configured");
   const from = process.env.SMTP_FROM || `"Booking BnB" <${process.env.SMTP_USER}>`;
-  return transporter.sendMail({ from, to, subject, html });
+  return transporter.sendMail({ from, to, subject, html: options.smtpHtml || html,
+    ...(options.attachments ? { attachments: options.attachments } : {}) });
 }
 module.exports = { transporter, sendEmail };

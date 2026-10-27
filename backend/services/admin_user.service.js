@@ -49,6 +49,12 @@ module.exports = {
       throw err;
     }
 
+    if (user.status === "pending_verification") {
+      const err = new Error("Email verification required before changing role");
+      err.status = 403;
+      throw err;
+    }
+
     await user.update({ role });
     return { user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role, status: user.status } };
   },

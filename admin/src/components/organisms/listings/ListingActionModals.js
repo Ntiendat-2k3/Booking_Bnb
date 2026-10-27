@@ -29,7 +29,7 @@ export default function ListingActionModals({
         title={t("listings.rejectTitle")}
         description={
           rejectTarget
-            ? `#${rejectTarget.id} • ${rejectTarget.title || t("common.untitled")}`
+            ? `${rejectTarget.listing_code || rejectTarget.id} • ${rejectTarget.title || t("common.untitled")}`
             : ""
         }
         size="sm"
@@ -75,7 +75,7 @@ export default function ListingActionModals({
         title={t("listings.approveTitle")}
         description={
           confirm.item
-            ? `#${confirm.item.id} • ${confirm.item.title || t("common.untitled")}`
+            ? `${confirm.item.listing_code || confirm.item.id} • ${confirm.item.title || t("common.untitled")}`
             : ""
         }
         confirmText={t("common.approve")}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarDots, ShieldCheck, Users } from "@phosphor-icons/react";
-import { createBooking } from "@/services/bookingService";
+import { createBooking, getListingAvailability, getListingQuote } from "@/services/bookingService";
 import { formatVND } from "@/lib/format";
 import { notifyError, notifyInfo } from "@/lib/notify";
 import { useLocale } from "@/i18n/LocaleProvider";
@@ -12,7 +12,8 @@ import Link from "next/link";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import DateField from "@/components/molecules/DateField";
-import { addDays, format, differenceInDays, parseISO, isValid, startOfDay } from "date-fns";
+import PriceBreakdown from "@/components/Booking/PriceBreakdown";
+import { addDays, addMonths, format, differenceInDays, parseISO, isValid, startOfDay } from "date-fns";
 
 export default function BookingSidebar({ listing, initialCheckIn, initialCheckOut }) {
   const router = useRouter();
@@ -29,6 +30,34 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
   });
   const [startDate, endDate] = dateRange;
 
+  const [availabilityWindow] = useState(() => ({
+    start: format(new Date(), "yyyy-MM-dd"),
+    end: format(addMonths(new Date(), 18), "yyyy-MM-dd"),
+  }));
+  const [unavailable, setUnavailable] = useState([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [availabilityError, setAvailabilityError] = useState(false);
+  const [availabilityAttempt, setAvailabilityAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    getListingAvailability(listing.id, availabilityWindow.start, availabilityWindow.end)
+      .then((intervals) => { if (active) { setUnavailable(intervals); setAvailabilityError(false); } })
+      .catch(() => { if (active) setAvailabilityError(true); })
+      .finally(() => { if (active) setAvailabilityLoading(false); });
+    return () => { active = false; };
+  }, [listing.id, availabilityWindow, availabilityAttempt]);
+
+  const occupied = (day) => unavailable.some((item) => item.start_date <= day && day < item.end_date);
+  const rangeUnavailable = startDate && endDate && unavailable.some((item) =>
+    item.start_date <= format(endDate, "yyyy-MM-dd") && item.end_date > format(startDate, "yyyy-MM-dd"));
+  const selectableDate = (date) => {
+    const day = format(date, "yyyy-MM-dd");
+    if (startDate && !endDate && day > format(startDate, "yyyy-MM-dd"))
+      return !unavailable.some((item) => item.start_date <= day && item.end_date > format(startDate, "yyyy-MM-dd"));
+    return !occupied(day);
+  };
+
   const [guests, setGuests] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -38,11 +67,23 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
     return Number.isFinite(n) && n > 0 ? n : 0;
   }, [startDate, endDate]);
 
-  const total = useMemo(() => {
-    const p = Number(listing.price_per_night);
-    if (!nights || !Number.isFinite(p)) return 0;
-    return p * nights;
-  }, [listing.price_per_night, nights]);
+  const quoteKey = nights ? `${format(startDate, "yyyy-MM-dd")}:${format(endDate, "yyyy-MM-dd")}` : "";
+  const [quoteState, setQuoteState] = useState({ key: "", quote: null, error: null });
+  const [quoteAttempt, setQuoteAttempt] = useState(0);
+  const quoteRequestKey = `${quoteKey}:${quoteAttempt}`;
+  const quote = quoteState.key === quoteRequestKey ? quoteState.quote : null;
+  const quoteError = quoteState.key === quoteRequestKey ? quoteState.error : null;
+
+  useEffect(() => {
+    if (!quoteKey) return;
+    const controller = new AbortController();
+    let active = true;
+    getListingQuote(listing.id, format(startDate, "yyyy-MM-dd"),
+      format(endDate, "yyyy-MM-dd"), controller.signal)
+      .then((result) => { if (active) setQuoteState({ key: quoteRequestKey, quote: result, error: null }); })
+      .catch((error) => { if (active) setQuoteState({ key: quoteRequestKey, quote: null, error }); });
+    return () => { active = false; controller.abort(); };
+  }, [listing.id, quoteKey, quoteRequestKey, startDate, endDate]);
 
   async function onReserve() {
     if (!isInitialized || loading) return;
@@ -57,6 +98,15 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
 
     if (!nights) {
       notifyError(t("booking.invalidDates"));
+      return;
+    }
+    if (availabilityLoading || availabilityError || rangeUnavailable) {
+      notifyError(t("booking.datesUnavailable"));
+      return;
+    }
+    if (!quote) {
+      notifyError(quoteError?.message === "STAY_LENGTH_RESTRICTED"
+        ? t("pricing.stayRestricted") : quoteError?.message || t("pricing.quoteUnavailable"));
       return;
     }
     const g = Number(guests);
@@ -76,6 +126,7 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
         check_in: format(startDate, "yyyy-MM-dd"),
         check_out: format(endDate, "yyyy-MM-dd"),
         guests_count: g,
+        expected_total: quote.total,
       });
 
       const bookingId = booking?.id;
@@ -83,7 +134,13 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
 
       router.push(`/checkout/${bookingId}`);
     } catch (e) {
-      notifyError(e?.message || t("booking.failed"));
+      notifyError(e?.message === "PRICE_CHANGED" ? t("pricing.priceChanged") :
+        e?.status === 409 ? t("booking.datesUnavailable") : e?.message || t("booking.failed"));
+      if (e?.status === 409) {
+        setAvailabilityLoading(true);
+        setAvailabilityAttempt((current) => current + 1);
+        setQuoteAttempt((current) => current + 1);
+      }
     } finally {
       setLoading(false);
     }
@@ -117,16 +174,24 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
               endDate={endDate}
               onChange={(update) => setDateRange(update)}
               minDate={new Date()}
+              maxDate={addDays(parseISO(availabilityWindow.end), -1)}
+              filterDate={selectableDate}
+              dayClassName={(date) => occupied(format(date, "yyyy-MM-dd")) ? "!bg-danger/20 !text-danger" : ""}
               placeholderText={t("booking.chooseDates")}
             />
+            {availabilityLoading ? <p className="mt-2 text-xs text-muted-ink">{t("booking.loadingAvailability")}</p> :
+              availabilityError ? <button type="button" className="mt-2 text-xs font-semibold text-danger underline" onClick={() => { setAvailabilityLoading(true); setAvailabilityAttempt((current) => current + 1); }}>{t("booking.availabilityRetry")}</button> :
+                <p className={`mt-2 text-xs ${rangeUnavailable ? "text-danger" : "text-muted-ink"}`}>
+                  {t(rangeUnavailable ? "booking.datesUnavailable" : "booking.unavailableDatesHint")}
+                </p>}
           </div>
 
           <div className="booking-checkin hidden p-3">
-            <DateField variant="integrated" id="booking-check-in" label={t("checkout.checkIn")} selected={startDate} minDate={new Date()} dateFormat="dd/MM" title={startDate ? format(startDate, "dd/MM/yyyy") : undefined}
+            <DateField variant="integrated" id="booking-check-in" label={t("checkout.checkIn")} selected={startDate} minDate={new Date()} dateFormat="dd/MM/yyyy" title={startDate ? format(startDate, "dd/MM/yyyy") : undefined}
               placeholderText={t("search.datesPlaceholder")} onChange={(date) => setDateRange([date, date && endDate > date ? endDate : null])} />
           </div>
           <div className="booking-checkout hidden p-3">
-            <DateField variant="integrated" id="booking-check-out" label={t("checkout.checkOut")} selected={endDate} disabled={!startDate} dateFormat="dd/MM" title={endDate ? format(endDate, "dd/MM/yyyy") : undefined}
+            <DateField variant="integrated" id="booking-check-out" label={t("checkout.checkOut")} selected={endDate} disabled={!startDate} dateFormat="dd/MM/yyyy" title={endDate ? format(endDate, "dd/MM/yyyy") : undefined}
               minDate={startDate ? addDays(startDate, 1) : new Date()} placeholderText={t("search.datesPlaceholder")} onChange={(date) => setDateRange([startDate, date])} />
           </div>
 
@@ -147,26 +212,11 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
 
       {nights > 0 && (
         <div className="booking-breakdown mt-4 rounded-xl bg-muted-surface p-4 text-sm text-ink">
-          <div className="flex items-center justify-between">
-            <span>
-              {t("booking.nightsPrice", {
-                price: formatVND(
-                  listing.price_per_night,
-                  locale === "en" ? "en-US" : "vi-VN",
-                ),
-                count: nights,
-              })}
-            </span>
-            <span className="font-medium">
-              {formatVND(total, locale === "en" ? "en-US" : "vi-VN")}
-            </span>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-            <span className="font-bold">{t("booking.total")}</span>
-            <span className="font-bold">
-              {formatVND(total, locale === "en" ? "en-US" : "vi-VN")}
-            </span>
-          </div>
+          {quote ? <PriceBreakdown quote={quote} /> :
+            <p role={quoteError ? "alert" : "status"} className={quoteError ? "text-danger" : "text-muted-ink"}>
+              {quoteError?.message === "STAY_LENGTH_RESTRICTED"
+                ? t("pricing.stayRestricted") : quoteError?.message || t("pricing.loadingQuote")}
+            </p>}
         </div>
       )}
       <Button
@@ -174,7 +224,7 @@ export default function BookingSidebar({ listing, initialCheckIn, initialCheckOu
         size="lg"
         onClick={onReserve}
         loading={loading}
-        disabled={!isInitialized}
+        disabled={!isInitialized || availabilityLoading || availabilityError || !!rangeUnavailable || (nights > 0 && !quote)}
       >
         {loading ? t("booking.processing") : t("booking.reserve")}
         <ArrowRight aria-hidden size={20} />

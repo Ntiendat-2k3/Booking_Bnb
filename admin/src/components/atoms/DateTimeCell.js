@@ -5,7 +5,7 @@ export default function DateTimeCell({ value, locale = "vn" }) {
   if (Number.isNaN(date.getTime())) return String(value);
 
   const localeCode = locale === "vn" ? "vi-VN" : "en-US";
-  const dateText = new Intl.DateTimeFormat(localeCode, {
+  const dateText = new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

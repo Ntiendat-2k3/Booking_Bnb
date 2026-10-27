@@ -18,7 +18,7 @@ export default function ListingDetailModal({ view, setView }) {
       open={!!view}
       onClose={() => setView(null)}
       title={t("listings.information")}
-      description={view ? `#${view.id} • ${view.title || t("common.untitled")}` : ""}
+      description={view ? `${view.listing_code || view.id} • ${view.title || t("common.untitled")}` : ""}
       size="lg"
       footer={
         <div className="flex justify-between w-full">

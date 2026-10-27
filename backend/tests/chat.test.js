@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { randomUUID } = require("node:crypto");
 const { loadBackend } = require("./helpers");
 
 const guest = "10000000-0000-4000-8000-000000000001";
@@ -23,7 +24,10 @@ function setup() {
     async member(id, userId) { return id === "conversation-1" && [guest, host].includes(userId) ? { user_id: userId } : null; },
     async participants() { return [{ user_id: guest }, { user_id: host }]; },
     async summary() { return { id: "conversation-1", other_id: host }; },
-    async messages() { return { items: [...messages.values()] }; },
+    async messages(id, userId) {
+      if (!await repo.member(id, userId)) throw Object.assign(new Error("Conversation not found"), { status: 404 });
+      return { items: [...messages.values()] };
+    },
     async createMessage({ conversationId, senderId, type, body, context, clientKey }) {
       const key = `${senderId}:${clientKey}`;
       if (messages.has(key)) return { message: messages.get(key), created: false };

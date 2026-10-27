@@ -1,14 +1,20 @@
 const Repository = require("../core/repository");
 const { Booking, Listing, User, Sequelize } = require("../models");
 const { literal } = Sequelize;
+const { bookingReferenceFromCode, transformAdminBooking } = require("../transformers/booking.transformer");
+const { listingReferenceFromCode } = require("../transformers/listing.transformer");
 
 module.exports = {
   async list({ status = null, q = null, limit = 200, page = 1 } = {}) {
-    const where = Repository.searchWhere(q, ["Booking.id","Booking.guest_id","Booking.listing_id","Booking.status","guest.email","guest.full_name","listing.title"]);
+    const bookingReference = bookingReferenceFromCode(q);
+    const listingReference = listingReferenceFromCode(q);
+    const where = bookingReference ? { reference_number: bookingReference }
+      : listingReference ? { "$listing.reference_number$": listingReference }
+        : Repository.searchWhere(q, ["Booking.id","Booking.guest_id","Booking.listing_id","Booking.status","guest.email","guest.full_name","listing.title"]);
     if (status && status !== "all") where.status = status;
 
     const include = [
-      { model: Listing, as: "listing", attributes: ["id", "title", "city", "country"] },
+      { model: Listing, as: "listing", attributes: ["id", "reference_number", "title", "city", "country"] },
       { model: User, as: "guest", attributes: ["id", "full_name", "email", "avatar_url"] },
     ];
 
@@ -62,13 +68,13 @@ module.exports = {
     const statuses = { completed: 0, pending_payment: 0, confirmed: 0, cancelled: 0 };
     for (const row of statusCounts) if (row.status in statuses) statuses[row.status] = Number(row.count);
     const total = statusCounts.reduce((sum, row) => sum + Number(row.count), 0);
-    return { items: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit), statuses } };
+    return { items: rows.map(transformAdminBooking), meta: { page, limit, total, total_pages: Math.ceil(total / limit), statuses } };
   },
 
   async detail(id) {
     const booking = await Booking.findByPk(id, {
       include: [
-        { model: Listing, as: "listing", attributes: ["id", "title", "city", "country"] },
+        { model: Listing, as: "listing", attributes: ["id", "reference_number", "title", "city", "country"] },
         { model: User, as: "guest", attributes: ["id", "full_name", "email"] },
         { association: "payments", required: false },
         { association: "review", required: false },
@@ -79,6 +85,6 @@ module.exports = {
       err.status = 404;
       throw err;
     }
-    return { booking };
+    return { booking: transformAdminBooking(booking) };
   },
 };

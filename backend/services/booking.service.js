@@ -4,9 +4,12 @@ const {
   Payment,
   User,
   Notification,
+  BookingCancellation,
+  BookingStayToken,
   sequelize,
 } = require("../models");
 const BookingRepository = require("../repositories/booking.repository");
+const { bookingCode } = require("../transformers/booking.transformer");
 const { enqueue } = require("./background_job.service");
 const notifications = require("./notification.service");
 const preferences = require("./notification-preference.service");
@@ -14,6 +17,10 @@ const { message } = require("../templates/emails");
 const { Op } = require("sequelize");
 const httpError = require("../utils/httpError");
 const bookingRepo = new BookingRepository();
+const cancellationPolicy = require("./cancellation_policy");
+const cancellations = require("./cancellation.service");
+const pricing = require("./pricing.service");
+const coupons = require("./coupon.service");
 
 function daysBetween(checkIn, checkOut) {
   const valid = (value) =>
@@ -42,15 +49,6 @@ function guestsForListing(value, listing) {
   return guests;
 }
 
-function withReviewFlag(booking) {
-  const plain = booking.toJSON();
-  plain.can_review =
-    !plain.review &&
-    ["confirmed", "completed"].includes(plain.status) &&
-    String(plain.check_out) <= new Date().toISOString().slice(0, 10);
-  return plain;
-}
-
 async function cancelPendingPayments(bookingId, transaction) {
   const pending = await Payment.findAll({
     where: { booking_id: bookingId, status: "pending" },
@@ -58,52 +56,71 @@ async function cancelPendingPayments(bookingId, transaction) {
   });
   for (const payment of pending) {
     await payment.update({ status: "cancelled" }, { transaction });
-    if (payment.provider_txn_ref)
-      await enqueue(
-        "stripe_expire_session",
-        { sessionId: payment.provider_txn_ref },
-        transaction,
-      );
+    if (payment.provider_txn_ref) {
+      const intent = payment.provider_txn_ref.startsWith("pi_");
+      await enqueue(intent ? "stripe_cancel_intent" : "stripe_expire_session",
+        intent ? { intentId: payment.provider_txn_ref } : { sessionId: payment.provider_txn_ref }, transaction);
+    }
   }
 }
 
+/** Dùng cùng phép kiểm tra lịch, sức chứa và giá cho đặt phòng thường lẫn đề xuất trong chat. */
+async function quoteInTransaction({ listingId, check_in, check_out, guests_count }, transaction) {
+  const nights = daysBetween(check_in, check_out);
+  const listing = await Listing.findOne({
+    where: { id: listingId, deleted_at: null, status: "published" },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+  if (!listing) throw httpError(404, "Listing not found");
+  const guests = guestsForListing(guests_count, listing);
+  await bookingRepo.assertAvailability({ listingId, check_in, check_out }, transaction);
+  const price = await pricing.quoteListing(listing, check_in, check_out, transaction);
+  return { listing, nights, guests, total: price.total, price };
+}
+
 module.exports = {
+  quote(input, transaction) {
+    return transaction ? quoteInTransaction(input, transaction) :
+      sequelize.transaction((tx) => quoteInTransaction(input, tx));
+  },
   /** Khóa listing từ trước bước kiểm tra lịch cho tới khi booking được ghi thành công. */
-  async create({ userId, listingId, check_in, check_out, guests_count }) {
-    const nights = daysBetween(check_in, check_out);
-    return sequelize.transaction(async (transaction) => {
-      const listing = await Listing.findOne({
-        where: { id: listingId, deleted_at: null, status: "published" },
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-      });
-      if (!listing) throw httpError(404, "Listing not found");
+  async create({ userId, listingId, check_in, check_out, guests_count,
+    transaction: existingTransaction, expectedPricePerNight, expectedTotal }) {
+    const createInTransaction = async (transaction) => {
+      const { listing, guests, total, price } = await quoteInTransaction(
+        { listingId, check_in, check_out, guests_count }, transaction);
       if (String(listing.host_id) === String(userId))
         throw httpError(400, "Host cannot book own listing");
-      const guests = guestsForListing(guests_count, listing);
-      await bookingRepo.assertAvailability(
-        { listingId, check_in, check_out },
-        transaction,
-      );
-      const total = BigInt(listing.price_per_night) * BigInt(nights);
-      if (total <= 0n || total > BigInt(Number.MAX_SAFE_INTEGER))
-        throw httpError(400, "Invalid booking amount");
+      if ((expectedPricePerNight !== undefined &&
+        String(listing.price_per_night) !== String(expectedPricePerNight)) ||
+        (expectedTotal !== undefined && total !== String(expectedTotal)))
+        throw httpError(409, "PRICE_CHANGED");
+      const renter = await User.findByPk(userId, {
+        attributes: ["full_name", "phone"], transaction,
+      });
       const booking = await Booking.create(
         {
           listing_id: listingId,
           guest_id: userId,
+          renter_name: renter?.full_name || null,
+          renter_phone: renter?.phone || null,
           check_in,
           check_out,
           guests_count: guests,
           status: "pending_payment",
           price_per_night_snapshot: listing.price_per_night,
-          total_amount: total.toString(),
+          price_breakdown_snapshot: price,
+          cancellation_policy_snapshot: cancellationPolicy.snapshot(listing.cancellation_policy_code),
+          total_amount: total,
           currency: "VND",
         },
         { transaction },
       );
       return { booking, listing };
-    });
+    };
+    return existingTransaction ? createInTransaction(existingTransaction) :
+      sequelize.transaction(createInTransaction);
   },
 
   async myBookings({ userId, page, limit }) {
@@ -121,7 +138,7 @@ module.exports = {
       ...(paginated ? { limit, offset: (page - 1) * limit } : {}),
     });
     return {
-      items: rows.map(withReviewFlag),
+      items: rows,
       meta: {
         page,
         limit: paginated ? limit : count,
@@ -134,7 +151,7 @@ module.exports = {
   async detail({ userId, bookingId }) {
     const booking = await bookingRepo.findDetail(bookingId, userId);
     if (!booking) throw httpError(404, "Booking not found");
-    return withReviewFlag(booking);
+    return booking;
   },
 
   async checkout({ userId, bookingId }) {
@@ -157,21 +174,26 @@ module.exports = {
     });
   },
 
-  async cancel({ userId, bookingId }) {
+  async cancel({ userId, bookingId, expectedRefundAmount, reason }) {
     return sequelize.transaction(async (transaction) => {
       const { booking, listing } = await bookingRepo.lockForMutation(
         bookingId,
         transaction,
         userId,
       );
-      if (!["pending_payment", "confirmed"].includes(booking.status))
-        throw httpError(409, "Booking cannot be cancelled");
-      if (
-        booking.status === "confirmed" &&
-        booking.check_in <= new Date().toISOString().slice(0, 10)
-      )
-        throw httpError(400, "Too late to cancel");
+      if (booking.status === "cancelled") {
+        const previous = await BookingCancellation.findOne({ where: { booking_id: booking.id }, transaction });
+        if (previous) return { booking, cancellation: previous };
+      }
+      const quote = await cancellations.quoteForBooking(booking, transaction);
+      if (expectedRefundAmount !== undefined && String(expectedRefundAmount) !== quote.refund_amount)
+        throw httpError(409, "Cancellation quote changed. Review it again");
+      const cancellation = await cancellations.record({ booking, userId, quoteResult: quote, reason, transaction });
+      if (booking.status === "pending_payment") await coupons.releaseForBooking(booking, transaction);
       await booking.update({ status: "cancelled" }, { transaction });
+      await BookingStayToken.update({ revoked_at: new Date() }, {
+        where: { booking_id: booking.id, revoked_at: null }, transaction,
+      });
       await notifications.recordBookingUpdate({ booking, listing, transaction,
         type: "booking_status_changed", recipientIds: [booking.guest_id] });
       notifications.publishBookingChanged(transaction, booking, listing);
@@ -202,13 +224,23 @@ module.exports = {
             subject: "Thông báo hủy đơn đặt phòng",
             html: message("Đơn đặt phòng đã bị hủy", [
               `Chỗ nghỉ: ${listing.title}`,
-              `Mã đơn: ${booking.id}`,
+              `Mã đơn: ${bookingCode(booking.reference_number)}`,
               `Ngày nhận phòng: ${booking.check_in}`,
             ]),
           },
           transaction,
         );
-      return booking;
+      const guest = await User.findByPk(booking.guest_id, { attributes: ["email"], transaction });
+      if (guest?.email) await enqueue("send_email", {
+        to: guest.email, subject: "Xác nhận hủy đặt phòng",
+        html: message("Đặt phòng đã được hủy", [
+          `Mã đơn: ${bookingCode(booking.reference_number)}`,
+          `Số tiền đã trả: ${quote.paid_amount} ${booking.currency}`,
+          `Số tiền dự kiến hoàn: ${quote.refund_amount} ${booking.currency}`,
+          `Phí không hoàn: ${quote.non_refundable_amount} ${booking.currency}`,
+        ]),
+      }, transaction);
+      return { booking, cancellation };
     });
   },
 
@@ -224,7 +256,7 @@ module.exports = {
         throw httpError(409, "Listing is no longer available");
       const newCheckIn = check_in ?? booking.check_in;
       const newCheckOut = check_out ?? booking.check_out;
-      const nights = daysBetween(newCheckIn, newCheckOut);
+      daysBetween(newCheckIn, newCheckOut);
       const guests = guestsForListing(
         guests_count ?? booking.guests_count,
         listing,
@@ -238,15 +270,16 @@ module.exports = {
         },
         transaction,
       );
-      const total = BigInt(booking.price_per_night_snapshot) * BigInt(nights);
-      if (total <= 0n || total > BigInt(Number.MAX_SAFE_INTEGER))
-        throw httpError(400, "Invalid booking amount");
+      const datesChanged = newCheckIn !== booking.check_in || newCheckOut !== booking.check_out;
+      const price = datesChanged ? await coupons.repriceBooking(booking, listing,
+        await pricing.quoteListing(listing, newCheckIn, newCheckOut, transaction), transaction) : null;
       await booking.update(
         {
           check_in: newCheckIn,
           check_out: newCheckOut,
           guests_count: guests,
-          total_amount: total.toString(),
+          ...(price ? { price_per_night_snapshot: listing.price_per_night,
+            price_breakdown_snapshot: price, total_amount: price.total } : {}),
         },
         { transaction },
       );
@@ -285,6 +318,7 @@ module.exports = {
           bookingRepo.holdExpiresAt(booking) > new Date()
         )
           return;
+        await coupons.releaseForBooking(booking, transaction);
         await booking.update({ status: "cancelled" }, { transaction });
         await notifications.recordBookingUpdate({ booking, listing, transaction, type: "booking_status_changed" });
         notifications.publishBookingChanged(transaction, booking, listing);

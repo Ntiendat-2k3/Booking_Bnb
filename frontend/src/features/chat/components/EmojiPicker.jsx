@@ -1,6 +1,6 @@
 "use client";
 
-import data from "@emoji-mart/data";
+import data from "@emoji-mart/data/sets/15/apple.json";
 import Picker from "@emoji-mart/react";
 import { useTheme } from "next-themes";
 import { useLocale } from "@/i18n/LocaleProvider";
@@ -16,7 +16,7 @@ export default function EmojiPicker({ onEmojiSelect }) {
     "--rgb-input": "var(--color-muted-surface)",
     "--color-border": "rgb(var(--color-line))",
   }}>
-    <Picker data={data} locale={locale === "vn" ? "vi" : "en"}
+    <Picker data={data} set="apple" locale={locale === "vn" ? "vi" : "en"}
       theme={resolvedTheme === "dark" ? "dark" : "light"} onEmojiSelect={onEmojiSelect}
       previewPosition="none" skinTonePosition="search" perLine={7} />
   </div>;

@@ -6,14 +6,12 @@ import Button from "@/components/atoms/Button";
 import UserAvatar from "@/components/atoms/UserAvatar";
 import CopyId from "@/components/molecules/CopyId";
 import { Eye } from "lucide-react";
-import { statusTone, paymentTone, money } from "@/lib/BookingUtils";
+import { statusTone, paymentTone, money, formatDateOnly } from "@/lib/BookingUtils";
 
 export default function BookingsTable({ pagedItems, filtered, openDetail }) {
   const t = useTranslations();
   const { locale } = useLocale();
-  const localeCode = locale === "vn" ? "vi-VN" : "en-US";
-  const stayDate = new Intl.DateTimeFormat(localeCode, { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
-  const createdDate = new Intl.DateTimeFormat(localeCode, { day: "2-digit", month: "2-digit", year: "numeric" });
+  const createdDate = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   return (
     <div className="overflow-x-auto border ui-border ui-panel">
@@ -24,7 +22,7 @@ export default function BookingsTable({ pagedItems, filtered, openDetail }) {
         </colgroup>
         <thead>
           <tr>
-            <th className="px-3">{t("common.booking")}</th>
+            <th className="px-3">{t("bookings.tripCode")}</th>
             <th className="px-3">{t("common.user")}</th>
             <th className="px-3">{t("common.listing")}</th>
             <th className="px-3">{t("common.dates")}</th>
@@ -38,7 +36,7 @@ export default function BookingsTable({ pagedItems, filtered, openDetail }) {
           {pagedItems.map((b) => (
             <tr key={b.id} className="border-t ui-border">
               <td className="px-3">
-                <CopyId value={b.id} prefix="#" />
+                <span className="font-mono text-xs">{b.booking_code || "—"}</span>
                 <div className="mt-1 text-xs ui-muted">{b.created_at ? createdDate.format(new Date(b.created_at)) : "—"}</div>
               </td>
               <td className="px-3">
@@ -52,12 +50,12 @@ export default function BookingsTable({ pagedItems, filtered, openDetail }) {
               </td>
               <td className="px-3">
                 <div className="line-clamp-2 font-medium" title={b.listing?.title}>{b.listing?.title || "—"}</div>
-                <CopyId value={b.listing?.id} />
+                <span className="font-mono text-xs ui-muted">{b.listing?.listing_code || "—"}</span>
               </td>
               <td className="px-3">
                 <div className="admin-stay-dates">
-                  <span>{b.check_in ? stayDate.format(new Date(b.check_in)) : "—"}</span>
-                  <span className="ui-muted">→ {b.check_out ? stayDate.format(new Date(b.check_out)) : "—"}</span>
+                  <span>{formatDateOnly(b.check_in)}</span>
+                  <span className="ui-muted">→ {formatDateOnly(b.check_out)}</span>
                 </div>
                 {b.nights ? <div className="mt-1 text-xs ui-muted">{t("bookings.nightsCount", { count: b.nights })}</div> : null}
               </td>

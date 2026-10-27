@@ -68,6 +68,8 @@ const UPDATABLE_FIELDS = [
   "property_type",
   "room_type",
   "price_per_night",
+  "cancellation_policy_code",
+  "allow_pay_at_property",
   "max_guests",
   "bedrooms",
   "beds",

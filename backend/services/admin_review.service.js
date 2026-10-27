@@ -2,18 +2,24 @@ const Repository = require("../core/repository");
 const { Review, Listing, User, Booking } = require("../models");
 
 const { isUuid } = require("../utils/validators");
+const { bookingReferenceFromCode, transformAdminBooking } = require("../transformers/booking.transformer");
+const { listingReferenceFromCode, transformListing } = require("../transformers/listing.transformer");
 
 module.exports = {
   async list({ visibility = "all", rating = "all", q = null, limit = 200, page = 1 } = {}) {
-    const where = Repository.searchWhere(q, ["Review.id","Review.booking_id","Review.comment","listing.title","reviewer.email","reviewer.full_name"]);
+    const bookingReference = bookingReferenceFromCode(q);
+    const listingReference = listingReferenceFromCode(q);
+    const where = bookingReference ? { "$booking.reference_number$": bookingReference }
+      : listingReference ? { "$listing.reference_number$": listingReference }
+        : Repository.searchWhere(q, ["Review.id","Review.booking_id","Review.comment","listing.title","reviewer.email","reviewer.full_name"]);
     if (visibility === "visible") where.is_hidden = false;
     if (visibility === "hidden") where.is_hidden = true;
     if (rating !== "all") where.rating = Number(rating);
 
     const include = [
-        { model: Listing, as: "listing", attributes: ["id", "title"] },
+        { model: Listing, as: "listing", attributes: ["id", "reference_number", "title"] },
         { model: User, as: "reviewer", attributes: ["id", "email", "full_name", "avatar_url"] },
-        { model: Booking, as: "booking", attributes: ["id", "status", "check_in", "check_out"] },
+        { model: Booking, as: "booking", attributes: ["id", "reference_number", "status", "check_in", "check_out"] },
     ];
     const [rows, reviewCounts] = await Promise.all([
       Review.findAll({
@@ -34,7 +40,14 @@ module.exports = {
       else summary.visible += amount;
     }
     const total = reviewCounts.reduce((sum, row) => sum + Number(row.count), 0);
-    return { items: rows, meta: { page, limit, total, total_pages: Math.ceil(total / limit), summary } };
+    return { items: rows.map((row) => {
+      const review = row.toJSON();
+      return {
+        ...review,
+        ...(review.listing ? { listing: transformListing(review.listing) } : {}),
+        ...(review.booking ? { booking: transformAdminBooking(review.booking) } : {}),
+      };
+    }), meta: { page, limit, total, total_pages: Math.ceil(total / limit), summary } };
   },
 
   async setHidden(id, hidden) {

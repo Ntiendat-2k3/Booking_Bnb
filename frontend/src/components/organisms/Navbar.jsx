@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CalendarBlank, Heart, House, List, MagnifyingGlass, Mountains, UserCircle } from "@phosphor-icons/react";
+import { useSyncExternalStore } from "react";
+import { ArrowLeft, CalendarBlank, ChatCircleDots, Heart, House, List, MagnifyingGlass, Mountains, UserCircle } from "@phosphor-icons/react";
 import { usePathname } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/store/authThunks";
@@ -20,8 +21,20 @@ const MOBILE_LINKS = [
   { href: "/", label: "navigation.home", Icon: House },
   { href: "/favorites", label: "navigation.favorites", Icon: Heart },
   { href: "/trips", label: "navigation.trips", Icon: CalendarBlank },
+  { href: "/messages", label: "navigation.messages", Icon: ChatCircleDots },
   { href: "/profile", label: "navigation.profile", Icon: UserCircle },
 ];
+const MOBILE_DOCK_PAGES = new Set([
+  "/", "/search", "/favorites", "/trips", "/profile", "/account/settings",
+  "/messages", "/host/dashboard", "/host/listings",
+]);
+const mobileMedia = "(max-width: 767px)";
+const subscribeMobile = (callback) => {
+  const query = window.matchMedia(mobileMedia);
+  query.addEventListener("change", callback);
+  return () => query.removeEventListener("change", callback);
+};
+const isMobileSnapshot = () => window.matchMedia(mobileMedia).matches;
 
 function MenuItem({ href, onClick, children }) {
   const base =
@@ -49,8 +62,13 @@ export default function Navbar() {
   const user = useSelector((s) => s.auth.user);
   const t = useTranslations();
   const pathname = usePathname();
+  const isMobile = useSyncExternalStore(subscribeMobile, isMobileSnapshot, () => false);
   const isRoomPage = pathname.startsWith("/rooms/");
   const isNaturePage = pathname === "/" || isRoomPage;
+  const showMobileDock = MOBILE_DOCK_PAGES.has(pathname) || isRoomPage;
+  const showDockLinksInMenu = !isMobile || !showMobileDock;
+  const activeDockHref = pathname === "/search" || isRoomPage ? "/" :
+    pathname === "/account/settings" ? "/profile" : pathname;
 
   return (
     <>
@@ -62,7 +80,7 @@ export default function Navbar() {
           href="/"
           className="site-wordmark flex shrink-0 items-center gap-2 text-xl font-bold tracking-[-0.05em] text-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/20 sm:text-2xl"
           aria-label={t("navigation.home")}
-        ><Mountains aria-hidden size={30} className="brand-mark" />{t("seo.siteName")}</Link>
+        ><Mountains aria-hidden size={30} className="brand-mark" /><span className="site-wordmark-text">{t("seo.siteName")}</span></Link>
 
         <nav aria-label={t("navigation.home")} className="hidden min-w-0 flex-1 items-center justify-center gap-2 lg:flex">
           <Button href="/search" variant="ghost" size="sm" aria-current={pathname === "/search" ? "page" : undefined} className={pathname === "/search" ? "bg-muted-surface" : undefined}><MagnifyingGlass aria-hidden size={18} />{t("common.search")}</Button>
@@ -71,7 +89,7 @@ export default function Navbar() {
         </nav>
 
         <div className="header-actions flex shrink-0 items-center gap-1">
-          <Button href="/search" variant="ghost" size="sm" className="mobile-header-search lg:hidden" aria-label={t("common.search")}><MagnifyingGlass aria-hidden size={22} /></Button>
+          <Button href="/search" variant="ghost" size="sm" className="mobile-header-search !h-11 !w-11 !rounded-full !p-0 lg:hidden" aria-label={t("common.search")}><MagnifyingGlass aria-hidden size={22} /></Button>
           {canManageListings(user?.role) ? (
                 <nav
                   className="hidden items-center gap-1 xl:flex"
@@ -89,6 +107,9 @@ export default function Navbar() {
                   >
                     {t("navigation.manageListings")}
                   </Link>
+                  <Link href="/host/calendar" className="rounded-full px-3 py-2 text-sm font-semibold text-ink transition hover:bg-muted-surface">
+                    {t("calendar.title")}
+                  </Link>
                 </nav>
               ) : (
                 <Link
@@ -99,7 +120,7 @@ export default function Navbar() {
                 </Link>
               )}
 
-          <ChatNavLink userId={user?.id} />
+          <div className="hidden md:block">{!isMobile && <ChatNavLink userId={user?.id} />}</div>
           <div className="header-notifications"><NotificationBell /></div>
           <div className="hidden items-center gap-1 lg:flex">
             <LocaleSwitcher compact />
@@ -123,7 +144,7 @@ export default function Navbar() {
           >
             {({ close }) => (
               <div className="py-2">
-                <MenuItem href="/search" onClick={close}>{t("common.search")}</MenuItem>
+                {!isMobile && <MenuItem href="/search" onClick={close}>{t("common.search")}</MenuItem>}
                 {!user ? (
                   <>
                     <MenuItem href="/login" onClick={close}>
@@ -142,21 +163,23 @@ export default function Navbar() {
                       <div className="mt-0.5 text-xs text-muted-ink">{t(roleLabelKey(user.role))}</div>
                     </div>
                     <Divider />
-                    <MenuItem href="/profile" onClick={close}>
+                    {showDockLinksInMenu && <MenuItem href="/profile" onClick={close}>
                       {t("navigation.profile")}
-                    </MenuItem>
+                    </MenuItem>}
                     <MenuItem href="/account/settings" onClick={close}>
                       {t("navigation.settings")}
                     </MenuItem>
-                    <MenuItem href="/trips" onClick={close}>
-                      {t("navigation.trips")}
-                    </MenuItem>
-                    <MenuItem href="/messages" onClick={close}>
-                      {t("navigation.messages")}
-                    </MenuItem>
-                    <MenuItem href="/favorites" onClick={close}>
-                      {t("navigation.favorites")}
-                    </MenuItem>
+                    {showDockLinksInMenu && <>
+                      <MenuItem href="/trips" onClick={close}>
+                        {t("navigation.trips")}
+                      </MenuItem>
+                      <MenuItem href="/messages" onClick={close}>
+                        {t("navigation.messages")}
+                      </MenuItem>
+                      <MenuItem href="/favorites" onClick={close}>
+                        {t("navigation.favorites")}
+                      </MenuItem>
+                    </>}
                     <Divider />
                     <MenuItem
                       onClick={() => {
@@ -169,7 +192,7 @@ export default function Navbar() {
                   </>
                 )}
                 <Divider />
-                {canManageListings(user?.role) ? <><MenuItem href="/host/dashboard" onClick={close}>{t("navigation.hostDashboard")}</MenuItem><MenuItem href="/host/listings" onClick={close}>{t("navigation.manageListings")}</MenuItem></> : <MenuItem href="/host" onClick={close}>{t("navigation.becomeHost")}</MenuItem>}
+                {canManageListings(user?.role) ? <><MenuItem href="/host/dashboard" onClick={close}>{t("navigation.hostDashboard")}</MenuItem><MenuItem href="/host/listings" onClick={close}>{t("navigation.manageListings")}</MenuItem><MenuItem href="/host/calendar" onClick={close}>{t("calendar.title")}</MenuItem><MenuItem href="/host/stays" onClick={close}>{t("stay.hostTitle")}</MenuItem></> : <MenuItem href="/host" onClick={close}>{t("navigation.becomeHost")}</MenuItem>}
                 <div className="space-y-2 border-t border-line px-4 pt-3 lg:hidden">
                   <LocaleSwitcher />
                   <ThemeSwitcher />
@@ -180,13 +203,14 @@ export default function Navbar() {
         </div>
       </Container>
     </header>
-    {isNaturePage && <nav className="mobile-dock md:hidden" aria-label={t("navigation.home")}>
-      {MOBILE_LINKS.map(({ href, label, Icon }) => (
-        <Link key={href} href={href} aria-current={pathname === href || (href === "/" && isRoomPage) ? "page" : undefined}>
+    {showMobileDock && <nav className="mobile-dock md:hidden" aria-label={t("navigation.menu")}>
+      {MOBILE_LINKS.map(({ href, label, Icon }) => href === "/messages" && user && isMobile
+        ? <ChatNavLink key={href} userId={user.id} dock active={activeDockHref === href} />
+        : <Link key={href} href={href}
+          aria-current={activeDockHref === href ? pathname === href ? "page" : "location" : undefined}>
           <Icon aria-hidden size={25} />
           <span>{t(label)}</span>
-        </Link>
-      ))}
+        </Link>)}
     </nav>}
     </>
   );

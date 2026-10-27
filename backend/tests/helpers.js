@@ -41,9 +41,11 @@ function database(seed = {}) {
   const locks = new Map();
   const failures = new Map();
   const calls = [];
-  const names = ["Listing", "Booking", "Payment", "User", "Notification", "UploadedAsset", "ListingImage", "Amenity", "ListingAmenity", "Favorite", "Review", "PaymentMethod", "UserSetting", "RefreshToken", "BackgroundJob"];
+  const names = ["Listing", "ListingCalendarBlock", "ListingPricingRule", "ListingDailyPrice", "ListingViewEvent", "Coupon", "CouponRedemption", "Booking", "BookingCancellation", "BookingStayToken", "BookingStayEvent", "BookingProposal", "BookingProposalEvent", "ChatConversation", "ChatMessage", "Payment", "PaymentCollection", "Refund", "RefundEvent", "PaymentDispute", "User", "Notification", "NotificationPreference", "UploadedAsset", "ListingImage", "Amenity", "ListingAmenity", "Favorite", "Review", "PaymentMethod", "UserSetting", "RefreshToken", "BackgroundJob"];
   for (const name of names) tables.set(name, new Map((seed[name] || []).map((row) => [row.id || row.public_id || row.user_id, { ...row }])));
-  const keyOf = (row) => row.id || row.public_id || row.user_id;
+  const keyOf = (row) => row.id || row.public_id || row.user_id ||
+    (row.listing_id && row.visitor_key && row.viewed_on
+      ? `${row.listing_id}:${row.visitor_key}:${row.viewed_on}` : undefined);
   const view = (name, tx) => {
     const rows = new Map(tables.get(name));
     for (const [key, row] of tx?.writes.get(name) || []) row === null ? rows.delete(key) : rows.set(key, row);
@@ -66,6 +68,9 @@ function database(seed = {}) {
         const right = expected[op];
         if (op === Sequelize.Op.ne) return value !== right;
         if (op === Sequelize.Op.in) return right.includes(value);
+        if (op === Sequelize.Op.notIn) return !right.includes(value);
+        if (op === Sequelize.Op.iLike) return String(value || "").toLowerCase()
+          .includes(String(right).slice(1, -1).replace(/\\([%_\\])/g, "$1").toLowerCase());
         if (op === Sequelize.Op.lt) return value < right;
         if (op === Sequelize.Op.lte) return value <= right;
         if (op === Sequelize.Op.gt) return value > right;
@@ -98,6 +103,8 @@ function database(seed = {}) {
       update: { value: async (patch, opts = {}) => { Object.assign(row, patch); write(name, keyOf(row), { ...row }, opts.transaction || tx); return row; } },
       save: { value: async (opts = {}) => { write(name, keyOf(row), { ...row }, opts.transaction || tx); return row; } },
       destroy: { value: async (opts = {}) => write(name, keyOf(row), null, opts.transaction || tx) },
+      increment: { value: async (field, opts = {}) => { row[field] = Number(row[field] || 0) + (opts.by || 1); write(name, keyOf(row), { ...row }, opts.transaction || tx); return row; } },
+      decrement: { value: async (field, opts = {}) => { row[field] = Number(row[field] || 0) - (opts.by || 1); write(name, keyOf(row), { ...row }, opts.transaction || tx); return row; } },
     });
     return row;
   };

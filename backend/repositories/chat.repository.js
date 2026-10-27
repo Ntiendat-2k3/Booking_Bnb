@@ -98,6 +98,13 @@ module.exports = {
       return otherId;
     });
   },
+  /** Kiểm tra hai bên trong transaction đang ghi để lệnh chặn không vượt qua thao tác đặt phòng. */
+  async assertActivePair(conversationId, userId, transaction) {
+    await assertMember(conversationId, userId, transaction);
+    const otherId = await peerId(conversationId, userId, transaction);
+    await assertUnblocked(userId, otherId, transaction);
+    return otherId;
+  },
   participants(conversationId, transaction) {
     return sequelize.query(`SELECT p.user_id FROM chat_participants p
       JOIN users u ON u.id = p.user_id AND u.status = 'active' AND u.deleted_at IS NULL
@@ -167,8 +174,9 @@ module.exports = {
       include: messageIncludes });
   },
   /** Tin nhắn và thông báo được ghi cùng transaction; client_key bảo đảm retry không gửi trùng. */
-  async createMessage({ conversationId, senderId, type, body = null, context = null, clientKey, replyToId = null }) {
-    return sequelize.transaction(async (transaction) => {
+  async createMessage({ conversationId, senderId, type, body = null, context = null,
+    clientKey, replyToId = null, transaction: existingTransaction }) {
+    const createInTransaction = async (transaction) => {
       await assertMember(conversationId, senderId, transaction);
       const otherId = await peerId(conversationId, senderId, transaction);
       await assertUnblocked(senderId, otherId, transaction);
@@ -196,7 +204,9 @@ module.exports = {
         }, { transaction });
       }
       return { message: await ChatMessage.findByPk(message.id, { include: messageIncludes, transaction }), created };
-    });
+    };
+    return existingTransaction ? createInTransaction(existingTransaction) :
+      sequelize.transaction(createInTransaction);
   },
   async setReaction(conversationId, messageId, userId, emoji, active) {
     return sequelize.transaction(async (transaction) => {
@@ -231,7 +241,8 @@ module.exports = {
       await assertUnblocked(userId, await peerId(conversationId, userId, transaction), transaction);
       const message = await ChatMessage.findOne({ where: { id: messageId, conversation_id: conversationId },
         transaction, lock: transaction.LOCK.UPDATE });
-      if (!message || message.type === "call") throw httpError(404, "Message not found");
+      if (!message || ["call", "booking_proposal"].includes(message.type))
+        throw httpError(404, "Message not found");
       if (message.sender_id !== userId) throw httpError(403, "MESSAGE_NOT_OWNED");
       if (!message.recalled_at) {
         await message.update({ body: null, context: null, recalled_at: new Date(), recalled_by: userId,

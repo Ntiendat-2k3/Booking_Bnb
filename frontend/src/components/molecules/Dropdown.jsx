@@ -8,6 +8,7 @@ export default function Dropdown({
   children,
   align = "right",
   widthClass = "w-64",
+  placementClass,
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -47,7 +48,7 @@ export default function Dropdown({
     };
   }, [open]);
 
-  const side = align === "left" ? "left-0" : "right-0";
+  const position = placementClass || `absolute ${align === "left" ? "left-0" : "right-0"} mt-2`;
 
   return (
     <div className="relative" ref={rootRef}>
@@ -68,9 +69,8 @@ export default function Dropdown({
           id={menuId}
           role="menu"
           className={
-            "absolute " +
-            side +
-            " mt-2 " +
+            position +
+            " " +
             widthClass +
             " z-50 overflow-hidden rounded-2xl border border-line bg-surface shadow-float"
           }

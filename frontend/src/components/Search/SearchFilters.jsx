@@ -3,11 +3,13 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { NavigationArrow, SlidersHorizontal, MagnifyingGlass } from "@phosphor-icons/react";
 import { useState } from "react";
+import { addDays, format, parseISO } from "date-fns";
 import { notifyError, notifyInfo } from "@/lib/notify";
 import { SORT_OPTIONS } from "@/lib/constants";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
+import DateField from "@/components/molecules/DateField";
 import CityAutocomplete from "./CityAutocomplete";
 
 export default function SearchFilters() {
@@ -23,6 +25,8 @@ function SearchFiltersForm({ params }) {
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [form, setForm] = useState(() => ({
     city: params.get("city") || "",
+    check_in: params.get("check_in") || "",
+    check_out: params.get("check_out") || "",
     min_price: params.get("min_price") || "",
     max_price: params.get("max_price") || "",
     guests: params.get("guests") || "",
@@ -39,6 +43,10 @@ function SearchFiltersForm({ params }) {
   }
 
   function apply(next = form) {
+    if ((next.check_in || next.check_out) && (!next.check_in || !next.check_out || next.check_out <= next.check_in)) {
+      notifyError(t("booking.invalidDates"));
+      return;
+    }
     const q = new URLSearchParams(params.toString());
     q.delete("page");
     Object.entries(next).forEach(([k, v]) => {
@@ -98,7 +106,7 @@ function SearchFiltersForm({ params }) {
 
   return (
     <form onSubmit={(event) => { event.preventDefault(); apply(); }} aria-label={t("search.filterTitle")} className="surface-panel p-4 sm:p-6">
-      <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
+      <div className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_160px_160px_120px_auto]">
         <CityAutocomplete
           label={t("search.city")}
           value={form.city}
@@ -106,6 +114,16 @@ function SearchFiltersForm({ params }) {
           onSelect={setSelectedPlace}
           placeholder={t("search.cityPlaceholder")}
         />
+        <DateField label={t("search.checkIn")} selected={form.check_in ? parseISO(form.check_in) : null}
+          minDate={new Date()} onChange={(date) => {
+            const checkIn = date ? format(date, "yyyy-MM-dd") : "";
+            setForm((current) => ({ ...current, check_in: checkIn,
+              check_out: checkIn && current.check_out > checkIn ? current.check_out : "" }));
+          }} placeholderText={t("search.datesPlaceholder")} />
+        <DateField label={t("checkout.checkOut")} selected={form.check_out ? parseISO(form.check_out) : null}
+          disabled={!form.check_in} minDate={form.check_in ? addDays(parseISO(form.check_in), 1) : new Date()}
+          onChange={(date) => setField("check_out", date ? format(date, "yyyy-MM-dd") : "")}
+          placeholderText={t("search.datesPlaceholder")} />
         <InputField label={t("search.guests")} type="number" min="1" step="1" value={form.guests} onChange={(event) => setField("guests", event.target.value)} placeholder={t("search.guestsPlaceholder")} />
         <Button type="submit" className="sm:col-span-2 lg:col-span-1"><MagnifyingGlass aria-hidden size={18} />{t("search.apply")}</Button>
       </div>

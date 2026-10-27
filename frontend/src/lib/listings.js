@@ -8,6 +8,8 @@ export function getListingCardData(listing) {
     country: listing.country,
     cover_url: listing.cover_url || listing.images?.[0]?.url,
     price_per_night: listing.price_per_night || listing.price || 0,
+    stay_price_total: listing.stay_price_total,
+    stay_nights: listing.stay_nights,
     avg_rating: listing.avg_rating,
     review_count: listing.review_count,
     distance_km: listing.distance_km,

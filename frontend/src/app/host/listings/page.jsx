@@ -139,13 +139,14 @@ export default function HostListingsPage() {
                     {x.city}, {x.country} • {formatVND(x.price_per_night, locale === "en" ? "en-US" : "vi-VN")} {t("listing.perNight")} · {t("checkout.guestCount", { count: x.max_guests })}
                   </div>
                   <div className="mt-1 text-xs text-muted-ink">
-                    {t("common.identifier")} <span className="font-mono">{x.id}</span>
+                    {t("common.identifier")} <span className="font-mono">{x.listing_code || x.id}</span>
                   </div>
                 </div>
               </div>
 
               <div className="mt-auto flex flex-wrap gap-2 border-t border-line px-2 pt-4">
                 <Button href={`/host/listings/${x.id}`} variant="ink" size="sm">{t("host.manage")}</Button>
+                <Button href={`/host/calendar?listing_id=${x.id}`} variant="secondary" size="sm">{t("calendar.title")}</Button>
                 {x.status === "published" ? (
                   <Button href={`/rooms/${x.id}`} variant="secondary" size="sm">{t("host.viewPublic")}</Button>
                 ) : null}

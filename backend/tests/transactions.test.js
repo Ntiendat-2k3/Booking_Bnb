@@ -24,7 +24,7 @@ function paidEvent(patch = {}) {
   return { id: "evt_test", type: "checkout.session.completed", data: { object: { id: "cs_test", client_reference_id: paymentId, payment_status: "paid", payment_intent: "pi_test", amount_total: 200000, currency: "vnd", ...patch } } };
 }
 
-test("Hai request cùng lịch chỉ tạo một booking; khoảng ngày liền kề vẫn được phép", async () => {
+test("Hai request cùng lịch chỉ tạo một booking; ngày trả phòng cũ không được nhận khách mới", async () => {
   const db = fixture({ Booking: [], Payment: [] });
   const service = loadBackend("services/booking.service.js", db.models);
   const input = { userId: guestId, listingId, check_in: "2099-01-01", check_out: "2099-01-03", guests_count: 2 };
@@ -32,8 +32,21 @@ test("Hai request cùng lịch chỉ tạo một booking; khoảng ngày liền 
   assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
   assert.equal(results.find((result) => result.status === "rejected").reason.status, 409);
   assert.equal(db.rows("Booking").length, 1);
-  await service.create({ ...input, check_in: "2099-01-03", check_out: "2099-01-04" });
+  await assert.rejects(service.create({ ...input, check_in: "2099-01-03",
+    check_out: "2099-01-04" }), { status: 409 });
+  await service.create({ ...input, check_in: "2099-01-04", check_out: "2099-01-05" });
   assert.equal(db.rows("Booking").length, 2);
+});
+
+test("Đặt phòng lưu tên và số điện thoại tại thời điểm đăng ký", async () => {
+  const db = fixture({ Booking: [], Payment: [], User: [
+    { ...people[0], full_name: "Tên khi đặt", phone: "0912345678" }, people[1],
+  ] });
+  const service = loadBackend("services/booking.service.js", db.models);
+  await service.create({ userId: guestId, listingId,
+    check_in: "2099-01-01", check_out: "2099-01-03", guests_count: 2 });
+  assert.equal(db.rows("Booking")[0].renter_name, "Tên khi đặt");
+  assert.equal(db.rows("Booking")[0].renter_phone, "0912345678");
 });
 
 test("Hold hết hạn không khóa lịch và checkout trước ngày trả phòng bị từ chối", async () => {
@@ -61,7 +74,8 @@ test("Webhook hợp lệ xác nhận một lần và escape nội dung email", a
   assert.equal(db.rows("Payment")[0].status, "succeeded");
   assert.equal(db.rows("Notification").length, 2);
   assert.equal(db.rows("BackgroundJob").length, 2);
-  assert.ok(db.rows("BackgroundJob")[0].payload.html.includes("&lt;script&gt;"));
+  assert.ok(db.rows("BackgroundJob").some((job) => job.type === "booking_confirmation"));
+  assert.ok(db.rows("BackgroundJob").find((job) => job.type === "send_email").payload.html.includes("&lt;script&gt;"));
 });
 
 for (const [name, bookingPatch, eventPatch] of [
@@ -116,15 +130,121 @@ test("Session không khớp bị từ chối mà không ghi dữ liệu", async 
 test("Checkout đồng thời dùng chung idempotency key; Stripe được gọi sau commit", async () => {
   const db = fixture({ Payment: [] });
   const keys = [];
-  const stripe = { checkout: { sessions: { create: async (_input, options) => {
+  const stripe = { paymentIntents: { create: async (_input, options) => {
     assert.equal(db.rows("Payment").length, 1);
     keys.push(options.idempotencyKey);
-    return { id: "cs_test", url: "https://checkout.stripe.com/test" };
-  } } } };
+    return { id: "pi_test", client_secret: "pi_test_secret", amount: 200000, currency: "vnd", status: "requires_payment_method" };
+  } } };
   const service = loadBackend("services/payment.service.js", db.models, { "config/stripe.js": { getStripe: () => stripe } });
   await Promise.all([service.createStripePayment({ userId: guestId, bookingId }), service.createStripePayment({ userId: guestId, bookingId })]);
   assert.equal(db.rows("Payment").length, 1);
   assert.equal(new Set(keys).size, 1);
+});
+
+test("Stripe mất kết nối trả 503 và lần thử lại dùng đúng payment đang chờ", async () => {
+  const db = fixture({ Payment: [] });
+  const keys = [];
+  const stripe = { paymentIntents: { create: async (_input, options) => {
+    keys.push(options.idempotencyKey);
+    if (keys.length === 1) throw { type: "StripeConnectionError" };
+    return { id: "pi_retry", client_secret: "pi_retry_secret", amount: 200000, currency: "vnd", status: "requires_payment_method" };
+  } } };
+  const service = loadBackend("services/payment.service.js", db.models, { "config/stripe.js": { getStripe: () => stripe } });
+  await assert.rejects(service.createStripePayment({ userId: guestId, bookingId }), { status: 503 });
+  assert.equal(db.rows("Payment").length, 1);
+  assert.equal(db.rows("Payment")[0].status, "pending");
+  const result = await service.createStripePayment({ userId: guestId, bookingId });
+  assert.equal(result.client_secret, "pi_retry_secret");
+  assert.deepEqual(keys, [`intent:${result.payment.id}`, `intent:${result.payment.id}`]);
+});
+
+test("Phiên Checkout cũ được đóng trước khi tạo PaymentIntent mới", async () => {
+  const db = fixture();
+  const stripe = { paymentIntents: { create: async () => ({
+    id: "pi_new", client_secret: "pi_new_secret", amount: 200000,
+    currency: "vnd", status: "requires_payment_method",
+  }) } };
+  const service = loadBackend("services/payment.service.js", db.models, {
+    "config/stripe.js": { getStripe: () => stripe },
+  });
+  const result = await service.createStripePayment({ userId: guestId, bookingId });
+  assert.equal(result.client_secret, "pi_new_secret");
+  assert.equal(db.rows("Payment").length, 2);
+  assert.equal(db.rows("Payment").find((row) => row.id === paymentId).status, "cancelled");
+  assert.equal(db.rows("BackgroundJob")[0].type, "stripe_expire_session");
+});
+
+test("Sửa đơn hủy PaymentIntent đang chờ", async () => {
+  const db = fixture({ Payment: [{ ...payment, provider_txn_ref: "pi_test", payload: { intent: { id: "pi_test" } } }] });
+  const service = loadBackend("services/booking.service.js", db.models, {
+    "services/notification-preference.service.js": { allows: async () => false },
+  });
+  await service.update({ userId: guestId, bookingId, check_out: "2099-01-04" });
+  assert.equal(db.rows("Payment")[0].status, "cancelled");
+  assert.equal(db.rows("BackgroundJob")[0].type, "stripe_cancel_intent");
+});
+
+test("Webhook PaymentIntent xác nhận đúng đơn và không xác nhận lặp", async () => {
+  const db = fixture({ Payment: [{ ...payment, provider_txn_ref: "pi_test" }] });
+  const service = loadBackend("services/payment.service.js", db.models, {
+    "services/notification-preference.service.js": { allows: async () => true },
+  });
+  const event = { id: "evt_intent", type: "payment_intent.succeeded", data: { object: {
+    id: "pi_test", status: "succeeded", metadata: { paymentId, bookingId },
+    amount_received: 200000, currency: "vnd",
+  } } };
+  await service.handleStripeWebhook(event);
+  await service.handleStripeWebhook(event);
+  assert.equal(db.rows("Booking")[0].status, "confirmed");
+  assert.equal(db.rows("Payment")[0].status, "succeeded");
+  assert.equal(db.rows("Payment")[0].provider_transaction_no, "pi_test");
+  assert.equal(db.rows("BackgroundJob").filter((job) => job.type === "stripe_refund").length, 0);
+});
+
+test("PaymentIntent đã hủy nhưng thanh toán thành công phải hoàn tiền, không xác nhận đơn", async () => {
+  const db = fixture({ Payment: [{ ...payment, provider_txn_ref: "pi_test", status: "cancelled" }] });
+  const service = loadBackend("services/payment.service.js", db.models);
+  await service.handleStripeWebhook({ id: "evt_cancelled", type: "payment_intent.succeeded", data: { object: {
+    id: "pi_test", status: "succeeded", metadata: { paymentId, bookingId },
+    amount_received: 200000, currency: "vnd",
+  } } });
+  assert.equal(db.rows("Booking")[0].status, "pending_payment");
+  assert.equal(db.rows("BackgroundJob")[0].type, "stripe_refund");
+});
+
+test("Đối soát Stripe chỉ cho khách của đơn và xác nhận theo dữ liệu Stripe", async () => {
+  const db = fixture({ Payment: [{ ...payment, provider_txn_ref: "pi_test" }] });
+  let retrieved = 0;
+  const intent = { id: "pi_test", status: "succeeded", metadata: { paymentId, bookingId },
+    amount_received: 200000, currency: "vnd" };
+  const service = loadBackend("services/payment.service.js", db.models, {
+    "config/stripe.js": { getStripe: () => ({ paymentIntents: { retrieve: async () => { retrieved++; return intent; } } }) },
+    "services/notification-preference.service.js": { allows: async () => true },
+  });
+  await assert.rejects(service.reconcileStripePayment({ bookingId, userId: hostId }), { status: 404 });
+  assert.equal(retrieved, 0);
+  const result = await service.reconcileStripePayment({ bookingId, userId: guestId });
+  assert.equal(result.booking_status, "confirmed");
+  assert.equal(db.rows("Payment")[0].status, "succeeded");
+  assert.equal(retrieved, 1);
+});
+
+test("Worker đối soát PaymentIntent đã thanh toán trong lúc yêu cầu hủy", async () => {
+  const db = fixture({ BackgroundJob: [{
+    id: "10000000-0000-4000-8000-000000000099", type: "stripe_cancel_intent",
+    payload: { intentId: "pi_test" }, status: "pending", attempts: 0, available_at: new Date(),
+  }] });
+  const events = [];
+  const jobs = loadBackend("jobs/backgroundJobs.js", db.models, {
+    "config/stripe.js": { getStripe: () => ({ paymentIntents: { retrieve: async () => ({
+      id: "pi_test", status: "succeeded", metadata: { paymentId, bookingId },
+      amount_received: 200000, currency: "vnd",
+    }) } }) },
+    "services/payment.service.js": { handleStripeWebhook: async (event) => events.push(event) },
+  });
+  await jobs.runNextJob();
+  assert.equal(events[0].type, "payment_intent.succeeded");
+  assert.equal(db.rows("BackgroundJob")[0].status, "completed");
 });
 
 test("Ảnh upload của user khác hoặc đang chờ xóa không thể attach", async () => {
@@ -437,14 +557,24 @@ test("Refresh token cũ không có authTime vẫn dùng được nhưng không t
   assert.equal(require("jsonwebtoken").verify(rotated.accessToken, "test-secret-only").authTime, 0);
 });
 
-test("Đăng ký rollback user khi lưu refresh token lỗi; email lạ không tạo reset job", async () => {
+test("Đăng ký rollback khi enqueue email lỗi; xác minh rollback khi lưu phiên lỗi", async () => {
   const db = fixture({ User: [] });
   const service = loadBackend("services/auth.service.js", db.models);
-  db.failNextWrite("RefreshToken");
+  db.failNextWrite("BackgroundJob");
   await assert.rejects(service.registerLocal({ email: "new@example.com", password: "password123", full_name: "New User" }));
   assert.equal(db.rows("User").length, 0);
+  await service.registerLocal({ email: "new@example.com", password: "password123", full_name: "New User" });
+  const code = db.rows("BackgroundJob")[0].payload.html.match(/\b\d{6}\b/)[0];
+  db.failNextWrite("RefreshToken");
+  await assert.rejects(service.verifyRegistration({ email: "new@example.com", code }));
+  assert.equal(db.rows("User")[0].status, "pending_verification");
+  await assert.rejects(service.verifyRegistration({ email: "new@example.com", code: "000000" }), { status: 400 });
+  assert.equal(db.rows("User")[0].registration_code_attempts, 1);
+  const verified = await service.verifyRegistration({ email: "new@example.com", code });
+  assert.equal(verified.user.status, "active");
+  assert.equal(db.rows("User")[0].registration_code_hash, null);
   await service.forgotPassword("unknown@example.com");
-  assert.equal(db.rows("BackgroundJob").length, 0);
+  assert.equal(db.rows("BackgroundJob").length, 1);
 });
 
 test("Worker retry tác vụ lỗi, nhận lại lease hết hạn và chỉ xóa payload khi thành công", async () => {

@@ -55,7 +55,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: "guest",
       },
       status: {
-        type: DataTypes.ENUM("active", "blocked"),
+        type: DataTypes.ENUM("active", "blocked", "pending_verification"),
         allowNull: false,
         defaultValue: "active",
       },
@@ -69,6 +69,10 @@ module.exports = (sequelize, DataTypes) => {
       google_id: { type: DataTypes.STRING(255), allowNull: true, unique: true },
       reset_password_token: { type: DataTypes.STRING(255), allowNull: true },
       reset_password_expires: { type: DataTypes.DATE, allowNull: true },
+      registration_code_hash: { type: DataTypes.STRING(64), allowNull: true },
+      registration_code_expires: { type: DataTypes.DATE, allowNull: true },
+      registration_code_sent_at: { type: DataTypes.DATE, allowNull: true },
+      registration_code_attempts: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
       deleted_at: { type: DataTypes.DATE, allowNull: true },
     },
     {

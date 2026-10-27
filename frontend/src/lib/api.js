@@ -23,15 +23,15 @@ export const setManualCsrfToken = (token) => {
   manualCsrfToken = token;
 };
 
-// Request interceptor for CSRF
+// Ưu tiên cookie hiện tại vì token lưu trong bộ nhớ có thể đã cũ sau khi cookie đổi.
 api.interceptors.request.use((config) => {
   const method = (config.method || "get").toLowerCase();
   const unsafe = !["get", "head", "options"].includes(method);
 
   if (unsafe && !config.headers["X-CSRF-Token"]) {
     const csrf =
-      manualCsrfToken ||
-      getCookie(process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token");
+      getCookie(process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || "csrf_token") ||
+      manualCsrfToken;
     if (csrf) {
       config.headers["X-CSRF-Token"] = csrf;
     }
@@ -77,6 +77,28 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     const status = error.response?.status;
 
+    // Chỉ làm mới CSRF khi máy chủ xác nhận token lệch, rồi thử lại đúng một lần.
+    if (
+      status === 403 &&
+      error.response?.data?.message === "CSRF token invalid" &&
+      originalRequest &&
+      !originalRequest._csrfRetry &&
+      !isAuthPath(originalRequest.url)
+    ) {
+      originalRequest._csrfRetry = true;
+      try {
+        const csrfRes = await api({ url: "/api/v1/auth/csrf", method: "get" });
+        const token = csrfRes?.data?.csrfToken;
+        if (token) {
+          manualCsrfToken = token;
+          originalRequest.headers["X-CSRF-Token"] = token;
+          return api(originalRequest);
+        }
+      } catch {
+        // Giữ lỗi gốc để người gọi xử lý nếu không thể làm mới token.
+      }
+    }
+
     // Only intercept 401 for non-auth endpoints, and only once per request
     if (
       status === 401 &&
@@ -101,6 +123,7 @@ api.interceptors.response.use(
         // Save the token from the response body so the request interceptor can use it.
         if (csrfRes?.data?.csrfToken) {
           manualCsrfToken = csrfRes.data.csrfToken;
+          originalRequest.headers["X-CSRF-Token"] = manualCsrfToken;
         }
 
         // Refresh the session (rotates tokens via httpOnly cookies)

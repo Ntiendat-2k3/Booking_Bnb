@@ -121,15 +121,21 @@ module.exports = {
   }),
 
   register: asyncHandler(async (req, res) => {
-    const data = await authService.registerLocal(req.body, {
-      ip: req.ip,
-      userAgent: req.headers["user-agent"],
+    const data = await authService.registerLocal(req.body);
+    return successResponse(res, data, "Verification code sent", 201);
+  }),
+
+  verifyRegistration: asyncHandler(async (req, res) => {
+    const data = await authService.verifyRegistration(req.body, {
+      ip: req.ip, userAgent: req.headers["user-agent"],
     });
-    const csrfToken = setAuthCookies(res, req, {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-    });
-    return successResponse(res, { user: data.user, csrfToken }, "Register successfully", 201);
+    const csrfToken = setAuthCookies(res, req, data);
+    return successResponse(res, { user: data.user, csrfToken }, "Email verified", 200);
+  }),
+
+  resendRegistrationCode: asyncHandler(async (req, res) => {
+    await authService.resendRegistrationCode(req.body.email);
+    return successResponse(res, null, "If verification is pending, a new code was sent", 200);
   }),
 
   login: (req, res, next) => {

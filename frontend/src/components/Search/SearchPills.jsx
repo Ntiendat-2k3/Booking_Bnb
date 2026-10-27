@@ -10,6 +10,7 @@ import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
 import DateField from "@/components/molecules/DateField";
 import CityAutocomplete from "./CityAutocomplete";
+import { notifyError } from "@/lib/notify";
 
 /** Tìm chỗ ở theo địa điểm và số khách; khoảng ngày được giữ đến bước đặt phòng. */
 export default function SearchPills() {
@@ -23,6 +24,7 @@ export default function SearchPills() {
 
   function onSearch(event) {
     event.preventDefault();
+    if (dates && !checkOut) { notifyError(t("booking.datesRequired")); return; }
     const params = new URLSearchParams();
     const cityValue = city.trim();
     const destination = POPULAR_DESTINATIONS.find((item) =>
@@ -34,8 +36,7 @@ export default function SearchPills() {
       params.set("map_lng", selectedPlace.lng);
     }
     if (guests) params.set("guests", guests);
-    if (dates) params.set("check_in", dates);
-    if (dates && checkOut) params.set("check_out", checkOut);
+    if (dates && checkOut) { params.set("check_in", dates); params.set("check_out", checkOut); }
     router.push("/search?" + params.toString());
   }
 

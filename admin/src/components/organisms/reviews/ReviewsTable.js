@@ -109,7 +109,7 @@ export default function ReviewsTable({
                   <div className="truncate font-medium ui-fg" title={r.listing?.title || ""}>
                     {r.listing?.title || "—"}
                   </div>
-                  <CopyId value={r.listing?.id} />
+                  <span className="font-mono text-xs ui-muted">{r.listing?.listing_code || "—"}</span>
                 </td>
                 <td className="px-2">
                   <div className="flex min-w-0 items-center gap-2">

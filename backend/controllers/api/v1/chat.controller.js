@@ -4,6 +4,7 @@ const { successResponse } = require("../../../utils/response");
 const asyncHandler = require("../../../utils/asyncHandler");
 const socketTicket = require("../../../services/chat.socket-ticket");
 const calls = require("../../../services/call.service");
+const proposals = require("../../../services/booking_proposal.service");
 const schema = require("../../../requests/api/v1/chat.schema");
 const httpError = require("../../../utils/httpError");
 const { promises: fs } = require("node:fs");
@@ -20,6 +21,28 @@ module.exports = {
   detail: asyncHandler(async (req, res) => successResponse(res, await chat.detail(req.user.user.id, req.params.conversationId))),
   messages: asyncHandler(async (req, res) => successResponse(res,
     await chat.messages(req.user.user.id, req.params.conversationId, req.query))),
+  proposalCandidates: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.candidates(req.user.user.id, req.user.user.role,
+      req.params.conversationId, req.query.search))),
+  proposalQuote: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.quote(req.user.user.id, req.user.user.role, req.params.conversationId, req.body))),
+  createProposal: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.create(req.user.user.id, req.user.user.role, req.params.conversationId, req.body),
+    "Proposal sent", 201)),
+  proposalDetail: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.detail(req.user.user.id, req.params.conversationId, req.params.proposalId))),
+  updateProposal: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.update(req.user.user.id, req.user.user.role, req.params.conversationId,
+      req.params.proposalId, req.body))),
+  confirmProposal: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.act(req.user.user.id, req.params.conversationId,
+      req.params.proposalId, "confirm", req.body))),
+  requestProposalChanges: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.act(req.user.user.id, req.params.conversationId,
+      req.params.proposalId, "request-changes", req.body))),
+  rejectProposal: asyncHandler(async (req, res) => successResponse(res,
+    await proposals.act(req.user.user.id, req.params.conversationId,
+      req.params.proposalId, "reject", req.body))),
   searchMessages: asyncHandler(async (req, res) => successResponse(res,
     await chat.searchMessages(req.user.user.id, req.params.conversationId, req.query.search, req.query))),
   sharedMessages: asyncHandler(async (req, res) => successResponse(res,

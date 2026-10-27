@@ -97,7 +97,7 @@ function SectionSkeleton({ count, layout = "rail" }) {
 }
 
 export default async function HomePage() {
-  const { t } = await getServerTranslator();
+  const { t, locale } = await getServerTranslator();
   const suggested = SECTION_CONFIG[0];
   const itemsPromise = getSection(suggested);
   const collectionsPromise = Promise.all(SECTION_CONFIG.slice(1).map(async (section) => ({
@@ -126,6 +126,7 @@ export default async function HomePage() {
         </div>
         <div className="home-search relative z-20 mt-7 sm:mt-9">
           <SearchPills />
+          <Button href="/ai-search" variant="secondary" className="mt-3 w-full sm:w-auto">{locale === "en" ? "Describe your ideal stay" : "Mô tả nơi ở bạn muốn tìm"}<ArrowRight aria-hidden size={18} /></Button>
         </div>
       </section>
 

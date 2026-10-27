@@ -1,11 +1,43 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const Sequelize = require("sequelize");
 const { loadBackend } = require("./helpers");
 
 const caller = "10000000-0000-4000-8000-000000000001";
 const callee = "10000000-0000-4000-8000-000000000002";
 const callId = "10000000-0000-4000-8000-000000000003";
 const callerInstance = "10000000-0000-4000-8000-000000000005";
+
+test("Mọi cuộc gọi kết thúc đều ghi một mục lịch sử với thời lượng đúng", async () => {
+  const histories = [];
+  const endedAt = new Date("2026-10-20T10:20:00.000Z");
+  const rows = new Map([
+    ["missed", { id: "missed", conversation_id: "conversation-1", caller_id: caller,
+      callee_id: callee, status: "ringing", revision: 0, connected_at: null }],
+    ["completed", { id: "completed", conversation_id: "conversation-1", caller_id: caller,
+      callee_id: callee, status: "connected", revision: 0,
+      connected_at: new Date("2026-10-20T10:00:00.000Z") }],
+  ]);
+  const repository = loadBackend("repositories/call.repository.js", {
+    Sequelize,
+    sequelize: { transaction: (run) => run({ LOCK: { UPDATE: "UPDATE" } }), query: async () => [] },
+    CallSession: { findByPk: async (id) => {
+      const row = rows.get(id);
+      const instance = { ...row, toJSON: () => ({ ...row }),
+        update: async (patch) => { Object.assign(row, patch); Object.assign(instance, patch); } };
+      return instance;
+    } },
+    ChatMessage: { create: async (message) => { histories.push(message); } },
+    ChatConversation: { update: async () => {} },
+  });
+  for (const [id, status] of [["missed", "no_answer"], ["completed", "ended"]]) {
+    await repository.change(id, caller, () => ({ status, ended_at: endedAt }));
+    await repository.change(id, caller, () => null);
+  }
+  assert.equal(histories.length, 2);
+  assert.deepEqual(histories.map((message) => [message.context.status, message.context.duration_seconds]),
+    [["no_answer", 0], ["ended", 1200]]);
+});
 
 test("Signaling chỉ chuyển payload hợp lệ tới room peer đã xác minh", async (t) => {
   let connect;

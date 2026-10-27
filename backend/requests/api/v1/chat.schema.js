@@ -1,5 +1,5 @@
 const Joi = require("joi");
-const { uuid } = require("./common.schema");
+const { uuid, dateOnly } = require("./common.schema");
 
 const conversationParams = Joi.object({ conversationId: uuid.required() });
 const listingParams = Joi.object({ listingId: uuid.required() });
@@ -38,6 +38,23 @@ const sendMedia = Joi.object({
   reply_to_message_id: uuid.optional(),
 });
 const reactionParams = Joi.object({ conversationId: uuid.required(), messageId: uuid.required() });
+const proposalParams = Joi.object({ conversationId: uuid.required(), proposalId: uuid.required() });
+const proposalCandidatesQuery = Joi.object({ search: Joi.string().trim().max(80).allow("").default("") });
+const proposalFields = {
+  listing_id: uuid.required(), check_in: dateOnly.required(), check_out: dateOnly.required(),
+  guests_count: Joi.number().integer().min(1).max(100).required(),
+  renter_name: Joi.string().trim().min(2).max(100).required(),
+  renter_phone: Joi.string().trim().pattern(/^[0-9+ ]{8,15}$/).required(),
+  special_requests: Joi.string().trim().max(500).allow("").optional(),
+};
+const proposalQuote = Joi.object(proposalFields);
+const createProposal = Joi.object({ ...proposalFields,
+  client_key: sendMessage.extract("client_key").required() });
+const updateProposal = Joi.object({ ...proposalFields,
+  version: Joi.number().integer().min(1).required() });
+const proposalVersion = Joi.object({ version: Joi.number().integer().min(1).required() });
+const proposalChanges = proposalVersion.keys({ note: Joi.string().trim().min(1).max(500).required() });
+const proposalReject = proposalVersion.keys({ note: Joi.string().trim().max(500).allow("").optional() });
 const setReaction = Joi.object({
   emoji: Joi.string().valid("❤️", "👍", "😂", "😮", "🙏").required(),
   active: Joi.boolean().required(),
@@ -70,4 +87,6 @@ const signalCandidate = Joi.object({ call_id: uuid.required(), instance_id: crea
 module.exports = { conversationParams, listingParams, listQuery, messagesQuery, sendMessage, sendMedia,
   contactListing, searchUsersQuery, userParams, blockState, contentQuery, sharedQuery, pinState,
   mediaParams, fileParams, readMessage, reactionParams, setReaction, editMessage,
+  proposalParams, proposalCandidatesQuery, proposalQuote, createProposal, updateProposal, proposalVersion,
+  proposalChanges, proposalReject,
   callParams, createCall, acceptCall, reportCall, emptyCallBody, signalOffer, signalCandidate };

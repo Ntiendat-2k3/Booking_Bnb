@@ -115,6 +115,8 @@ export const FOOTER_LINKS = [
 // Tham số được API tìm kiếm hỗ trợ.
 export const SEARCH_PARAM_KEYS = [
   "city",
+  "check_in",
+  "check_out",
   "min_price",
   "max_price",
   "guests",

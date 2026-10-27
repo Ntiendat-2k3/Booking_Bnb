@@ -57,9 +57,52 @@ test("Tài khoản local có thể dùng email của tài khoản Facebook riên
   const service = loadBackend("services/auth.service.js", db.models);
   const result = await service.registerLocal({ email: "used@example.com", username: "local_user",
     password: "password123", full_name: "Local User" });
-  assert.equal(result.user.provider, "local");
-  assert.notEqual(result.user.id, "facebook-user");
+  assert.equal(result.email, "used@example.com");
+  assert.equal(db.rows("User")[1].status, "pending_verification");
+  assert.notEqual(db.rows("User")[1].id, "facebook-user");
+  const code = db.rows("BackgroundJob")[0].payload.html.match(/\b\d{6}\b/)[0];
+  const verified = await service.verifyRegistration({ email: result.email, code });
+  assert.equal(verified.user.provider, "local");
+  assert.equal(verified.user.status, "active");
   assert.equal(db.rows("User").length, 2);
+});
+
+test("Mã đăng ký giới hạn lượt thử, thời gian gửi lại và chỉ mã mới có hiệu lực", async () => {
+  const db = database();
+  const service = loadBackend("services/auth.service.js", db.models);
+  await service.registerLocal({ email: "otp@example.com", username: "otp_user",
+    password: "password123", full_name: "OTP User" });
+  const oldCode = db.rows("BackgroundJob")[0].payload.html.match(/\b\d{6}\b/)[0];
+  const wrongCode = oldCode === "000000" ? "111111" : "000000";
+  await assert.rejects(service.resendRegistrationCode("otp@example.com"), { status: 429 });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await assert.rejects(service.verifyRegistration({ email: "otp@example.com", code: wrongCode }), { status: 400 });
+  }
+  await assert.rejects(service.verifyRegistration({ email: "otp@example.com", code: oldCode }), { status: 400 });
+  await db.models.User.update({ registration_code_sent_at: new Date(Date.now() - 61_000) },
+    { where: { email: "otp@example.com" } });
+  await service.resendRegistrationCode("otp@example.com");
+  const newCode = db.rows("BackgroundJob")[1].payload.html.match(/\b\d{6}\b/)[0];
+  assert.equal(db.rows("User")[0].registration_code_attempts, 0);
+  assert.equal((await service.verifyRegistration({ email: "otp@example.com", code: newCode })).user.status, "active");
+  await assert.rejects(service.verifyRegistration({ email: "otp@example.com", code: newCode }), { status: 400 });
+});
+
+test("Username của email bỏ dở có thể dùng lại sau khi mã đăng ký hết hạn", async () => {
+  const db = database();
+  const service = loadBackend("services/auth.service.js", db.models);
+  const first = { email: "wrong@example.com", username: "travel_user",
+    password: "password123", full_name: "First User" };
+  await service.registerLocal(first);
+  await assert.rejects(service.registerLocal({ ...first, email: "correct@example.com" }), { status: 409 });
+  await db.models.User.update({ registration_code_sent_at: new Date(Date.now() - 11 * 60_000) },
+    { where: { email: first.email } });
+  const second = await service.registerLocal({ ...first, email: "correct@example.com" });
+  assert.equal(second.email, "correct@example.com");
+  assert.equal(db.rows("User").length, 1);
+  assert.equal(db.rows("User")[0].email, "correct@example.com");
+  const code = db.rows("BackgroundJob")[1].payload.html.match(/\b\d{6}\b/)[0];
+  assert.equal((await service.verifyRegistration({ email: second.email, code })).user.status, "active");
 });
 
 test("Google chỉ liên kết email đã xác minh sau khi xác nhận mật khẩu và giữ nguyên tài khoản", async () => {

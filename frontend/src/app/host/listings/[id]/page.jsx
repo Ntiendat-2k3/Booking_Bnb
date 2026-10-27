@@ -42,6 +42,9 @@ export default function HostListingManagePage() {
     property_type: "",
     room_type: "",
     price_per_night: "",
+    cancellation_policy_code: "moderate",
+    allow_pay_at_property: false,
+    allow_pay_at_property: false,
     max_guests: "",
     bedrooms: "",
     beds: "",
@@ -86,6 +89,9 @@ export default function HostListingManagePage() {
           property_type: l?.property_type || "",
           room_type: l?.room_type || "",
           price_per_night: l?.price_per_night ?? "",
+          cancellation_policy_code: l?.cancellation_policy_code || "moderate",
+          allow_pay_at_property: Boolean(l?.allow_pay_at_property),
+          allow_pay_at_property: Boolean(l?.allow_pay_at_property),
           max_guests: l?.max_guests ?? "",
           bedrooms: l?.bedrooms ?? "",
           beds: l?.beds ?? "",
@@ -211,7 +217,7 @@ export default function HostListingManagePage() {
           <div className="min-w-0">
             <h1 className="page-heading">{t("host.manageTitle")}</h1>
             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-ink">
-              <span className="truncate">{t("common.identifier")}{listing.id}</span>
+              <span className="truncate">{t("common.identifier")}{listing.listing_code || listing.id}</span>
               <Badge tone={status === "published" ? "success" : status === "pending" ? "warning" : status === "rejected" ? "danger" : "neutral"}>{t(`host.${status}`)}</Badge>
             </div>
           </div>
