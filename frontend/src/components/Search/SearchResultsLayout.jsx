@@ -25,6 +25,7 @@ export default function SearchResultsLayout({ items, checkIn, checkOut, city, ma
             <ListingCard
               key={listing.id}
               listing={listing}
+              sizes="(min-width: 1360px) 250px, (min-width: 1280px) 20vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               checkIn={checkIn}
               checkOut={checkOut}
               mapSelectable

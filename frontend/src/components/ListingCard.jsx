@@ -8,7 +8,7 @@ import { formatVND } from "@/lib/format";
 import { useLocale } from "@/i18n/LocaleProvider";
 import FavoriteButton from "@/components/FavoriteButton";
 
-export default function ListingCard({ listing, priority = false, checkIn, checkOut, featured = false, mapSelectable = false, mapHighlighted = false, onMapHover, onMapSelect }) {
+export default function ListingCard({ listing, priority = false, sizes, checkIn, checkOut, featured = false, mapSelectable = false, mapHighlighted = false, onMapHover, onMapSelect }) {
   const id = listing?.id || listing?.listing_id || listing?.uuid || null;
   const dates = new URLSearchParams({ ...(checkIn ? { check_in: checkIn } : {}), ...(checkOut ? { check_out: checkOut } : {}) });
   const roomHref = id ? `/rooms/${id}${dates.size ? `?${dates}` : ""}` : "#";
@@ -50,7 +50,7 @@ export default function ListingCard({ listing, priority = false, checkIn, checkO
             src={coverSrc}
             alt={listing?.title || t("listing.fallbackTitle")}
             fill
-            sizes={featured ? "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 680px" : "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 420px"}
+            sizes={sizes || (featured ? "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 680px" : "(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 420px")}
             className="object-cover transition duration-300 group-hover:scale-[1.02] motion-reduce:transition-none"
             priority={priority}
           />

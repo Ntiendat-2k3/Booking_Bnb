@@ -8,11 +8,10 @@ import { animated, to, useReducedMotion, useSpring } from "@react-spring/web";
 import { Mascot } from "page-mascot";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { useAiSearch } from "./AiSearchProvider";
+import { MASCOT_DIRECTIONS as DIRECTIONS, MASCOT_REACTIONS as REACTIONS } from "./mascotAssets";
 
 const AiSearchExperience = lazy(() => import("./AiSearchExperience"));
 const REACTION_CELLS = { listening: 4, thinking: 3, success: 8, error: 7 };
-const DIRECTIONS = "/mascots/ballerina-directions.webp";
-const REACTIONS = "/mascots/ballerina-reactions.webp";
 const POSITION_KEY = "booking-bnb-ai-mascot-position";
 const MASCOT_SIZE = 112;
 const POSES = {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
+import { MASCOT_DIRECTIONS } from "./mascotAssets";
 
 const FloatingAiAssistant = dynamic(() => import("./FloatingAiAssistant"), { ssr: false });
 
@@ -23,5 +24,8 @@ export default function AiAssistantLauncher() {
     return () => window.clearTimeout(timer);
   }, [ready, hidden]);
 
-  return ready ? <FloatingAiAssistant hidden={hidden} /> : null;
+  return <>
+    {!hidden && <link rel="preload" as="image" href={MASCOT_DIRECTIONS} fetchPriority="low" />}
+    {ready && <FloatingAiAssistant hidden={hidden} />}
+  </>;
 }

@@ -822,17 +822,20 @@ test("Trợ lý AI chỉ tải khi rảnh, có fallback timer và giữ instance
       "next/navigation": { usePathname: () => pathname },
     }, { window: browser }, imports)("features/aiSearch/AiAssistantLauncher.jsx").default;
     const render = () => harness.render(() => Launcher());
-    assert.equal(render(), null); harness.flush();
+    assert.equal(elements(render()).some((node) => node.type === "link" || node.type === "FloatingAiAssistant"), false); harness.flush();
     assert.equal(task, undefined);
-    pathname = "/"; render(); harness.flush();
+    pathname = "/";
+    assert.equal(elements(render()).find((node) => node.type === "link").props.href, "/mascots/ballerina-directions.webp");
+    harness.flush();
     assert.equal(typeof task, "function");
     assert(!imports.includes("./FloatingAiAssistant"));
     task();
-    assert.equal(render().type, "FloatingAiAssistant"); harness.flush();
+    assert(elements(render()).some((node) => node.type === "FloatingAiAssistant")); harness.flush();
     pathname = "/checkout/booking";
-    assert.equal(render().props.hidden, true); harness.flush();
+    assert.equal(elements(render()).find((node) => node.type === "FloatingAiAssistant").props.hidden, true);
+    assert(!elements(render()).some((node) => node.type === "link")); harness.flush();
     pathname = "/search";
-    assert.equal(render().props.hidden, false); harness.flush();
+    assert.equal(elements(render()).find((node) => node.type === "FloatingAiAssistant").props.hidden, false); harness.flush();
     assert.equal(cancelled, 1);
     harness.unmount();
   }
