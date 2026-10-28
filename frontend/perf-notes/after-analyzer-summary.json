@@ -1,0 +1,107 @@
+{
+  "bundler": "webpack (diagnostic only)",
+  "chunks": [
+    {
+      "name": "static/chunks/c36f3faa.9ecafcad3bb4edd5.js",
+      "parsedBytes": 1645733,
+      "gzipBytes": 442882
+    },
+    {
+      "name": "static/chunks/ba8e46c3.faba9123305df872.js",
+      "parsedBytes": 522762,
+      "gzipBytes": 91332
+    },
+    {
+      "name": "static/chunks/4bd1b696-e5d7c65570c947b7.js",
+      "parsedBytes": 198492,
+      "gzipBytes": 62319
+    },
+    {
+      "name": "static/chunks/3794-337d1ca25ad99a89.js",
+      "parsedBytes": 188659,
+      "gzipBytes": 51201
+    },
+    {
+      "name": "static/chunks/ca377847.82a1feefd6981872.js",
+      "parsedBytes": 150334,
+      "gzipBytes": 48978
+    },
+    {
+      "name": "static/chunks/framework-34c2c0424fa2c81d.js",
+      "parsedBytes": 139768,
+      "gzipBytes": 44858
+    },
+    {
+      "name": "static/chunks/main-5243aeed567b8a8c.js",
+      "parsedBytes": 137532,
+      "gzipBytes": 40493
+    },
+    {
+      "name": "static/chunks/d0f5a89a.05febc2e32fc3349.js",
+      "parsedBytes": 129931,
+      "gzipBytes": 46327
+    },
+    {
+      "name": "static/chunks/13633bf0.7afa0dfea5dd9431.js",
+      "parsedBytes": 108886,
+      "gzipBytes": 26298
+    },
+    {
+      "name": "static/chunks/c0e397d0.1c21c7ce5293a3e0.js",
+      "parsedBytes": 77173,
+      "gzipBytes": 27133
+    }
+  ],
+  "packages": [
+    {
+      "name": "mapbox-gl",
+      "parsedBytes": 1645340,
+      "statBytes": 1674962
+    },
+    {
+      "name": "next",
+      "parsedBytes": 588055,
+      "statBytes": 1894511
+    },
+    {
+      "name": "@phosphor-icons/react",
+      "parsedBytes": 562782,
+      "statBytes": 771442
+    },
+    {
+      "name": "@emoji-mart/data",
+      "parsedBytes": 516676,
+      "statBytes": 461440
+    },
+    {
+      "name": "chart.js",
+      "parsedBytes": 189280,
+      "statBytes": 517402
+    },
+    {
+      "name": "jsqr",
+      "parsedBytes": 129858,
+      "statBytes": 256885
+    },
+    {
+      "name": "react-dom",
+      "parsedBytes": 128850,
+      "statBytes": 133667
+    },
+    {
+      "name": "react-datepicker",
+      "parsedBytes": 108943,
+      "statBytes": 290440
+    },
+    {
+      "name": "date-fns",
+      "parsedBytes": 91370,
+      "statBytes": 392579
+    },
+    {
+      "name": "emoji-mart",
+      "parsedBytes": 77070,
+      "statBytes": 162973
+    }
+  ]
+}

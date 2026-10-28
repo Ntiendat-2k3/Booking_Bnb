@@ -15,9 +15,9 @@ Browserslist: browsers data (caniuse-lite) is 9 months old. Please run:
   Running TypeScript ...
   Collecting page data using 7 workers ...
   Generating static pages using 7 workers (0/25) ...
-  Generating static pages using 7 workers (6/25) 
-  Generating static pages using 7 workers (12/25) 
-  Generating static pages using 7 workers (18/25) 
+  Generating static pages using 7 workers (6/25)
+  Generating static pages using 7 workers (12/25)
+  Generating static pages using 7 workers (18/25)
 ✓ Generating static pages using 7 workers (25/25) in 964.1ms
   Finalizing page optimization ...
 
@@ -54,4 +54,3 @@ Route (app)                     Revalidate  Expire
 
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
-

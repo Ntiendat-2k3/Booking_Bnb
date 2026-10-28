@@ -1,0 +1,13 @@
+{
+  "firstAfterAttempt": {
+    "failedRuns": 9,
+    "reason": "Sandbox không kết nối được webSocket URL ở cổng debug Chrome cục bộ.",
+    "usedInMetrics": false
+  },
+  "successfulAfterAttempt": {
+    "runs": 9,
+    "execution": "Chrome headless ngoài sandbox, cùng Lighthouse 12.8.2 và cấu hình mobile/fixture như baseline.",
+    "summary": "after-lighthouse-summary.json"
+  },
+  "measurementGuard": "measure.mjs đặt exit code 1 khi Lighthouse CLI hoặc runtimeError thất bại, tránh coi một lần đo thiếu là thành công."
+}

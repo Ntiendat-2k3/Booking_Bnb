@@ -1,0 +1,56 @@
+
+> airbnb-frontend-user@1.0.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+- Experiments (use with caution):
+  · optimizePackageImports
+
+  Creating an optimized production build ...
+Browserslist: browsers data (caniuse-lite) is 9 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+✓ Compiled successfully in 14.0s
+  Running TypeScript ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/25) ...
+  Generating static pages using 7 workers (6/25)
+  Generating static pages using 7 workers (12/25)
+  Generating static pages using 7 workers (18/25)
+✓ Generating static pages using 7 workers (25/25) in 886.0ms
+  Finalizing page optimization ...
+
+Route (app)                     Revalidate  Expire
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /account/settings
+├ ƒ /ai-search
+├ ƒ /api/locale
+├ ƒ /auth/callback
+├ ƒ /auth/qr/approve
+├ ƒ /checkout/[id]
+├ ƒ /favorites
+├ ƒ /forgot-password
+├ ƒ /host
+├ ƒ /host/calendar
+├ ƒ /host/dashboard
+├ ƒ /host/listings
+├ ƒ /host/listings/[id]
+├ ƒ /host/listings/new
+├ ƒ /host/stays
+├ ƒ /login
+├ ƒ /messages
+├ ƒ /messages/[conversationId]
+├ ƒ /profile
+├ ƒ /register
+├ ƒ /reset-password
+├ ○ /robots.txt
+├ ƒ /rooms/[id]
+├ ƒ /search
+├ ○ /sitemap.xml                        1h      1y
+└ ƒ /trips
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

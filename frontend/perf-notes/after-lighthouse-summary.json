@@ -1,0 +1,92 @@
+[
+  {
+    "name": "home",
+    "sample": 1,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 8921.252999999993,
+    "tbtMs": 212.99999999999818,
+    "cls": 0.009135885219738118,
+    "jsTransferBytes": 279005,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "home",
+    "sample": 2,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 7827.6039999999975,
+    "tbtMs": 206.4999999999991,
+    "cls": 0.009135885219738118,
+    "jsTransferBytes": 279005,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "home",
+    "sample": 3,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 8424.417500000001,
+    "tbtMs": 186,
+    "cls": 0,
+    "jsTransferBytes": 279005,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "search",
+    "sample": 1,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 6481.0470000000005,
+    "tbtMs": 138,
+    "cls": 0,
+    "jsTransferBytes": 277050,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "search",
+    "sample": 2,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 5976.495,
+    "tbtMs": 163.83500000000004,
+    "cls": 0,
+    "jsTransferBytes": 277050,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "search",
+    "sample": 3,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 5962.428,
+    "tbtMs": 158.0240000000008,
+    "cls": 0,
+    "jsTransferBytes": 277050,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "room",
+    "sample": 1,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 5768.578000000001,
+    "tbtMs": 193.85550000000012,
+    "cls": 0,
+    "jsTransferBytes": 282376,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "room",
+    "sample": 2,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 5873.446,
+    "tbtMs": 340,
+    "cls": 0,
+    "jsTransferBytes": 282376,
+    "formFactor": "mobile"
+  },
+  {
+    "name": "room",
+    "sample": 3,
+    "lighthouseVersion": "12.8.2",
+    "lcpMs": 6874.70075,
+    "tbtMs": 238.0000000000009,
+    "cls": 0,
+    "jsTransferBytes": 282376,
+    "formFactor": "mobile"
+  }
+]

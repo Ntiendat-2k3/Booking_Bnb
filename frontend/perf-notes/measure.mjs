@@ -60,9 +60,11 @@ if (lighthouseCli) {
       child.stderr.on("data", (chunk) => { output += chunk.toString(); });
       const exitCode = await new Promise((resolve, reject) => { child.once("error", reject); child.once("exit", resolve); });
       if (exitCode !== 0) {
+        process.exitCode = 1;
         summary.push({ name, sample, error: redact(output).slice(-1000), exitCode });
       } else {
         const report = redact(JSON.parse(await fs.readFile(temporary, "utf8")));
+        if (report.runtimeError) process.exitCode = 1;
         await fs.writeFile(path.join(notes, `${label}-${name}-${sample}.json`), JSON.stringify(report));
         summary.push({ name, sample, lighthouseVersion: report.lighthouseVersion, runtimeError: report.runtimeError,
           lcpMs: report.audits["largest-contentful-paint"]?.numericValue,

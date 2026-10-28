@@ -1,0 +1,37 @@
+[
+  {
+    "route": "/",
+    "initialStylesheets": [
+      {
+        "bytes": 85837,
+        "mapbox": false
+      },
+      {
+        "bytes": 1525,
+        "mapbox": false
+      }
+    ]
+  },
+  {
+    "route": "/search?limit=24",
+    "initialStylesheets": [
+      {
+        "bytes": 85837,
+        "mapbox": false
+      },
+      {
+        "bytes": 2116,
+        "mapbox": false
+      }
+    ]
+  },
+  {
+    "route": "/rooms/fixture-0",
+    "initialStylesheets": [
+      {
+        "bytes": 85837,
+        "mapbox": false
+      }
+    ]
+  }
+]

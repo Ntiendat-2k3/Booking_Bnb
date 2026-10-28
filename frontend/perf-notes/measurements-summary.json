@@ -1,0 +1,149 @@
+[
+  {
+    "name": "home",
+    "before": {
+      "lcpMs": {
+        "median": 9160.104000000001,
+        "min": 8881.176,
+        "max": 9636.282000000003
+      },
+      "tbtMs": {
+        "median": 238.9999999999991,
+        "min": 161,
+        "max": 247
+      },
+      "cls": {
+        "median": 0.009135885219738118,
+        "min": 0.004567942609869059,
+        "max": 0.009135885219738118
+      },
+      "jsTransferBytes": {
+        "median": 280124,
+        "min": 280124,
+        "max": 280124
+      },
+      "lcpResourceLoadDelayMs": 889.126
+    },
+    "after": {
+      "lcpMs": {
+        "median": 8424.417500000001,
+        "min": 7827.6039999999975,
+        "max": 8921.252999999993
+      },
+      "tbtMs": {
+        "median": 206.4999999999991,
+        "min": 186,
+        "max": 212.99999999999818
+      },
+      "cls": {
+        "median": 0.009135885219738118,
+        "min": 0,
+        "max": 0.009135885219738118
+      },
+      "jsTransferBytes": {
+        "median": 279005,
+        "min": 279005,
+        "max": 279005
+      },
+      "lcpResourceLoadDelayMs": 19.176
+    }
+  },
+  {
+    "name": "search",
+    "before": {
+      "lcpMs": {
+        "median": 7385.0999999999985,
+        "min": 7322.187,
+        "max": 7392.054
+      },
+      "tbtMs": {
+        "median": 231,
+        "min": 130.9999999999991,
+        "max": 257.9999999999991
+      },
+      "cls": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "jsTransferBytes": {
+        "median": 277999,
+        "min": 277999,
+        "max": 277999
+      },
+      "lcpResourceLoadDelayMs": 651.2499999980927
+    },
+    "after": {
+      "lcpMs": {
+        "median": 5976.495,
+        "min": 5962.428,
+        "max": 6481.0470000000005
+      },
+      "tbtMs": {
+        "median": 158.0240000000008,
+        "min": 138,
+        "max": 163.83500000000004
+      },
+      "cls": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "jsTransferBytes": {
+        "median": 277050,
+        "min": 277050,
+        "max": 277050
+      },
+      "lcpResourceLoadDelayMs": 18.722
+    }
+  },
+  {
+    "name": "room",
+    "before": {
+      "lcpMs": {
+        "median": 5683.104,
+        "min": 5680.496000000001,
+        "max": 7649.594999999999
+      },
+      "tbtMs": {
+        "median": 304,
+        "min": 118.5,
+        "max": 716
+      },
+      "cls": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "jsTransferBytes": {
+        "median": 283415,
+        "min": 283415,
+        "max": 283415
+      },
+      "lcpResourceLoadDelayMs": 12.71
+    },
+    "after": {
+      "lcpMs": {
+        "median": 5873.446,
+        "min": 5768.578000000001,
+        "max": 6874.70075
+      },
+      "tbtMs": {
+        "median": 238.0000000000009,
+        "min": 193.85550000000012,
+        "max": 340
+      },
+      "cls": {
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "jsTransferBytes": {
+        "median": 282376,
+        "min": 282376,
+        "max": 282376
+      },
+      "lcpResourceLoadDelayMs": 15.158999998092652
+    }
+  }
+]

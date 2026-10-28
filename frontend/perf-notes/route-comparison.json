@@ -1,0 +1,170 @@
+[
+  {
+    "route": "/account/settings",
+    "status": 200,
+    "before": 270896,
+    "after": 269651,
+    "delta": -1245
+  },
+  {
+    "route": "/ai-search",
+    "status": 200,
+    "before": 284145,
+    "after": 283043,
+    "delta": -1102
+  },
+  {
+    "route": "/auth/callback",
+    "status": 200,
+    "before": 255580,
+    "after": 254335,
+    "delta": -1245
+  },
+  {
+    "route": "/auth/qr/approve",
+    "status": 200,
+    "before": 256414,
+    "after": 255169,
+    "delta": -1245
+  },
+  {
+    "route": "/checkout/[id]",
+    "status": 200,
+    "before": 277670,
+    "after": 276425,
+    "delta": -1245
+  },
+  {
+    "route": "/favorites",
+    "status": 200,
+    "before": 262115,
+    "after": 261010,
+    "delta": -1105
+  },
+  {
+    "route": "/forgot-password",
+    "status": 200,
+    "before": 257720,
+    "after": 256475,
+    "delta": -1245
+  },
+  {
+    "route": "/host/calendar",
+    "status": 200,
+    "before": 279120,
+    "after": 277875,
+    "delta": -1245
+  },
+  {
+    "route": "/host/dashboard",
+    "status": 200,
+    "before": 268049,
+    "after": 266841,
+    "delta": -1208
+  },
+  {
+    "route": "/host/listings/[id]",
+    "status": 200,
+    "before": 279226,
+    "after": 277962,
+    "delta": -1264
+  },
+  {
+    "route": "/host/listings/new",
+    "status": 200,
+    "before": 272159,
+    "after": 270895,
+    "delta": -1264
+  },
+  {
+    "route": "/host/listings",
+    "status": 200,
+    "before": 257243,
+    "after": 255998,
+    "delta": -1245
+  },
+  {
+    "route": "/host",
+    "status": 200,
+    "before": 275752,
+    "after": 274507,
+    "delta": -1245
+  },
+  {
+    "route": "/host/stays",
+    "status": 200,
+    "before": 273234,
+    "after": 271989,
+    "delta": -1245
+  },
+  {
+    "route": "/login",
+    "status": 200,
+    "before": 270773,
+    "after": 269528,
+    "delta": -1245
+  },
+  {
+    "route": "/messages/[conversationId]",
+    "status": 200,
+    "before": 283546,
+    "after": 282301,
+    "delta": -1245
+  },
+  {
+    "route": "/messages",
+    "status": 200,
+    "before": 283546,
+    "after": 282301,
+    "delta": -1245
+  },
+  {
+    "route": "/",
+    "status": 200,
+    "before": 289605,
+    "after": 288485,
+    "delta": -1120
+  },
+  {
+    "route": "/profile",
+    "status": 200,
+    "before": 260946,
+    "after": 259701,
+    "delta": -1245
+  },
+  {
+    "route": "/register",
+    "status": 200,
+    "before": 264751,
+    "after": 263506,
+    "delta": -1245
+  },
+  {
+    "route": "/reset-password",
+    "status": 200,
+    "before": 260788,
+    "after": 259543,
+    "delta": -1245
+  },
+  {
+    "route": "/rooms/[id]",
+    "status": 200,
+    "before": 292508,
+    "after": 291468,
+    "delta": -1040
+  },
+  {
+    "route": "/search",
+    "status": 200,
+    "before": 287481,
+    "after": 286530,
+    "delta": -951
+  },
+  {
+    "route": "/trips",
+    "status": 200,
+    "before": 279176,
+    "after": 277931,
+    "delta": -1245
+  }
+]
