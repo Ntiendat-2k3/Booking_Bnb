@@ -160,7 +160,7 @@ test("Dữ liệu gọn giữ nguyên card, popup, giá, ảnh và tọa độ; 
     "@/components/atoms/IconButton": "IconButton",
   };
   const load = createLoader(mocks);
-  const Card = load("components/ListingCard.jsx").default;
+  const Card = load("components/ListingCard.jsx").default.type;
   const Popup = load("components/Search/MapPopupCard.jsx").default;
   const lean = getListingCardData(listing);
   for (const Component of [Card, Popup]) assert.deepEqual(snapshot(Component({ listing })), snapshot(Component({ listing: lean })));
@@ -382,7 +382,7 @@ test("Card giữ đủ hai ngày từ tìm kiếm đến trang chi tiết", () =
   const Card = createLoader({
     "next/image": "Image", "next/link": "Link", "@/components/FavoriteButton": "FavoriteButton",
     "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn", t }) },
-  })("components/ListingCard.jsx").default;
+  })("components/ListingCard.jsx").default.type;
   const links = elements(Card({ listing, checkIn: "2030-10-01", checkOut: "2030-10-03" })).filter((node) => node.type === "Link");
   assert.equal(links.length, 2);
   for (const link of links) {
@@ -393,19 +393,21 @@ test("Card giữ đủ hai ngày từ tìm kiếm đến trang chi tiết", () =
 });
 
 test("Nút yêu thích dùng chung giữ kiểm tra phiên, đồng bộ trạng thái và báo lỗi", async () => {
+  const harness = hookHarness();
   let auth = { isInitialized: false, user: null };
   const favoriteIds = new Set([listing.id]);
   const requests = [], pushes = [], notices = [];
   let response = { ok: true, favorited: false };
   const FavoriteButton = createLoader({
+    react: harness.hooks,
     "next/navigation": { useRouter: () => ({ push: (url) => pushes.push(url) }) },
     "react-redux": { useSelector: (selector) => selector({ auth }), useDispatch: () => async (request) => { requests.push(request); return response; } },
-    "@/store/selectors": { selectAuthUser: (state) => state.auth.user, selectFavoriteIdsSet: () => favoriteIds },
+    "@/store/selectors": { selectAuthUser: (state) => state.auth.user, selectIsFavorite: (id) => () => favoriteIds.has(id) },
     "@/store/favoritesThunks": { toggleFavorite: (id) => id },
     "@/lib/notify": { notifyError: (message) => notices.push(message), notifySuccess: (message) => notices.push(message) },
     "@/i18n/LocaleProvider": { useTranslations: () => t }, "@/components/atoms/IconButton": "IconButton",
   })("components/FavoriteButton.jsx").default;
-  const render = () => FavoriteButton({ listingId: listing.id });
+  const render = () => harness.render(() => FavoriteButton({ listingId: listing.id }));
   assert.equal(render().props.disabled, true);
   await render().props.onClick();
   assert.equal(requests.length, 0);
@@ -421,6 +423,27 @@ test("Nút yêu thích dùng chung giữ kiểm tra phiên, đồng bộ trạng
   response = { ok: false, message: "Không thể lưu" };
   await render().props.onClick();
   assert.equal(notices.at(-1), response.message);
+  let finish;
+  response = new Promise((resolve) => { finish = resolve; });
+  const failed = render().props.onClick();
+  assert.equal(render().props["aria-pressed"], false);
+  assert.equal(render().props["aria-busy"], true);
+  assert.equal(render().props.disabled, true);
+  const requestCount = requests.length;
+  await render().props.onClick();
+  assert.equal(requests.length, requestCount);
+  finish({ ok: false, message: "Thử lại" });
+  await failed;
+  assert.equal(render().props["aria-pressed"], true);
+  assert.equal(render().props.disabled, false);
+  response = new Promise((resolve) => { finish = resolve; });
+  const succeeded = render().props.onClick();
+  assert.equal(render().props["aria-pressed"], false);
+  favoriteIds.delete(listing.id);
+  finish({ ok: true, favorited: false });
+  await succeeded;
+  assert.equal(render().props["aria-pressed"], false);
+  assert.equal(render().props["aria-busy"], false);
 });
 
 test("Đánh giá đã gửi thu gọn thành nhận xét và chỉ mở form khi chỉnh sửa", async () => {
@@ -1037,8 +1060,10 @@ test("Card và bản đồ đồng bộ hover, chọn phòng mà vẫn giữ lin
   }, { window: { matchMedia: () => ({ matches: compact }) } })("components/Search/SearchResultsLayout.jsx").default;
   const render = () => elements(harness.render(() => Layout({ items: [listing] })));
   let nodes = render();
+  const selectCard = nodes.find((node) => node.type === "ListingCard").props.onMapSelect;
   nodes.find((node) => node.type === "ListingCard").props.onMapHover(listing.id);
   nodes = render();
+  assert.equal(nodes.find((node) => node.type === "ListingCard").props.onMapSelect, selectCard);
   assert.equal(nodes.find((node) => node.type === "SearchMapPanel").props.hoveredId, listing.id);
   nodes.find((node) => node.type === "SearchMapPanel").props.onMarkerSelect(listing.id);
   nodes = render();

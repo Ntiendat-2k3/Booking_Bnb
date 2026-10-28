@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight, MapPin, MapTrifold, Star } from "@phosphor-icons/react";
@@ -8,7 +9,7 @@ import { formatVND } from "@/lib/format";
 import { useLocale } from "@/i18n/LocaleProvider";
 import FavoriteButton from "@/components/FavoriteButton";
 
-export default function ListingCard({ listing, priority = false, sizes, checkIn, checkOut, featured = false, mapSelectable = false, mapHighlighted = false, onMapHover, onMapSelect }) {
+function ListingCard({ listing, priority = false, sizes, checkIn, checkOut, featured = false, mapSelectable = false, mapHighlighted = false, onMapHover, onMapSelect }) {
   const id = listing?.id || listing?.listing_id || listing?.uuid || null;
   const dates = new URLSearchParams({ ...(checkIn ? { check_in: checkIn } : {}), ...(checkOut ? { check_out: checkOut } : {}) });
   const roomHref = id ? `/rooms/${id}${dates.size ? `?${dates}` : ""}` : "#";
@@ -101,3 +102,5 @@ export default function ListingCard({ listing, priority = false, sizes, checkIn,
     </article>
   );
 }
+
+export default memo(ListingCard);
