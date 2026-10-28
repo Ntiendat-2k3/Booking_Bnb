@@ -10,7 +10,7 @@ import { useInViewport } from "@/hooks/useInViewport";
 import { getSearchMapColors, getSearchMapLightPreset, getSearchMapStyle } from "./searchMapStyle";
 import { canUseMobileBuildings, getSearchMapCameraProfile, getSearchMapFitPadding, getSearchMapFocusOffset } from "./searchMapCamera";
 import styles from "./SearchResultsMap.module.css";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { loadMapbox } from "@/lib/loadMapbox";
 
 const DEFAULT_CENTER = { lng: 106.700987, lat: 10.776889 };
 
@@ -138,7 +138,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng, cityCen
     let cancelled = false;
 
     (async () => {
-      const mapboxgl = (await import("mapbox-gl")).default;
+      const mapboxgl = await loadMapbox();
       if (cancelled || !containerRef.current) return;
       mapboxgl.accessToken = token;
 
@@ -335,7 +335,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng, cityCen
     }
 
     (async () => {
-      const mapboxgl = (await import("mapbox-gl")).default;
+      const mapboxgl = await loadMapbox();
       if (cancelled || mapRef.current !== map) return;
       const el = document.createElement("div");
       el.className = styles.userMarker;
@@ -362,7 +362,7 @@ export default function SearchResultsMap({ items = [], userLat, userLng, cityCen
     clearMarkers();
 
     (async () => {
-      const mapboxgl = (await import("mapbox-gl")).default;
+      const mapboxgl = await loadMapbox();
       if (cancelled || mapRef.current !== map) return;
       points.forEach((it) => {
         const id = it?.id || it?.listing_id || it?.uuid;

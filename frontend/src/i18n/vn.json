@@ -899,6 +899,7 @@
     "loadFailed": "Không tải được danh sách yêu thích"
   },
   "calendar": {
+    "weekdays": { "0": "T2", "1": "T3", "2": "T4", "3": "T5", "4": "T6", "5": "T7", "6": "CN" },
       "title": "Lịch phòng",
     "description": "Xem ngày có khách, ngày còn trống và chủ động khóa lịch từng phòng.",
     "manageListings": "Quản lý chỗ ở",
@@ -1411,6 +1412,68 @@
       "AbortError": "Không thể khởi động thiết bị media.", "SecurityError": "Trình duyệt đã chặn quyền media.",
       "TypeError": "Không thể mở thiết bị media.", "signaling": "Không thể trao đổi kết nối cuộc gọi.",
       "media": "Không thể mở camera hoặc micro.", "autoplay": "Trình duyệt đã chặn âm thanh. Nhấn bật âm thanh để tiếp tục."
+    }
+  },
+  "aiSearch": {
+    "title": "Tìm phòng bằng hội thoại",
+    "askTitle": "Hỏi Ballerina AI",
+    "description": "Mô tả nơi ở, số khách, ngân sách, tiện nghi và ngày đi. Giá cùng lịch trống được kiểm tra từ dữ liệu phòng.",
+    "standardSearch": "Tìm kiếm thông thường",
+    "conversation": "Hội thoại tìm phòng",
+    "recommended": "Phòng đề xuất",
+    "suggested": "Phòng phù hợp",
+    "addDates": "Thêm ngày nhận và trả phòng để kiểm tra lịch trống và giá kỳ ở.",
+    "unverifiedDistance": "Một số khoảng cách đến tâm địa danh trên bản đồ chưa được xác minh; hãy xem vị trí trên trang phòng.",
+    "unmatchedAmenities": "Không tìm thấy tiện nghi: {amenities}",
+    "limitedResults": "Đề xuất được xếp từ một tập phòng ban đầu. Hãy mô tả cụ thể hơn để thu hẹp kết quả.",
+    "why": "Vì sao phù hợp",
+    "empty": "Chưa có phòng phù hợp. Hãy thử đổi thành phố, ngân sách hoặc tiện nghi.",
+    "seeAll": "Xem tất cả {count} phòng",
+    "tryExample": "Ví dụ: ",
+    "example": "Tìm homestay ở Đà Lạt cho 4 người, dưới 1,5 triệu/đêm, có bếp và gần trung tâm",
+    "messageLabel": "Mô tả phòng bạn muốn tìm",
+    "placeholder": "Tìm homestay ở Đà Lạt cho 4 người...",
+    "search": "Tìm phòng",
+    "speak": "Nói yêu cầu tìm phòng",
+    "stopVoice": "Dừng nhập giọng nói",
+    "listening": "Đang nghe… Nhấn micro lần nữa để dừng. Trình duyệt có thể gửi âm thanh tới dịch vụ nhận dạng giọng nói.",
+    "assistantLabel": "Trợ lý AI tìm phòng",
+    "fullPage": "Trang tìm kiếm đầy đủ",
+    "closeAssistant": "Đóng trợ lý",
+    "dragHint": "Giữ và kéo để di chuyển; dùng phím mũi tên khi đang chọn",
+    "ask": "Hỏi AI",
+    "openSearch": "Ballerina AI, mở tìm phòng",
+    "closeSearch": "Ballerina AI, đóng tìm phòng",
+    "failed": "Không thể tìm phòng lúc này. Vui lòng thử lại.",
+    "reasons": {
+      "city": "Ở {value}",
+      "guests": "Tối đa {value} khách",
+      "amenity": "Có {value}",
+      "distance": "Khoảng {value} km đến tâm địa danh trên bản đồ",
+      "rating": "Đánh giá {value}"
+    },
+    "speechErrors": {
+      "unsupported": "Trình duyệt này chưa hỗ trợ nhập giọng nói. Vui lòng gõ yêu cầu.",
+      "not-allowed": "Hãy cho phép truy cập micro để nhập giọng nói.",
+      "service-not-allowed": "Trình duyệt đang chặn nhận dạng giọng nói.",
+      "audio-capture": "Không tìm thấy micro khả dụng.",
+      "no-speech": "Không nghe thấy giọng nói. Vui lòng thử lại.",
+      "network": "Nhận dạng giọng nói cần kết nối mạng.",
+      "failed": "Không thể nhận dạng giọng nói. Vui lòng thử lại.",
+      "start": "Không thể mở micro. Vui lòng thử lại."
+    },
+    "reply": {
+      "greeting": "Chào bạn 👋 Mình giúp tìm chỗ ở theo thành phố, số khách, ngân sách, tiện nghi và ngày đi. Bạn định đến đâu?",
+      "help": "Bạn có thể nhờ mình tìm phòng rồi nhắn tiếp để đổi thành phố, ngân sách, tiện nghi hoặc ngày đi. Ví dụ: “Tìm phòng ở Hà Nội cho 2 người dưới 600 nghìn/đêm”.",
+      "clarify_budget": "Mình chưa rõ “{amount}” là bao nhiêu đồng mỗi đêm. Bạn cho mình thêm đơn vị nhé, ví dụ “{amount} nghìn/đêm”.",
+      "needs_details": "Bạn kể mình thêm nơi muốn đến, số khách hoặc ngân sách mỗi đêm nhé. Mình sẽ tìm phòng phù hợp cho bạn.",
+      "where": " ở {city}",
+      "budget": " dưới {price}đ/đêm",
+      "empty": "Mình chưa thấy phòng{where}{budget} trong dữ liệu hiện có. Bạn muốn thử tăng ngân sách hoặc đổi khu vực không?",
+      "one": "Mình gợi ý {count} phòng{where}{budget}. {nextStep}",
+      "many": "Mình gợi ý {count} phòng{where}{budget}. {nextStep}",
+      "book": "Bạn mở phòng ưng ý để xem chi tiết và đặt nhé.",
+      "dates": "Cho mình ngày nhận và trả phòng để kiểm tra lịch trống cùng giá kỳ ở nhé."
     }
   },
   "carousel": {

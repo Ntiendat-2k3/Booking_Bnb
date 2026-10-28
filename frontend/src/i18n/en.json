@@ -899,6 +899,7 @@
     "loadFailed": "Could not load favorites"
   },
   "calendar": {
+    "weekdays": { "0": "Mon", "1": "Tue", "2": "Wed", "3": "Thu", "4": "Fri", "5": "Sat", "6": "Sun" },
       "title": "Room calendar",
     "description": "See booked and available nights, and block dates for each stay.",
     "manageListings": "Manage listings",
@@ -1411,6 +1412,68 @@
       "AbortError": "Could not start the media device.", "SecurityError": "The browser blocked media access.",
       "TypeError": "Could not open the media device.", "signaling": "Could not exchange call connection details.",
       "media": "Could not open the camera or microphone.", "autoplay": "Your browser blocked call audio. Enable audio to continue."
+    }
+  },
+  "aiSearch": {
+    "title": "Find a place by chatting",
+    "askTitle": "Ask Ballerina AI",
+    "description": "Describe where, when and what you need. Prices and availability come from current listings.",
+    "standardSearch": "Standard search",
+    "conversation": "Search conversation",
+    "recommended": "Recommended places",
+    "suggested": "Suggested places",
+    "addDates": "Add check-in and check-out dates to verify availability and stay prices.",
+    "unverifiedDistance": "Some distances to the mapped city center could not be verified.",
+    "unmatchedAmenities": "Amenities not found: {amenities}",
+    "limitedResults": "Suggestions are ranked from an initial set of listings. Refine your request for a narrower search.",
+    "why": "Why this place",
+    "empty": "No matching places. Try changing your city, budget or amenities.",
+    "seeAll": "See all {count} places",
+    "tryExample": "Try: ",
+    "example": "Find a homestay in Da Lat for 4 people, under 1.5 million VND per night, with a kitchen and near the center",
+    "messageLabel": "Describe your stay",
+    "placeholder": "I need a place in Da Lat for four...",
+    "search": "Search",
+    "speak": "Speak your request",
+    "stopVoice": "Stop voice input",
+    "listening": "Listening… Tap the microphone again to stop. Your browser may send audio to its speech service.",
+    "assistantLabel": "AI room search assistant",
+    "fullPage": "Full search page",
+    "closeAssistant": "Close assistant",
+    "dragHint": "Drag to move; use arrow keys when focused",
+    "ask": "Ask AI",
+    "openSearch": "Ballerina AI assistant, open room search",
+    "closeSearch": "Ballerina AI assistant, close room search",
+    "failed": "Search failed. Please try again.",
+    "reasons": {
+      "city": "In {value}",
+      "guests": "Up to {value} guests",
+      "amenity": "Amenity: {value}",
+      "distance": "About {value} km from the mapped city center",
+      "rating": "Rating {value}"
+    },
+    "speechErrors": {
+      "unsupported": "Voice input is not supported by this browser. Please type your request.",
+      "not-allowed": "Allow microphone access to use voice input.",
+      "service-not-allowed": "Voice recognition is blocked in this browser.",
+      "audio-capture": "No microphone is available.",
+      "no-speech": "No speech was detected. Please try again.",
+      "network": "Voice recognition needs a network connection.",
+      "failed": "Could not recognize speech. Please try again.",
+      "start": "Could not start the microphone. Please try again."
+    },
+    "reply": {
+      "greeting": "Hi! I can help you find a place by city, guests, budget, amenities and travel dates. Where are you headed?",
+      "help": "You can ask me to find a place, then refine the city, budget, amenities or dates in your next message. For example: a place in Hanoi for two under 600,000 VND a night.",
+      "clarify_budget": "When you say “{amount}”, what currency amount per night do you mean? For example, “{amount} thousand VND per night”.",
+      "needs_details": "Tell me a little about your stay, such as the city, number of guests or nightly budget, and I'll look for suitable places.",
+      "where": " in {city}",
+      "budget": " under {price} VND/night",
+      "empty": "I couldn't find a place{where}{budget} in the current listings. Would you like to try a higher budget or a different area?",
+      "one": "I found {count} place{where}{budget}. {nextStep}",
+      "many": "I found {count} places{where}{budget}. {nextStep}",
+      "book": "Open a place to see details and book.",
+      "dates": "Share your check-in and check-out dates so I can verify availability and stay prices."
     }
   },
   "carousel": {

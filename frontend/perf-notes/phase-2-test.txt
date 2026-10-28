@@ -1,0 +1,52 @@
+
+> airbnb-frontend-user@1.0.0 test
+> node --test tests/*.test.mjs
+
+(node:6516) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///F:/Code/Project/Mix/Booking-bnb/frontend/src/lib/api.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\F:\Code\Project\Mix\Booking-bnb\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ API ưu tiên CSRF cookie mới hơn token cũ trong bộ nhớ (7.8559ms)
+✔ API làm mới CSRF khi bị từ chối rồi thử lại thao tác liên hệ một lần (2.2003ms)
+✔ API cập nhật CSRF trên yêu cầu gốc sau khi làm mới phiên đăng nhập (1.566ms)
+✔ API dừng sau một lần thử lại nếu CSRF vẫn bị từ chối (2.5838ms)
+(node:15656) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///F:/Code/Project/Mix/Booking-bnb/frontend/src/lib/authValidation.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\F:\Code\Project\Mix\Booking-bnb\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Định dạng email, username và tên khớp giới hạn đăng ký (1.9436ms)
+✔ Đăng nhập nhận username hoặc email và không áp quy tắc mật khẩu mới (0.5353ms)
+✔ Mật khẩu mới kiểm tra số ký tự, byte UTF-8 và xác nhận (0.6607ms)
+✔ Lỗi Joi chỉ dùng tên field đã cho phép, không hiện thông điệp thô (2.4249ms)
+✔ Lỗi trùng email hoặc tên đăng nhập được gắn đúng trường đăng ký (0.6899ms)
+✔ Chỉ lỗi sai định danh hoặc mật khẩu dùng thông báo đăng nhập chung (0.2156ms)
+✔ Call terminal không bị event cũ hồi sinh sau reconnect (3.4729ms)
+✔ Call mới hơn thay call cũ dù event terminal đã thất lạc (0.5303ms)
+✔ Revision server giữ state mới khi hai chuyển trạng thái cùng mili giây (0.4359ms)
+✔ Nhãn online và offline có bản dịch cho cả hai ngôn ngữ (8.0017ms)
+✔ Phản hồi HTTP và socket cho cùng khóa retry chỉ hiện một tin (1.6097ms)
+✔ Tin của hai người có khóa khác nhau vẫn được giữ (0.3638ms)
+✔ Tin realtime đến lệch thứ tự và trang cũ tải trùng vẫn giữ sequence tăng dần (0.3269ms)
+✔ Retry đến sau response không biến tin đã lưu thành pending (0.2151ms)
+✔ Đăng nhập quay lại phòng dự định mà không nhận đường dẫn bên ngoài (0.5086ms)
+(node:10284) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///F:/Code/Project/Mix/Booking-bnb/frontend/src/i18n/translate.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to \\?\F:\Code\Project\Mix\Booking-bnb\frontend\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ Next Image tạo srcset theo sizes bằng CDN và không gọi bộ chuyển đổi ảnh Vercel (2.95ms)
+✔ Ảnh CDN có chiều rộng responsive, giữ tham số và không thay URL ký số/nguồn riêng tư (0.452ms)
+✔ Hai từ điển có cùng khóa và biến nội suy để chuyển ngôn ngữ không mất nội dung (44.8138ms)
+✔ Lời đáp AI dịch đủ ý định, số ít/nhiều, ngân sách và bước tiếp theo theo ngôn ngữ hiện tại (21.4129ms)
+✔ Form tạo/sửa phòng dùng cùng danh sách trường, giữ số 0 và không gửi dữ liệu chỉ đọc (0.4449ms)
+✔ Lịch giữ ngày trả phòng, loại ngày cuối của khoảng khóa và ưu tiên phòng đã đặt (0.2885ms)
+✔ Khoảng lịch tháng/tuần/danh sách giữ tuần bắt đầu thứ Hai và mốc cuối loại trừ (1.9641ms)
+✔ Điều hướng thông báo theo tài nguyên và fallback chỗ nghỉ cũ (1.5205ms)
+✔ Thời gian tương đối hiển thị theo ngôn ngữ (47.1042ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2021.6365

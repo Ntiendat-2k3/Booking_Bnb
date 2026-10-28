@@ -101,6 +101,35 @@ const { getListingCardData } = dataLoader("lib/listings.js");
 const { getDictionary, createTranslator, translate } = dataLoader("i18n/config.js");
 const constants = dataLoader("lib/constants.js");
 const t = createTranslator("vn");
+
+test("Overlay cuộc gọi chỉ được nạp khi có cuộc gọi và vẫn giữ trạng thái kết thúc đến lúc đóng", () => {
+  const harness = hookHarness();
+  let listener;
+  const Provider = createLoader({
+    react: harness.hooks,
+    "next/dynamic": () => "LazyCallOverlay",
+    "react-redux": { useSelector: (selector) => selector({ auth: { user: { id: "user-1" } } }) },
+    "../api/chatApi": { chatApi: {} },
+    "./useChatSocket": { useChatSocket: (_, callback) => { listener = callback; } },
+    "./useWebRTCCall": { useWebRTCCall: () => ({}) },
+    "../utils/chatSounds": {},
+  }, { crypto: { randomUUID: () => "instance-1" } })("features/chat/hooks/useCallSession.js").CallSessionProvider;
+  const render = () => harness.render(() => Provider({ children: "Nội dung trang" }));
+  let tree = render();
+  assert.equal(tree.props.children[0], "Nội dung trang");
+  assert(!elements(tree).some((node) => node.type === "LazyCallOverlay"));
+  const call = { id: "call-1", caller_id: "user-2", callee_id: "user-1", status: "ringing", revision: 1 };
+  listener("call:state", call);
+  tree = render();
+  assert.equal(elements(tree).find((node) => node.type === "LazyCallOverlay").props.session.call, call);
+  listener("call:state", { ...call, status: "ended", revision: 2 });
+  tree = render();
+  const overlay = elements(tree).find((node) => node.type === "LazyCallOverlay");
+  assert.equal(overlay.props.session.call.status, "ended");
+  overlay.props.session.dismiss();
+  assert(!elements(render()).some((node) => node.type === "LazyCallOverlay"));
+});
+
 const listing = {
   id: "room-1", title: "Chỗ ở kiểm thử", city: "Hà Nội", country: "Việt Nam",
   price_per_night: 980000, avg_rating: "4.8", review_count: 14, distance_km: 0,
@@ -131,7 +160,7 @@ test("Dữ liệu gọn giữ nguyên card, popup, giá, ảnh và tọa độ; 
     "@/components/atoms/IconButton": "IconButton",
   };
   const load = createLoader(mocks);
-  const Card = load("components/ListingCard.jsx").default;
+  const Card = load("components/ListingCard.jsx").default.type;
   const Popup = load("components/Search/MapPopupCard.jsx").default;
   const lean = getListingCardData(listing);
   for (const Component of [Card, Popup]) assert.deepEqual(snapshot(Component({ listing })), snapshot(Component({ listing: lean })));
@@ -353,7 +382,7 @@ test("Card giữ đủ hai ngày từ tìm kiếm đến trang chi tiết", () =
   const Card = createLoader({
     "next/image": "Image", "next/link": "Link", "@/components/FavoriteButton": "FavoriteButton",
     "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn", t }) },
-  })("components/ListingCard.jsx").default;
+  })("components/ListingCard.jsx").default.type;
   const links = elements(Card({ listing, checkIn: "2030-10-01", checkOut: "2030-10-03" })).filter((node) => node.type === "Link");
   assert.equal(links.length, 2);
   for (const link of links) {
@@ -364,19 +393,21 @@ test("Card giữ đủ hai ngày từ tìm kiếm đến trang chi tiết", () =
 });
 
 test("Nút yêu thích dùng chung giữ kiểm tra phiên, đồng bộ trạng thái và báo lỗi", async () => {
+  const harness = hookHarness();
   let auth = { isInitialized: false, user: null };
   const favoriteIds = new Set([listing.id]);
   const requests = [], pushes = [], notices = [];
   let response = { ok: true, favorited: false };
   const FavoriteButton = createLoader({
+    react: harness.hooks,
     "next/navigation": { useRouter: () => ({ push: (url) => pushes.push(url) }) },
     "react-redux": { useSelector: (selector) => selector({ auth }), useDispatch: () => async (request) => { requests.push(request); return response; } },
-    "@/store/selectors": { selectAuthUser: (state) => state.auth.user, selectFavoriteIdsSet: () => favoriteIds },
+    "@/store/selectors": { selectAuthUser: (state) => state.auth.user, selectIsFavorite: (id) => () => favoriteIds.has(id) },
     "@/store/favoritesThunks": { toggleFavorite: (id) => id },
     "@/lib/notify": { notifyError: (message) => notices.push(message), notifySuccess: (message) => notices.push(message) },
     "@/i18n/LocaleProvider": { useTranslations: () => t }, "@/components/atoms/IconButton": "IconButton",
   })("components/FavoriteButton.jsx").default;
-  const render = () => FavoriteButton({ listingId: listing.id });
+  const render = () => harness.render(() => FavoriteButton({ listingId: listing.id }));
   assert.equal(render().props.disabled, true);
   await render().props.onClick();
   assert.equal(requests.length, 0);
@@ -392,6 +423,27 @@ test("Nút yêu thích dùng chung giữ kiểm tra phiên, đồng bộ trạng
   response = { ok: false, message: "Không thể lưu" };
   await render().props.onClick();
   assert.equal(notices.at(-1), response.message);
+  let finish;
+  response = new Promise((resolve) => { finish = resolve; });
+  const failed = render().props.onClick();
+  assert.equal(render().props["aria-pressed"], false);
+  assert.equal(render().props["aria-busy"], true);
+  assert.equal(render().props.disabled, true);
+  const requestCount = requests.length;
+  await render().props.onClick();
+  assert.equal(requests.length, requestCount);
+  finish({ ok: false, message: "Thử lại" });
+  await failed;
+  assert.equal(render().props["aria-pressed"], true);
+  assert.equal(render().props.disabled, false);
+  response = new Promise((resolve) => { finish = resolve; });
+  const succeeded = render().props.onClick();
+  assert.equal(render().props["aria-pressed"], false);
+  favoriteIds.delete(listing.id);
+  finish({ ok: true, favorited: false });
+  await succeeded;
+  assert.equal(render().props["aria-pressed"], false);
+  assert.equal(render().props["aria-busy"], false);
 });
 
 test("Đánh giá đã gửi thu gọn thành nhận xét và chỉ mở form khi chỉnh sửa", async () => {
@@ -452,25 +504,33 @@ test("Đánh giá đã gửi thu gọn thành nhận xét và chỉ mở form kh
 test("Khoảng ngày lịch dùng chung giữ ngày đặt phòng và tính số đêm", async () => {
   const harness = hookHarness();
   const bookings = [], pushes = [];
+  const quote = { nights: [{ date: "2030-10-01", price_per_night: 980000 }, { date: "2030-10-02", price_per_night: 1200000 }], subtotal: 2180000, total: 2180000 };
   const Booking = createLoader({
     react: harness.hooks,
     "next/navigation": { useRouter: () => ({ push: (url) => pushes.push(url) }) },
     "react-redux": { useSelector: (selector) => selector({ auth: { user: { id: "guest" }, isInitialized: true } }) },
     "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn", t }) },
-    "@/services/bookingService": { createBooking: async (payload) => { bookings.push(payload); return { id: "booking" }; } },
+    "@/services/bookingService": {
+      createBooking: async (payload) => { bookings.push(payload); return { id: "booking" }; },
+      getListingAvailability: async () => [],
+      getListingQuote: async () => quote,
+    },
+    "@/components/Booking/PriceBreakdown": "PriceBreakdown",
     "@/lib/notify": { notifyError: (message) => assert.fail(message), notifyInfo: (message) => assert.fail(message) },
     "@/components/molecules/DateField": "DateField", "@/components/atoms/InputField": "InputField", "@/components/atoms/Button": "Button",
     "next/link": "Link",
-  })("components/Booking/BookingCard.jsx").default;
+  }, { AbortController })("components/Booking/BookingCard.jsx").default;
   const render = () => harness.render(() => Booking({ listing: { ...listing, max_guests: 4 }, initialCheckIn: "2030-10-01" }));
   const dates = elements(render()).find((node) => node.type === "DateField");
+  harness.flush(); await tick();
   assert.equal(dates.props.selectsRange, true);
   dates.props.onChange([new Date(2030, 9, 1), new Date(2030, 9, 3)]);
+  render(); harness.flush(); await tick();
   const nodes = elements(render());
-  const { formatVND } = dataLoader("lib/format.js");
-  assert(nodes.some((node) => node.props?.children === t("booking.nightsPrice", { price: formatVND(listing.price_per_night, "vi-VN"), count: 2 })));
+  assert.deepEqual(plain(nodes.find((node) => node.type === "PriceBreakdown").props.quote), quote);
+  assert.equal(nodes.find((node) => node.type === "Button").props.disabled, false);
   await nodes.find((node) => node.type === "Button").props.onClick();
-  assert.deepEqual(plain(bookings), [{ listing_id: listing.id, check_in: "2030-10-01", check_out: "2030-10-03", guests_count: 1 }]);
+  assert.deepEqual(plain(bookings), [{ listing_id: listing.id, check_in: "2030-10-01", check_out: "2030-10-03", guests_count: 1, expected_total: quote.total }]);
   assert.deepEqual(pushes, ["/checkout/booking"]);
 });
 
@@ -483,12 +543,17 @@ test("Lịch đặt phòng mobile nhận khoảng ngày URL và chặn ngày tr�
       "next/navigation": { useRouter: () => ({ push() {} }) },
       "react-redux": { useSelector: (selector) => selector({ auth: { user: { id: "guest" }, isInitialized: true } }) },
       "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn", t }) },
-      "@/services/bookingService": { createBooking: async (payload) => { bookings.push(payload); return { id: "booking" }; } },
+      "@/services/bookingService": {
+        createBooking: async (payload) => { bookings.push(payload); return { id: "booking" }; },
+        getListingAvailability: async () => [],
+        getListingQuote: async () => ({ total: 1960000 }),
+      },
       "@/lib/notify": { notifyError: (message) => errors.push(message) },
       "@/components/molecules/DateField": "DateField", "@/components/atoms/InputField": "InputField", "@/components/atoms/Button": "Button", "next/link": "Link",
-    })("components/Booking/BookingCard.jsx").default;
+    }, { AbortController })("components/Booking/BookingCard.jsx").default;
     const render = () => harness.render(() => Booking({ listing: { ...listing, max_guests: 4 }, initialCheckIn: "2030-10-01", initialCheckOut }));
     const nodes = () => elements(render());
+    render(); harness.flush(); await tick();
     await nodes().find((node) => node.type === "Button").props.onClick();
     if (initialCheckOut === "2030-10-03") {
       assert.equal(bookings[0].check_out, initialCheckOut);
@@ -499,6 +564,407 @@ test("Lịch đặt phòng mobile nhận khoảng ngày URL và chặn ngày tr�
     } else assert.equal(bookings.length, 0);
     assert.equal(errors.at(-1), t("booking.datesRequired"));
   }
+});
+
+test("Form phòng dùng chung giữ cập nhật địa chỉ, chọn tiện nghi bất biến và nạp lại phòng khác", () => {
+  const harness = hookHarness();
+  const { useListingForm } = createLoader({ react: harness.hooks })("features/hostListings/hooks/useListingForm.js");
+  const form = () => harness.render(() => useListingForm());
+  form().setField("title", "Room");
+  form().setForm((previous) => ({ ...previous, address: "Address", lat: 0, lng: 0 }));
+  assert.equal(form().form.title, "Room");
+  assert.equal(form().form.lat, 0);
+  const previous = form().picked;
+  form().toggleAmenity("wifi");
+  assert.equal(previous.size, 0);
+  assert(form().picked.has("wifi"));
+  form().toggleAmenity("wifi");
+  assert.equal(form().picked.size, 0);
+  form().resetForm({ title: "Other room", amenities: [{ id: "kitchen" }] });
+  assert.equal(form().form.title, "Other room");
+  assert.equal(form().form.address, "");
+  assert.deepEqual([...form().picked], ["kitchen"]);
+});
+
+test("Chi tiết chuyến đi chỉ được tải khi mở và được đóng cùng trạng thái hỗ trợ truy cập", () => {
+  const harness = hookHarness();
+  const TripCard = createLoader({
+    react: harness.hooks, "next/image": "Image", "next/dynamic": () => "TripBookingDetails",
+    "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn", t }) },
+    "@/components/atoms/Badge": "Badge", "@/components/atoms/Button": "Button",
+  })("features/trips/TripCard.jsx").default;
+  const booking = { id: "trip", listing, status: "confirmed", check_in: "2030-10-01", check_out: "2030-10-03" };
+  const render = () => elements(harness.render(() => TripCard({ booking, booker: { full_name: "Guest" }, busy: {} })));
+  let nodes = render();
+  assert(!nodes.some((node) => node.type === "TripBookingDetails"));
+  const toggle = () => render().find((node) => node.props?.["aria-controls"] === "trip-details-trip");
+  assert.equal(toggle().props["aria-expanded"], false);
+  toggle().props.onClick();
+  nodes = render();
+  assert.equal(nodes.find((node) => node.type === "TripBookingDetails").props.booking, booking);
+  assert.equal(toggle().props["aria-expanded"], true);
+  toggle().props.onClick();
+  assert(!render().some((node) => node.type === "TripBookingDetails"));
+});
+
+test("Ba chế độ lịch giữ cùng trạng thái, giá và sự kiện chọn ngày; không lọc lại khi đổi lựa chọn", () => {
+  const harness = hookHarness();
+  let filters = 0;
+  const bookings = [{ id: "b", renter_name: "Guest", check_in: "2030-10-01", check_out: "2030-10-02", status: "confirmed" }];
+  const originalFilter = bookings.filter;
+  bookings.filter = function (...args) { filters++; return originalFilter.apply(this, args); };
+  const selected = [];
+  const Calendar = createLoader({ react: harness.hooks,
+    "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "en", t: createTranslator("en") }) },
+  })("features/hostListings/components/HostCalendarDays.jsx").default;
+  const props = { calendar: { bookings, pricing: { days: [{ date: "2030-10-01", price_per_night: 1200000 }] } },
+    range: { start: new Date(2030, 9, 1), end: new Date(2030, 9, 3) }, anchor: new Date(2030, 9, 1),
+    today: "2030-10-01", selectedDate: "2030-10-01", onSelect: (date) => selected.push(date) };
+  for (const view of ["month", "week", "list"]) {
+    const nodes = elements(harness.render(() => Calendar({ ...props, view })));
+    const buttons = nodes.filter((node) => node.type === "button");
+    assert.equal(buttons.length, 2);
+    assert.equal(buttons[0].props["aria-pressed"], true);
+    buttons[1].props.onClick();
+    assert(nodes.some((node) => String(node.props?.children).includes("1,200,000")));
+  }
+  assert.deepEqual(selected, ["2030-10-02", "2030-10-02", "2030-10-02"]);
+  assert.equal(filters, 2);
+  harness.render(() => Calendar({ ...props, view: "month", selectedDate: "2030-10-02" }));
+  assert.equal(filters, 2);
+});
+
+test("Camera QR dừng khi rời màn hình, kể cả khi quyền truy cập trả về muộn", async () => {
+  for (const delayed of [false, true]) {
+    const harness = hookHarness();
+    let resolveMedia, stopped = 0, started = 0, frames = 0;
+    const stream = { getTracks: () => [{ stop: () => stopped++ }] };
+    const Scanner = createLoader({
+      react: harness.hooks, "@/components/atoms/Button": "Button",
+      "@/i18n/LocaleProvider": { useTranslations: () => t }, jsqr: () => null,
+    }, { isSecureContext: true,
+      navigator: { mediaDevices: { getUserMedia: () => delayed ? new Promise((resolve) => { resolveMedia = resolve; }) : Promise.resolve(stream) } },
+      requestAnimationFrame: () => ++frames, cancelAnimationFrame() {},
+    })("features/hostStays/StayQrScanner.jsx").default;
+    const render = () => elements(harness.render(() => Scanner({ onStart: () => started++, onScan: () => assert.fail("Chưa quét QR") })));
+    const nodes = render();
+    nodes.find((node) => node.type === "video").ref.current = { play: async () => {}, srcObject: null };
+    harness.flush();
+    nodes.find((node) => node.type === "Button").props.onClick();
+    await tick();
+    if (!delayed) assert.equal(frames, 1);
+    harness.unmount();
+    if (delayed) { resolveMedia(stream); await tick(); assert.equal(frames, 0); }
+    assert.equal(stopped, 1);
+    assert.equal(started, 1);
+  }
+});
+
+test("Camera QR chỉ chuyển token hợp lệ và dừng luồng trước khi xử lý booking", async () => {
+  for (const token of ["A".repeat(43), "https://untrusted.example/qr"]) {
+    const harness = hookHarness();
+    let frame, stopped = 0;
+    const scanned = [];
+    const Scanner = createLoader({
+      react: harness.hooks, "@/components/atoms/Button": "Button",
+      "@/i18n/LocaleProvider": { useTranslations: () => t }, jsqr: () => ({ data: token }),
+    }, { isSecureContext: true,
+      navigator: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop: () => stopped++ }] }) } },
+      requestAnimationFrame: (callback) => { frame = callback; return 1; }, cancelAnimationFrame() {},
+    })("features/hostStays/StayQrScanner.jsx").default;
+    const render = () => elements(harness.render(() => Scanner({ onStart() {}, onScan: (value) => {
+      assert.equal(stopped, 1); scanned.push(value);
+    } })));
+    const nodes = render();
+    nodes.find((node) => node.type === "video").ref.current = { play: async () => {}, videoWidth: 640, videoHeight: 480 };
+    nodes.find((node) => node.type === "canvas").ref.current = { getContext: () => ({ drawImage() {}, getImageData: () => ({ data: [] }) }) };
+    harness.flush();
+    nodes.find((node) => node.type === "Button").props.onClick();
+    await tick();
+    frame(200);
+    assert.equal(stopped, 1);
+    if (token.length === 43) assert.deepEqual(scanned, [token]);
+    else {
+      assert.equal(scanned.length, 0);
+      assert(render().some((node) => node.props?.role === "alert" && node.props.children === t("stay.invalidQr")));
+    }
+    harness.unmount();
+    assert.equal(stopped, 1);
+  }
+});
+
+test("Gợi ý địa danh debounce khi gõ nhanh, tái dùng kết quả trong một phút và tách ngôn ngữ", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+  const harness = hookHarness();
+  let locale = "vn";
+  const calls = [];
+  const { useMapboxAutocomplete } = createLoader({ react: harness.hooks,
+    "@/i18n/LocaleProvider": { useLocale: () => ({ locale }) },
+  }, { AbortController, setTimeout, clearTimeout, Date,
+    document: { addEventListener() {}, removeEventListener() {} },
+    fetch: async (url, options) => {
+      calls.push({ url, signal: options.signal });
+      return { ok: true, json: async () => ({ features: [{ id: url }] }) };
+    },
+  })("hooks/useMapboxLocation.js");
+  const options = { token: "fixture-token", minLength: 2, types: "place" };
+  const render = () => harness.render(() => useMapboxAutocomplete(options));
+  render(); harness.flush();
+  render().setOpenSug(true);
+  render().setQuery("Ha"); render(); harness.flush();
+  context.mock.timers.tick(100);
+  render().setQuery("Hanoi"); render(); harness.flush();
+  context.mock.timers.tick(299);
+  assert.equal(calls.length, 0);
+  context.mock.timers.tick(1); await tick();
+  assert.equal(calls.length, 1);
+  assert.equal(render().suggestions.length, 1);
+  for (let index = 0; index < 3; index++) {
+    render().setOpenSug(false); render(); harness.flush();
+    render().setOpenSug(true); render(); harness.flush(); await tick();
+    context.mock.timers.tick(300); await tick();
+  }
+  assert.equal(calls.length, 1);
+  locale = "en";
+  assert.equal(render().suggestions.length, 0);
+  harness.flush(); context.mock.timers.tick(300); await tick();
+  assert.equal(calls.length, 2);
+  assert.equal(new URL(calls[1].url).searchParams.get("language"), "en");
+  context.mock.timers.tick(60000);
+  render().setOpenSug(false); render(); harness.flush();
+  render().setOpenSug(true); render(); harness.flush();
+  context.mock.timers.tick(300); await tick();
+  assert.equal(calls.length, 3);
+  harness.unmount();
+});
+
+test("Gợi ý địa danh hủy request cũ, không hiện kết quả trễ và không cache lỗi", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const harness = hookHarness();
+  const calls = [];
+  const { useMapboxAutocomplete } = createLoader({ react: harness.hooks,
+    "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn" }) },
+  }, { AbortController, setTimeout, clearTimeout,
+    document: { addEventListener() {}, removeEventListener() {} },
+    fetch: (url, options) => new Promise((resolve, reject) => calls.push({ url, signal: options.signal, resolve, reject })),
+  })("hooks/useMapboxLocation.js");
+  const render = () => harness.render(() => useMapboxAutocomplete({ token: "fixture", initialQuery: "Hanoi" }));
+  render().setOpenSug(true); render(); harness.flush();
+  context.mock.timers.tick(300);
+  render().setQuery("Danang"); render(); harness.flush();
+  assert.equal(calls[0].signal.aborted, true);
+  context.mock.timers.tick(300);
+  calls[0].resolve({ ok: true, json: async () => ({ features: [{ id: "stale" }] }) }); await tick();
+  assert.equal(render().suggestions.length, 0);
+  calls[1].reject(new Error("Mapbox unavailable")); await tick();
+  assert.equal(render().suggestionError, true);
+  render().setOpenSug(false); render(); harness.flush();
+  render().setOpenSug(true); render(); harness.flush(); context.mock.timers.tick(300);
+  assert.equal(calls.length, 3);
+  harness.unmount();
+  assert.equal(calls[2].signal.aborted, true);
+});
+
+test("Cache gợi ý địa danh có giới hạn và không chia sẻ token hoặc loại địa danh", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const harness = hookHarness();
+  let count = 0;
+  const { useMapboxAutocomplete } = createLoader({ react: harness.hooks,
+    "@/i18n/LocaleProvider": { useLocale: () => ({ locale: "vn" }) },
+  }, { AbortController, setTimeout, clearTimeout,
+    document: { addEventListener() {}, removeEventListener() {} },
+    fetch: async () => { count++; return { ok: true, json: async () => ({ features: [] }) }; },
+  })("hooks/useMapboxLocation.js");
+  let options = { token: "fixture", types: "place" };
+  const render = () => harness.render(() => useMapboxAutocomplete(options));
+  render().setOpenSug(true);
+  for (let index = 0; index < 11; index++) {
+    render().setQuery(`City${index}`); render(); harness.flush();
+    context.mock.timers.tick(300); await tick();
+  }
+  render().setQuery("City0"); render(); harness.flush(); context.mock.timers.tick(300); await tick();
+  assert.equal(count, 12);
+  options = { ...options, token: "another-token" };
+  render(); harness.flush(); context.mock.timers.tick(300); await tick();
+  assert.equal(count, 13);
+  options = { ...options, types: "address" };
+  render(); harness.flush(); context.mock.timers.tick(300); await tick();
+  assert.equal(count, 14);
+  harness.unmount();
+});
+
+test("Tải hội thoại gom nhiều sự kiện thành một lượt bổ sung và hủy dữ liệu tài khoản/từ khóa cũ", async () => {
+  const harness = hookHarness();
+  const requests = [];
+  const { useConversations } = createLoader({ react: harness.hooks,
+    "../api/chatApi": { chatApi: { list: (params, signal) => new Promise((resolve, reject) => requests.push({ params, signal, resolve, reject })) } },
+  }, { AbortController })("features/chat/hooks/useConversations.js");
+  let userId = "guest-a", search = "";
+  const render = () => harness.render(() => useConversations(userId, search));
+  render(); harness.flush();
+  for (let index = 0; index < 5; index++) void render().reload();
+  assert.equal(requests.length, 1);
+  requests[0].resolve({ items: [{ id: "first" }], hasMore: true }); await tick();
+  assert.equal(requests.length, 2);
+  requests[1].resolve({ items: [{ id: "fresh" }], hasMore: true }); await tick();
+  assert.deepEqual(plain(render().items), [{ id: "fresh" }]);
+  const more = render().loadMore();
+  assert.equal(requests[2].params.page, 2);
+  requests[2].resolve({ items: [{ id: "fresh" }, { id: "page2" }], hasMore: false });
+  await more;
+  assert.deepEqual(plain(render().items), [{ id: "fresh" }, { id: "page2" }]);
+  void render().reload();
+  userId = "guest-b";
+  assert.equal(render().items.length, 0);
+  harness.flush();
+  assert.equal(requests[3].signal.aborted, true);
+  requests[3].resolve({ items: [{ id: "private-a" }], hasMore: false }); await tick();
+  assert.equal(render().items.length, 0);
+  search = "Hanoi"; render(); harness.flush();
+  assert.equal(requests[4].signal.aborted, true);
+  requests[5].reject(new Error("Offline")); await tick();
+  assert.equal(render().error.message, "Offline");
+  void render().reload();
+  requests[6].resolve({ items: [{ id: "guest-b-room" }], hasMore: false }); await tick();
+  assert.equal(render().error, null);
+  assert.deepEqual(plain(render().items), [{ id: "guest-b-room" }]);
+  void render().reload(); harness.unmount();
+  assert.equal(requests[7].signal.aborted, true);
+});
+
+test("Trợ lý AI chỉ tải khi rảnh, có fallback timer và giữ instance sau khi chuyển route", () => {
+  for (const idle of [true, false]) {
+    const harness = hookHarness();
+    let pathname = "/login", task, cancelled = 0;
+    const browser = { setTimeout: (callback) => { task = callback; return 1; }, clearTimeout: () => cancelled++ };
+    if (idle) Object.assign(browser, { requestIdleCallback: (callback, options) => {
+      assert.equal(options.timeout, 1000); task = callback; return 1;
+    }, cancelIdleCallback: () => cancelled++ });
+    const imports = [];
+    const Launcher = createLoader({ react: harness.hooks, "next/dynamic": () => "FloatingAiAssistant",
+      "next/navigation": { usePathname: () => pathname },
+    }, { window: browser }, imports)("features/aiSearch/AiAssistantLauncher.jsx").default;
+    const render = () => harness.render(() => Launcher());
+    assert.equal(elements(render()).some((node) => node.type === "link" || node.type === "FloatingAiAssistant"), false); harness.flush();
+    assert.equal(task, undefined);
+    pathname = "/";
+    assert.equal(elements(render()).find((node) => node.type === "link").props.href, "/mascots/ballerina-directions.webp");
+    harness.flush();
+    assert.equal(typeof task, "function");
+    assert(!imports.includes("./FloatingAiAssistant"));
+    task();
+    assert(elements(render()).some((node) => node.type === "FloatingAiAssistant")); harness.flush();
+    pathname = "/checkout/booking";
+    assert.equal(elements(render()).find((node) => node.type === "FloatingAiAssistant").props.hidden, true);
+    assert(!elements(render()).some((node) => node.type === "link")); harness.flush();
+    pathname = "/search";
+    assert.equal(elements(render()).find((node) => node.type === "FloatingAiAssistant").props.hidden, false); harness.flush();
+    assert.equal(cancelled, 1);
+    harness.unmount();
+  }
+});
+
+test("Realtime tải sau đăng nhập, dùng một socket và vẫn gửi/nhận signaling khi đổi subscriber", async () => {
+  const first = hookHarness(), second = hookHarness();
+  let currentHarness = first, userId;
+  const connections = [], events = [], sent = [], imports = [];
+  const runtime = { ...React };
+  for (const name of ["useRef", "useState", "useEffect"]) runtime[name] = (...args) => currentHarness.hooks[name](...args);
+  const hooks = createLoader({ react: runtime,
+    "../api/chatApi": { chatApi: { socketTicket: async () => "ticket" } },
+    "socket.io-client": { io: (url, options) => {
+      const connection = { url, options, connected: false, handlers: {}, disconnects: 0,
+        on(name, callback) { this.handlers[name] = callback; return this; },
+        connect() { this.connected = true; this.handlers.connect?.(); },
+        disconnect() { this.connected = false; this.disconnects++; },
+        timeout() { return { emit: (event, payload, callback) => { sent.push({ event, payload }); callback(null, { ok: true }); } }; },
+      };
+      connections.push(connection); return connection;
+    } },
+  }, { window: { setTimeout, clearTimeout } }, imports)("features/chat/hooks/useChatSocket.js");
+  const render = (harness, name) => { currentHarness = harness; return harness.render(() => hooks.useChatSocket(userId, (event) => events.push([name, event]))); };
+  render(first, "first"); first.flush(); await tick();
+  assert(!imports.includes("socket.io-client"));
+  assert.equal(connections.length, 0);
+  userId = "guest";
+  render(first, "first"); first.flush();
+  render(second, "second"); second.flush(); await tick();
+  assert.equal(connections.length, 1);
+  connections[0].handlers["chat:message"]({ sender_id: "other" });
+  assert(events.some(([name, event]) => name === "first" && event === "chat:message"));
+  assert(events.some(([name, event]) => name === "second" && event === "chat:message"));
+  await hooks.emitChatSocket("webrtc:offer", { call_id: "call", description: "offer" });
+  assert.deepEqual(plain(sent), [{ event: "webrtc:offer", payload: { call_id: "call", description: "offer" } }]);
+  first.unmount();
+  assert.equal(connections[0].disconnects, 0);
+  second.unmount();
+  assert.equal(connections[0].disconnects, 1);
+  await assert.rejects(hooks.emitChatSocket("webrtc:offer", {}));
+});
+
+test("Import realtime trả về muộn không mở socket sau logout hoặc unmount", async () => {
+  const harness = hookHarness();
+  let userId = "guest-a", created = 0;
+  const { useChatSocket } = createLoader({ react: harness.hooks,
+    "../api/chatApi": { chatApi: {} }, "socket.io-client": { io: () => { created++; return {}; } },
+  })("features/chat/hooks/useChatSocket.js");
+  const render = () => harness.render(() => useChatSocket(userId));
+  render(); harness.flush();
+  userId = undefined;
+  render(); harness.flush(); await tick();
+  assert.equal(created, 0);
+  userId = "guest-b";
+  render(); harness.flush(); harness.unmount(); await tick();
+  assert.equal(created, 0);
+});
+
+test("Tìm tin nhắn debounce và hủy cả phân trang cũ khi người dùng đổi từ khóa", async (context) => {
+  context.mock.timers.enable({ apis: ["setTimeout"] });
+  const harness = hookHarness();
+  const requests = [];
+  const messageState = { items: [], reload() {}, receive() {}, receiveUpdate() {}, receiveReaction() {} };
+  const View = createLoader({ react: harness.hooks, "next/link": "Link", "next/image": "Image", "next/dynamic": () => "Proposal",
+    "@/components/atoms/IconButton": "IconButton", "@/i18n/LocaleProvider": { useLocale: () => ({ t }) },
+    "../hooks/useCallSession": { useCallSession: () => ({}) }, "../hooks/useMessages": { useMessages: () => messageState },
+    "../hooks/useChatSocket": { useChatSocket: () => true },
+    "./MessageBubble": "MessageBubble", "./MessageComposer": "MessageComposer", "./ChatAvatar": "ChatAvatar", "./EmojiText": "EmojiText",
+    "../api/chatApi": { chatApi: { pinnedMessages: async () => [], publicProfile: async () => ({}),
+      searchMessages: (id, search, page, signal) => new Promise((resolve) => requests.push({ id, search, page, signal, resolve })),
+    } },
+  }, { AbortController, window: { setTimeout, clearTimeout }, document: { addEventListener() {}, removeEventListener() {} } })("features/chat/components/ConversationView.jsx").default;
+  const props = { conversation: { id: "conversation", other_id: "other", other_name: "Other" }, userId: "guest", onActivity() {} };
+  const render = () => elements(harness.render(() => View(props)));
+  render(); harness.flush(); await tick();
+  render().find((node) => node.type === "IconButton" && node.props.label === t("chat.details")).props.onClick();
+  render(); harness.flush(); await tick();
+  render().find((node) => node.type === "button" && elements(node).some((child) => child.props?.children === t("chat.panel.search"))).props.onClick();
+  render(); harness.flush();
+  const input = () => render().find((node) => node.props?.id === "chat-content-search");
+  input().props.onChange({ target: { value: "old" } }); render(); harness.flush();
+  context.mock.timers.tick(250);
+  requests[0].resolve({ items: [{ id: "old-1" }], page: 1, hasMore: true }); await tick();
+  render().find((node) => node.type === "button" && node.props.children === t("chat.loadMore")).props.onClick();
+  assert.equal(requests[1].page, 2);
+  input().props.onChange({ target: { value: "new" } }); render(); harness.flush();
+  assert.equal(requests[0].signal.aborted, true);
+  assert.equal(requests[1].signal.aborted, true);
+  requests[1].resolve({ items: [{ id: "stale-page-2" }], page: 2, hasMore: false }); await tick();
+  context.mock.timers.tick(249);
+  assert.equal(requests.length, 2);
+  context.mock.timers.tick(1);
+  requests[2].resolve({ items: [{ id: "fresh" }], page: 1, hasMore: false }); await tick();
+  const nodes = render();
+  assert(nodes.some((node) => node.key === "fresh"));
+  assert(!nodes.some((node) => node.key === "stale-page-2" || node.key === "old-1"));
+  input().props.onChange({ target: { value: "new " } }); render(); harness.flush();
+  context.mock.timers.tick(250);
+  assert.equal(requests.length, 3);
+  assert(render().some((node) => node.key === "fresh"));
+  render().find((node) => node.type === "IconButton" && node.props.label === t("chat.closeDetails")).props.onClick();
+  render(); harness.flush();
+  assert.equal(requests[2].signal.aborted, true);
+  harness.unmount();
+  assert.equal(requests[2].signal.aborted, true);
 });
 
 test("Observer chỉ kích hoạt một lần khi thấy phần tử và hủy callback sau unmount", () => {
@@ -594,8 +1060,10 @@ test("Card và bản đồ đồng bộ hover, chọn phòng mà vẫn giữ lin
   }, { window: { matchMedia: () => ({ matches: compact }) } })("components/Search/SearchResultsLayout.jsx").default;
   const render = () => elements(harness.render(() => Layout({ items: [listing] })));
   let nodes = render();
+  const selectCard = nodes.find((node) => node.type === "ListingCard").props.onMapSelect;
   nodes.find((node) => node.type === "ListingCard").props.onMapHover(listing.id);
   nodes = render();
+  assert.equal(nodes.find((node) => node.type === "ListingCard").props.onMapSelect, selectCard);
   assert.equal(nodes.find((node) => node.type === "SearchMapPanel").props.hoveredId, listing.id);
   nodes.find((node) => node.type === "SearchMapPanel").props.onMarkerSelect(listing.id);
   nodes = render();

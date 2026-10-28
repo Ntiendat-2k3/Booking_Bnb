@@ -1,0 +1,26 @@
+[
+  {
+    "script": "lint",
+    "exitCode": 0,
+    "elapsedMs": 20687,
+    "log": "phase-1-lint.txt"
+  },
+  {
+    "script": "test",
+    "exitCode": 0,
+    "elapsedMs": 2291,
+    "log": "phase-1-test.txt"
+  },
+  {
+    "script": "test:performance",
+    "exitCode": 0,
+    "elapsedMs": 4502,
+    "log": "phase-1-test-performance.txt"
+  },
+  {
+    "script": "build",
+    "exitCode": 0,
+    "elapsedMs": 19443,
+    "log": "phase-1-build.txt"
+  }
+]

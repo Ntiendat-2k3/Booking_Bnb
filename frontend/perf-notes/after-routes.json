@@ -1,0 +1,170 @@
+[
+  {
+    "route": "/account/settings",
+    "status": 200,
+    "initialScriptBytes": 878184,
+    "initialScriptGzipBytes": 269651,
+    "scripts": 16
+  },
+  {
+    "route": "/ai-search",
+    "status": 200,
+    "initialScriptBytes": 897155,
+    "initialScriptGzipBytes": 283043,
+    "scripts": 16
+  },
+  {
+    "route": "/auth/callback",
+    "status": 200,
+    "initialScriptBytes": 818346,
+    "initialScriptGzipBytes": 254335,
+    "scripts": 15
+  },
+  {
+    "route": "/auth/qr/approve",
+    "status": 200,
+    "initialScriptBytes": 821104,
+    "initialScriptGzipBytes": 255169,
+    "scripts": 15
+  },
+  {
+    "route": "/checkout/[id]",
+    "status": 200,
+    "initialScriptBytes": 899839,
+    "initialScriptGzipBytes": 276425,
+    "scripts": 16
+  },
+  {
+    "route": "/favorites",
+    "status": 200,
+    "initialScriptBytes": 838562,
+    "initialScriptGzipBytes": 261010,
+    "scripts": 15
+  },
+  {
+    "route": "/forgot-password",
+    "status": 200,
+    "initialScriptBytes": 824571,
+    "initialScriptGzipBytes": 256475,
+    "scripts": 15
+  },
+  {
+    "route": "/host/calendar",
+    "status": 200,
+    "initialScriptBytes": 903033,
+    "initialScriptGzipBytes": 277875,
+    "scripts": 16
+  },
+  {
+    "route": "/host/dashboard",
+    "status": 200,
+    "initialScriptBytes": 860042,
+    "initialScriptGzipBytes": 266841,
+    "scripts": 16
+  },
+  {
+    "route": "/host/listings/[id]",
+    "status": 200,
+    "initialScriptBytes": 910813,
+    "initialScriptGzipBytes": 277962,
+    "scripts": 16
+  },
+  {
+    "route": "/host/listings/new",
+    "status": 200,
+    "initialScriptBytes": 881447,
+    "initialScriptGzipBytes": 270895,
+    "scripts": 16
+  },
+  {
+    "route": "/host/listings",
+    "status": 200,
+    "initialScriptBytes": 823352,
+    "initialScriptGzipBytes": 255998,
+    "scripts": 15
+  },
+  {
+    "route": "/host",
+    "status": 200,
+    "initialScriptBytes": 899060,
+    "initialScriptGzipBytes": 274507,
+    "scripts": 15
+  },
+  {
+    "route": "/host/stays",
+    "status": 200,
+    "initialScriptBytes": 881283,
+    "initialScriptGzipBytes": 271989,
+    "scripts": 15
+  },
+  {
+    "route": "/login",
+    "status": 200,
+    "initialScriptBytes": 865794,
+    "initialScriptGzipBytes": 269528,
+    "scripts": 15
+  },
+  {
+    "route": "/messages/[conversationId]",
+    "status": 200,
+    "initialScriptBytes": 920739,
+    "initialScriptGzipBytes": 282301,
+    "scripts": 16
+  },
+  {
+    "route": "/messages",
+    "status": 200,
+    "initialScriptBytes": 920739,
+    "initialScriptGzipBytes": 282301,
+    "scripts": 16
+  },
+  {
+    "route": "/",
+    "status": 200,
+    "initialScriptBytes": 927729,
+    "initialScriptGzipBytes": 288485,
+    "scripts": 16
+  },
+  {
+    "route": "/profile",
+    "status": 200,
+    "initialScriptBytes": 836715,
+    "initialScriptGzipBytes": 259701,
+    "scripts": 15
+  },
+  {
+    "route": "/register",
+    "status": 200,
+    "initialScriptBytes": 850560,
+    "initialScriptGzipBytes": 263506,
+    "scripts": 15
+  },
+  {
+    "route": "/reset-password",
+    "status": 200,
+    "initialScriptBytes": 834540,
+    "initialScriptGzipBytes": 259543,
+    "scripts": 15
+  },
+  {
+    "route": "/rooms/[id]",
+    "status": 200,
+    "initialScriptBytes": 937878,
+    "initialScriptGzipBytes": 291468,
+    "scripts": 17
+  },
+  {
+    "route": "/search",
+    "status": 200,
+    "initialScriptBytes": 927042,
+    "initialScriptGzipBytes": 286530,
+    "scripts": 16
+  },
+  {
+    "route": "/trips",
+    "status": 200,
+    "initialScriptBytes": 903607,
+    "initialScriptGzipBytes": 277931,
+    "scripts": 15
+  }
+]

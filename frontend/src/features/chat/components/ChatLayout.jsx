@@ -51,16 +51,16 @@ export default function ChatLayout() {
   }, [userId, conversationId]);
   const connected = useChatSocket(userId, (event, data) => {
     if (["chat:message", "chat:message:update", "chat:conversation", "chat:read",
-      "chat:presence", "chat:block", "connection"].includes(event)) reload();
+      "chat:presence", "chat:block"].includes(event) || (event === "connection" && data)) reload();
     if ((event === "chat:presence" && data?.user_id === detail?.other_id) ||
       (event === "chat:block" && [data?.user_id, data?.target_id].includes(detail?.other_id)) ||
       (event === "connection" && data && conversationId)) void loadDetail(true);
   });
   useEffect(() => { void loadDetail(); }, [loadDetail]);
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedSearch(search), 300);
+    const timer = window.setTimeout(() => setDebouncedSearch(normalizedSearch), 300);
     return () => window.clearTimeout(timer);
-  }, [search]);
+  }, [normalizedSearch]);
   useEffect(() => {
     if (!userSearchEligible) return;
     let active = true;

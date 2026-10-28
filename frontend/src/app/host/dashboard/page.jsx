@@ -11,7 +11,10 @@ import { apiFetch } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import { useLocale } from "@/i18n/LocaleProvider";
 
-const RevenueChart = dynamic(() => import("@/components/organisms/RevenueChart"), { ssr: false });
+const RevenueChart = dynamic(() => import("@/components/organisms/RevenueChart"), {
+  ssr: false,
+  loading: () => <div className="h-[300px] min-w-0" aria-hidden="true" />,
+});
 const today = () => format(new Date(), "yyyy-MM-dd");
 
 /** Dashboard chỉ dùng báo cáo đã giới hạn bằng Host ID từ phiên đăng nhập trên API. */

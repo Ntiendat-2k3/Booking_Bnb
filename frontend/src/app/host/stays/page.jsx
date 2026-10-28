@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
-import { ArrowClockwise, CalendarBlank, Camera, QrCode, X } from "@phosphor-icons/react";
+import { ArrowClockwise, CalendarBlank } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
 import { formatVND } from "@/lib/format";
 import { notifySuccess } from "@/lib/notify";
@@ -14,8 +14,8 @@ import { useLocale } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
 import SearchableSelect from "@/components/molecules/SearchableSelect";
 import StayReviewCard from "@/features/hostStays/StayReviewCard";
+import StayQrScanner from "@/features/hostStays/StayQrScanner";
 
-const validToken = (value) => /^[A-Za-z0-9_-]{43}$/.test(value);
 const stayDateFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Ho_Chi_Minh", year: "numeric", month: "2-digit", day: "2-digit",
 });
@@ -26,11 +26,6 @@ export default function HostStaysPage() {
   const user = useSelector((state) => state.auth.user);
   const isInitialized = useSelector((state) => state.auth.isInitialized);
   const canManage = canManageListings(user?.role);
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const frameRef = useRef(null);
-  const scannerGeneration = useRef(0);
   const [listings, setListings] = useState([]);
   const [listingId, setListingId] = useState("");
   const [listingError, setListingError] = useState(false);
@@ -41,8 +36,6 @@ export default function HostStaysPage() {
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [revision, setRevision] = useState(0);
   const [selectedBookingId, setSelectedBookingId] = useState("");
-  const [cameraState, setCameraState] = useState("idle");
-  const [cameraError, setCameraError] = useState("");
   const [scanError, setScanError] = useState("");
   const [lookupError, setLookupError] = useState("");
   const [preview, setPreview] = useState(null);
@@ -118,22 +111,6 @@ export default function HostStaysPage() {
     return () => { active = false; };
   }, [listingId, collectionPage, revision]);
 
-  const stopCamera = useCallback(() => {
-    scannerGeneration.current++;
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    frameRef.current = null;
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    setCameraState("idle");
-  }, []);
-
-  useEffect(() => () => {
-    scannerGeneration.current++;
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-  }, []);
-
   /** Ghi kết quả check-in/check-out từ máy chủ và đồng bộ booking trong danh sách tra cứu nếu cùng mã. */
   function showScanSuccess(confirmed, inspected) {
     setScanResult(confirmed);
@@ -186,68 +163,6 @@ export default function HostStaysPage() {
       setScanError(t(error?.status === 410 ? "stay.invalidQr" :
         error?.status === 409 ? "stay.wrongRoom" : "stay.scanFailed"));
     } finally { setBusyAction(""); }
-  }
-
-  /** Camera chỉ khởi động sau cú chạm của Host và luôn dừng khi rời màn hoặc quét xong. */
-  async function startCamera() {
-    if (cameraState !== "idle") return;
-    setCameraError("");
-    setScanError("");
-    setPreview(null);
-    setScanResult(null);
-    if (!globalThis.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      setCameraError(t("stay.cameraUnsupported")); return;
-    }
-    const generation = ++scannerGeneration.current;
-    setCameraState("requesting");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: false,
-        video: { facingMode: { ideal: "environment" } } });
-      if (generation !== scannerGeneration.current) {
-        stream.getTracks().forEach((track) => track.stop()); return;
-      }
-      streamRef.current = stream;
-      const video = videoRef.current;
-      video.srcObject = stream;
-      await video.play();
-      const { default: jsQR } = await import("jsqr");
-      if (generation !== scannerGeneration.current) return;
-      setCameraState("ready");
-      let lastFrame = 0;
-      const scanFrame = (time) => {
-        if (generation !== scannerGeneration.current) return;
-        if (time - lastFrame >= 150 && video.videoWidth && video.videoHeight) {
-          lastFrame = time;
-          const canvas = canvasRef.current;
-          const width = Math.min(video.videoWidth, 640);
-          const height = Math.round(width * video.videoHeight / video.videoWidth);
-          canvas.width = width;
-          canvas.height = height;
-          const context = canvas.getContext("2d", { willReadFrequently: true });
-          if (!context) { stopCamera(); setCameraError(t("stay.cameraFailed")); return; }
-          let decoded;
-          try {
-            context.drawImage(video, 0, 0, width, height);
-            const pixels = context.getImageData(0, 0, width, height);
-            decoded = jsQR(pixels.data, width, height, { inversionAttempts: "dontInvert" });
-          } catch {
-            stopCamera(); setCameraError(t("stay.cameraFailed")); return;
-          }
-          if (decoded?.data) {
-            stopCamera();
-            if (validToken(decoded.data)) void inspect(decoded.data);
-            else setScanError(t("stay.invalidQr"));
-            return;
-          }
-        }
-        frameRef.current = requestAnimationFrame(scanFrame);
-      };
-      frameRef.current = requestAnimationFrame(scanFrame);
-    } catch (error) {
-      if (generation !== scannerGeneration.current) return;
-      stopCamera();
-      setCameraError(t(error?.name === "NotAllowedError" ? "stay.cameraDenied" : "stay.cameraFailed"));
-    }
   }
 
   async function confirmScan() {
@@ -334,22 +249,8 @@ export default function HostStaysPage() {
     </header>
 
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(300px,.9fr)]">
-        <section className="surface-panel space-y-4 p-4 sm:p-6">
-          <div className="flex items-center gap-2"><QrCode aria-hidden size={24} className="text-brand" /><h2 className="text-xl font-bold text-ink">{t("stay.scanTitle")}</h2></div>
-          <p className="text-sm text-muted-ink">{t("stay.scanHint")}</p>
-          <div className="relative overflow-hidden rounded-control border border-line bg-[#0c1710]">
-            <video ref={videoRef} autoPlay muted playsInline aria-label={t("stay.cameraPreview")}
-              className={`aspect-[4/3] max-h-[55dvh] w-full object-cover ${cameraState === "idle" ? "hidden" : ""}`} />
-            {cameraState === "idle" && <div className="grid aspect-[4/3] place-items-center text-center text-white/75"><div><Camera aria-hidden size={42} className="mx-auto mb-3" /><p>{t("stay.cameraReady")}</p></div></div>}
-            {cameraState === "ready" && <div aria-hidden className="pointer-events-none absolute inset-[15%] rounded-2xl border-2 border-white/80" />}
-          </div>
-          <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
-          {cameraState === "idle" ? <Button onClick={() => void startCamera()} disabled={busy} className="w-full"><Camera aria-hidden size={19} />{t("stay.startCamera")}</Button> :
-            <Button variant="secondary" onClick={stopCamera} className="w-full"><X aria-hidden size={18} />{t("stay.stopCamera")}</Button>}
-          {cameraState === "requesting" && <p role="status" className="text-sm text-muted-ink">{t("stay.cameraRequesting")}</p>}
-          {cameraError && <p role="alert" className="text-sm text-danger">{cameraError}</p>}
-          {scanError && <p role="alert" className="text-sm text-danger">{scanError}</p>}
-        </section>
+        <StayQrScanner busy={busy} error={scanError} onScan={inspect}
+          onStart={() => { setScanError(""); setPreview(null); setScanResult(null); }} />
 
         <StayReviewCard key={preview?.booking ? `${preview.booking.id}:${preview.booking.payment_status}:${preview.expires_at || preview.used_at}` : "scan-empty"}
           booking={preview?.booking} listing={preview?.listing} purpose={preview?.purpose}

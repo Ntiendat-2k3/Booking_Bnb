@@ -1,0 +1,37 @@
+{
+  "environment": "Production fixture GET, desktop 1360x900 và mobile 390x844; không dùng tài khoản hoặc thanh toán thật",
+  "search": {
+    "cards": 24,
+    "firstHoverUpdatedCardIds": [["fixture-0"]],
+    "secondHoverUpdatedCardIds": [["fixture-0", "fixture-1"]],
+    "measurement": "React DevTools commit hook, fiber PerformedWork có props listing/mapSelectable; không dùng để đo duration",
+    "cardImageDisplayedWidthPx": 243.71250915527344,
+    "cardImageRequestedWidthPx": 256,
+    "cardImageComplete": true,
+    "selectionPersists": true,
+    "mapCanvases": 1,
+    "detailHref": "/rooms/fixture-0?check_in=2030-10-01&check_out=2030-10-03"
+  },
+  "room": {
+    "title": "Chỗ ở kiểm thử 0",
+    "galleryImageComplete": true,
+    "galleryImageDisplayedWidthPx": 1349.5999755859375,
+    "dateRangeValue": "01/10/2030 – 03/10/2030",
+    "pageExceptions": 0
+  },
+  "mobileHome": {
+    "cardImages": 14,
+    "loadedCardImagesAtTop": 4,
+    "mascotCount": 1,
+    "viewportWidthPx": 390,
+    "documentScrollWidthPx": 394,
+    "horizontalOverflow": true,
+    "note": "Có tràn ngang 4 px cần kiểm tra riêng; không sửa CSS/layout trong task. Chưa có phép đo DOM baseline cùng viewport để kết luận hồi quy."
+  },
+  "limitations": [
+    "Fixture không có CORS cho các request client availability/quote/auth/view/review-mine; các lỗi mạng này không xác nhận lỗi API thật hoặc thay đổi business.",
+    "Không có hydration warning hoặc page exception được quan sát trong lần kiểm tra; không khẳng định console sạch toàn bộ do lỗi CORS fixture.",
+    "Lần click đầu của driver nhắm tâm ảnh bị lớp nội dung card che; đã chọn đúng vùng nội dung đang hiển thị và kiểm tra lại thành công.",
+    "Chưa kiểm thử E2E đăng nhập, checkout, upload hoặc tài khoản host thật."
+  ]
+}

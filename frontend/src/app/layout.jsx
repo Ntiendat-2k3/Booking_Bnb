@@ -10,7 +10,7 @@ import { DEFAULT_THEME } from "@/lib/constants";
 import Footer from "@/components/organisms/Footer";
 import { getServerTranslator } from "@/i18n/server";
 import { AiSearchProvider } from "@/features/aiSearch/AiSearchProvider";
-import FloatingAiAssistant from "@/features/aiSearch/FloatingAiAssistant";
+import AiAssistantLauncher from "@/features/aiSearch/AiAssistantLauncher";
 
 const beVietnamPro = localFont({
   src: [
@@ -113,7 +113,7 @@ export default async function RootLayout({ children }) {
                 <Container>{children}</Container>
               </main>
               <Footer />
-              <FloatingAiAssistant />
+              <AiAssistantLauncher />
             </AiSearchProvider>
           </Providers>
         </ThemeProvider>

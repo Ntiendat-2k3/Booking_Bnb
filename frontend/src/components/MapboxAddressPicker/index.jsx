@@ -4,7 +4,7 @@ import { asNum, geocodeReverse, pickFromContext } from "@/hooks/useMapboxLocatio
 import { useLocale } from "@/i18n/LocaleProvider";
 import AddressAutocomplete from "./AddressAutocomplete";
 import CoordinatesInputs from "./CoordinatesInputs";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { loadMapbox } from "@/lib/loadMapbox";
 const DEFAULT_CENTER = { lng: 106.700987, lat: 10.776889 };
 
 /** Đồng bộ marker với form; dùng giá trị mới nhất khi người dùng kéo marker hoặc chọn trên bản đồ. */
@@ -26,7 +26,7 @@ export default function MapboxAddressPicker({ address, city, country, lat, lng, 
     let cancelled = false;
     async function initialize() {
       try {
-        const mapboxgl = (await import("mapbox-gl")).default;
+        const mapboxgl = await loadMapbox();
         if (cancelled || !containerRef.current) return;
         const current = latestRef.current;
         const initialLat = asNum(current.lat);

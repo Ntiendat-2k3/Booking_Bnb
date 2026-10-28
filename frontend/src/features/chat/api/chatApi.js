@@ -5,7 +5,7 @@ import { apiUpload } from "@/lib/apiUpload";
 const root = "/api/v1/chat";
 export const chatApi = {
   socketTicket: () => apiFetch(`${root}/socket-ticket`).then((res) => res.data.ticket),
-  list: (params) => apiFetch(root, { params }).then((res) => res.data),
+  list: (params, signal) => apiFetch(root, { params, signal }).then((res) => res.data),
   unread: () => apiFetch(`${root}/unread`).then((res) => res.data.count),
   searchUsers: (search, signal) => apiFetch(`${root}/users`, { params: { search }, signal }).then((res) => res.data),
   publicProfile: (userId) => apiFetch(`${root}/users/${userId}`).then((res) => res.data),
@@ -35,8 +35,8 @@ export const chatApi = {
     apiFetch(`${root}/${id}/booking-proposals/${proposalId}/${action}`, {
       method: "POST", body,
     }).then((res) => res.data),
-  searchMessages: (id, search, page = 1) => apiFetch(`${root}/${id}/messages/search`, {
-    params: { search, page },
+  searchMessages: (id, search, page = 1, signal) => apiFetch(`${root}/${id}/messages/search`, {
+    params: { search, page }, signal,
   }).then((res) => res.data),
   sharedMessages: (id, type, page = 1) => apiFetch(`${root}/${id}/shared`, {
     params: { type, page },

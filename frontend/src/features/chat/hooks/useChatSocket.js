@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { io } from "socket.io-client";
 import { chatApi } from "../api/chatApi";
 
 const listeners = new Set();
@@ -12,7 +11,7 @@ function broadcast(event, data) {
   for (const listener of listeners) listener(event, data);
 }
 
-function getSocket(userId) {
+function getSocket(userId, io) {
   if (socket && socketUserId !== userId) {
     socket.disconnect();
     socket = undefined;
@@ -78,17 +77,29 @@ export function useChatSocket(userId, onEvent) {
   useEffect(() => { callback.current = onEvent; }, [onEvent]);
   useEffect(() => {
     if (!userId) return;
-    const connection = getSocket(userId);
-    const listener = (event, data) => {
-      if (event === "connection") setConnected(data);
-      callback.current?.(event, data);
-    };
-    listeners.add(listener);
-    listener("connection", connection.connected);
-    if (!connection.connected) connection.connect();
+    let active = true;
+    let dispose;
+    // Khách chưa đăng nhập không cần tải thư viện realtime; kiểm tra lại vòng đời trước khi mở kết nối.
+    import("socket.io-client").then(({ io }) => {
+      if (!active) return;
+      const connection = getSocket(userId, io);
+      const listener = (event, data) => {
+        if (event === "connection") setConnected(data);
+        callback.current?.(event, data);
+      };
+      listeners.add(listener);
+      dispose = () => {
+        listeners.delete(listener);
+        if (!listeners.size && socket === connection) {
+          connection.disconnect(); socket = undefined; socketUserId = undefined;
+        }
+      };
+      listener("connection", connection.connected);
+      if (!connection.connected) connection.connect();
+    }).catch(() => { if (active) setConnected(false); });
     return () => {
-      listeners.delete(listener);
-      if (!listeners.size) { connection.disconnect(); socket = undefined; socketUserId = undefined; }
+      active = false;
+      dispose?.();
     };
   }, [userId]);
   return connected;

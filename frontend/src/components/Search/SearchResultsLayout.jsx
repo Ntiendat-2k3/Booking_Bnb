@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import ListingCard from "@/components/ListingCard";
 import SearchMapPanel from "./SearchMapPanel";
 
@@ -11,11 +11,11 @@ export default function SearchResultsLayout({ items, checkIn, checkOut, city, ma
   const [focusRequest, setFocusRequest] = useState({ id: null, sequence: 0 });
   const [expanded, setExpanded] = useState(false);
 
-  function selectCard(id) {
+  const selectCard = useCallback((id) => {
     setSelectedId(id);
     setFocusRequest((previous) => ({ id, sequence: previous.sequence + 1 }));
     if (window.matchMedia("(max-width: 1279px)").matches) setExpanded(true);
-  }
+  }, []);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,38%)]">
@@ -25,6 +25,7 @@ export default function SearchResultsLayout({ items, checkIn, checkOut, city, ma
             <ListingCard
               key={listing.id}
               listing={listing}
+              sizes="(min-width: 1360px) 250px, (min-width: 1280px) 20vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               checkIn={checkIn}
               checkOut={checkOut}
               mapSelectable

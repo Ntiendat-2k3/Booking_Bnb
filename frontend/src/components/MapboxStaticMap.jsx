@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "@/i18n/LocaleProvider";
 import { useInViewport } from "@/hooks/useInViewport";
-import "mapbox-gl/dist/mapbox-gl.css";
+import { loadMapbox } from "@/lib/loadMapbox";
 
 function asNum(v) {
   if (v === null || v === undefined || String(v).trim() === "") return null;
@@ -32,7 +32,7 @@ export default function MapboxStaticMap({ lat, lng, heightClass = "h-64" }) {
     let cancelled = false;
 
     (async () => {
-      const mapboxgl = (await import("mapbox-gl")).default;
+      const mapboxgl = await loadMapbox();
       if (cancelled || !containerRef.current) return;
       mapboxgl.accessToken = token;
 

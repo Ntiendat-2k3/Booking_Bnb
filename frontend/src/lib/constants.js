@@ -5,11 +5,6 @@
 
 // Thông tin nhận diện.
 export const SITE_NAME = "Booking BnB";
-export const SITE_DESCRIPTION =
-  "Đặt phòng nhanh, tìm chỗ ở theo thành phố, giá, và vị trí gần bạn.";
-export const SITE_LOCALE = "vi_VN";
-export const SITE_LANG = "vi";
-export const SITE_CURRENCY = "VND";
 
 export const DEFAULT_THEME = "system";
 export const THEME_OPTIONS = [

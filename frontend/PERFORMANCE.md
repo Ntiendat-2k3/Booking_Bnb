@@ -1,5 +1,54 @@
 # Hiệu năng Booking BnB
 
+## Cập nhật ngày 28/10/2026: tìm kiếm, JavaScript và ảnh
+
+Đo trước/sau trên Node 24.21.0, Next.js 16.1.6, cùng fixture chỉ đọc và độ trễ API 350 ms; mỗi phiên có 5 mẫu cache lạnh và 5 mẫu cache ấm. Baseline là frontend hiện tại trước đợt tối ưu này, gồm cả AI, chat và các thay đổi refactor đã có. Không thay dữ liệu hay hợp đồng API.
+
+| Chỉ số | Trước | Sau xác minh |
+| --- | ---: | ---: |
+| JS ban đầu trang chủ, gzip | 329.648 B | 289.605 B, giảm 12,1% |
+| JS ban đầu tìm kiếm, gzip | 327.224 B | 287.481 B, giảm 12,1% |
+| JS ban đầu chi tiết phòng, gzip | 335.641 B | 292.508 B, giảm 12,9% |
+| CSS trang chủ, gzip | 18.092 B | 18.092 B |
+| Hero HTTP, cache lạnh, median | 428,8 ms | 364,5 ms |
+| Khoảng dao động hero lạnh | 304,3–479,7 ms | 336,8–592,1 ms |
+| Hero HTTP, cache ấm, median | 28,6 ms | 37,9 ms |
+| Khoảng dao động hero ấm | 27,6–39,4 ms | 34,9–55,8 ms |
+| Toàn bộ HTML lạnh, median | 1.212,7 ms | 1.157,9 ms |
+| HTML lạnh, gzip | 44.882 B | 45.224 B |
+| Request API trang chủ lạnh/ấm | 7 / 0 | 7 / 0 |
+| Request mỗi lượt tìm kiếm, kể cả tìm lại | 1 | 1 |
+
+JS tính từ các thẻ script ban đầu trong HTML production, cùng phương pháp ở cả hai phiên. Các chunk tải sau tương tác hoặc sau đăng nhập không nằm trong chỉ số này. Không coi các thời gian HTTP là LCP/INP/CLS. Dao động thời gian giao nhau; cache ấm chậm hơn khoảng 9 ms ở phiên xác minh nên không kết luận mọi lượt tải đều nhanh hơn. `srcset` làm HTML gốc tăng khoảng 26 KB, HTML gzip tăng 342 B ở cache lạnh và khoảng 464 B ở cache ấm.
+
+Các thay đổi được giữ:
+
+- Trợ lý nổi tải khi trình duyệt rảnh, có timeout 1 giây và fallback timer 200 ms. Chỉ bắt đầu tải ở route cho phép hiển thị; instance đã tải vẫn được giữ khi chuyển trang. Phần hội thoại/kết quả của trợ lý chỉ tải khi mở panel, có trạng thái chờ được dịch.
+- Thư viện socket chỉ tải khi đã có tài khoản đăng nhập. Các subscriber vẫn dùng chung một kết nối và signaling cũ; import trả về sau logout/unmount không được mở kết nối.
+- Gợi ý Mapbox giữ debounce 300 ms và AbortController. Mỗi ô nhập lưu tối đa 10 kết quả thành công trong bộ nhớ trong 60 giây, phân biệt token/ngôn ngữ/loại địa danh/từ khóa; không lưu lỗi, không cache dữ liệu đặt phòng.
+- Danh sách chat chỉ có một request đang chạy; sự kiện đến trong lúc tải được gom thành một lượt bổ sung để lấy trạng thái mới nhất. Request phân trang hoặc bộ lọc cũ bị hủy khi đổi người dùng/từ khóa hoặc unmount.
+- Tìm tin nhắn giữ debounce 250 ms, hủy cả request trang đầu và phân trang cũ, không xóa kết quả chỉ vì thêm khoảng trắng, và dừng khi đóng bảng chi tiết.
+- `imageLoader.js` tạo URL responsive cho Unsplash và ảnh Cloudinary upload có version, dùng [custom loader của Next.js](https://nextjs.org/docs/app/api-reference/config/next-config-js/images). Các [tham số tối ưu CDN](https://cloudinary.com/documentation/image_optimization) được giới hạn theo nguồn; URL ký số, đã có transformation, Mapbox, media riêng tư và nguồn khác giữ nguyên. Production không gọi `/_next/image` của Vercel; môi trường dev giữ loader mặc định.
+
+Kiểm tra có kiểm soát cùng kịch bản trên source trước/sau: mở cùng gợi ý địa danh 4 lần giảm 4 → 1 request; tải hội thoại ban đầu cùng 5 sự kiện làm mới giảm 6 → 2 request, số request đồng thời giảm 6 → 1. Vẫn có lượt bổ sung sau các sự kiện để tránh giữ dữ liệu cũ.
+
+Đo GET ảnh Unsplash `photo-1600566753190-17f0baa2a6c3`, cùng header Accept hỗ trợ AVIF: URL `w=1800&q=85` trả 252.879 B; `w=640&q=75` trả 38.870 B, giảm 84,6%. Đây là ví dụ một ảnh với hai kích thước/chất lượng; không đại diện mọi ảnh hoặc thay thế kiểm chứng trực quan trên thiết bị thật.
+
+Lặp lại phép đo trong thư mục `frontend`:
+
+```powershell
+# Chạy trước khi sửa để ghi lại cùng tập tính năng.
+node scripts/performance-check.mjs --output "$env:TEMP/booking-before.json"
+# Chạy sau khi sửa; giữ kiểm tra dữ liệu, cache và so sánh tài nguyên với baseline cùng điều kiện.
+node scripts/performance-check.mjs --verify --baseline "$env:TEMP/booking-before.json" --output "$env:TEMP/booking-after.json"
+```
+
+`--baseline` xác minh cùng Node, Next.js, độ trễ fixture và số mẫu; JS trang chủ phải giảm, CSS không tăng. Ngưỡng mặc định lịch sử 270.000 B JS / 9.200 B CSS được giữ nguyên khi không truyền baseline. Frontend hiện tại vượt các ngưỡng lịch sử này ngay từ trước đợt tối ưu; lệnh `npm run check:performance` không có baseline vẫn không đạt chúng.
+
+Đã qua: 28 kiểm thử chức năng/tiện ích, 38 kiểm thử hồi quy hiệu năng, lint, build production và benchmark `--verify --baseline` trên. HTTP smoke test 5 route × 2 locale trả 200. Bộ kiểm thử bổ sung debounce, TTL/giới hạn cache, hủy request, cách ly tài khoản, signaling, dùng chung socket, lazy loading và srcset thực của Next Image. Script đã khôi phục build dùng cấu hình API dự án sau khi đo. Không thêm dependency. Chưa đo Web Vitals hoặc E2E với tài khoản, thanh toán, cuộc gọi và camera thật.
+
+## Số liệu lịch sử tháng 09/2026
+
 Ngày đo: 28/09/2026. Áp dụng [performance-optimization của Addy Osmani](https://github.com/addyosmani/agent-skills/tree/main/skills/performance-optimization), đã cài và điều chỉnh tại `C:/Users/ASUS/.codex/skills/performance-optimization/SKILL.md`. Bản nguyên gốc được giữ ở `references/upstream-skill.md`; bản sử dụng bổ sung luồng Next.js/Express/Sequelize, yêu cầu tái sử dụng, GitNexus, cache và kiểm chứng của dự án.
 
 ## Phương pháp

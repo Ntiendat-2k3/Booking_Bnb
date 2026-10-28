@@ -31,8 +31,7 @@ function recordRecommendationClick(event, searchId, listingId) {
 }
 
 export default function AiSearchExperience({ compact = false }) {
-  const { locale } = useLocale();
-  const english = locale === "en";
+  const { t } = useLocale();
   const {
     message,
     setMessage,
@@ -43,22 +42,6 @@ export default function AiSearchExperience({ compact = false }) {
     submit,
     acknowledgeInput,
   } = useAiSearch();
-
-  function reasonLabel(reason) {
-    if (reason.type === "city")
-      return english ? `In ${reason.value}` : `Ở ${reason.value}`;
-    if (reason.type === "guests")
-      return english
-        ? `Up to ${reason.value} guests`
-        : `Tối đa ${reason.value} khách`;
-    if (reason.type === "amenity")
-      return english ? `Amenity: ${reason.value}` : `Có ${reason.value}`;
-    if (reason.type === "distance")
-      return english
-        ? `About ${reason.value} km from the mapped city center`
-        : `Khoảng ${reason.value} km đến tâm địa danh trên bản đồ`;
-    return english ? `Rating ${reason.value}` : `Đánh giá ${reason.value}`;
-  }
 
   const visibleItems = compact ? result?.items.slice(0, 4) : result?.items;
 
@@ -72,29 +55,27 @@ export default function AiSearchExperience({ compact = false }) {
             href="/search"
             className="text-sm font-medium text-brand hover:underline"
           >
-            ← {english ? "Standard search" : "Tìm kiếm thông thường"}
+            ← {t("aiSearch.standardSearch")}
           </Link>
         ) : null}
         {compact ? (
           <h2 className="text-xl font-bold text-ink">
-            {english ? "Ask Ballerina AI" : "Hỏi Ballerina AI"}
+            {t("aiSearch.askTitle")}
           </h2>
         ) : (
           <h1 className="page-heading">
-            {english ? "Find a place by chatting" : "Tìm phòng bằng hội thoại"}
+            {t("aiSearch.title")}
           </h1>
         )}
         {!compact ? (
           <p className="max-w-2xl text-muted-ink">
-            {english
-              ? "Describe where, when and what you need. Prices and availability come from current listings."
-              : "Mô tả nơi ở, số khách, ngân sách, tiện nghi và ngày đi. Giá cùng lịch trống được kiểm tra từ dữ liệu phòng."}
+            {t("aiSearch.description")}
           </p>
         ) : null}
       </div>
 
       <section
-        aria-label={english ? "Search conversation" : "Hội thoại tìm phòng"}
+        aria-label={t("aiSearch.conversation")}
         className={
           compact
             ? "space-y-1"
@@ -115,40 +96,31 @@ export default function AiSearchExperience({ compact = false }) {
 
       {result ? (
         <section
-          aria-label={english ? "Recommended places" : "Phòng đề xuất"}
+          aria-label={t("aiSearch.recommended")}
           className="space-y-5"
         >
           <div>
             <h2 className="text-2xl font-bold text-ink">
-              {english ? "Suggested places" : "Phòng phù hợp"}
+              {t("aiSearch.suggested")}
             </h2>
             {!result.criteria.check_in ? (
               <p className="mt-1 text-sm text-muted-ink">
-                {english
-                  ? "Add check-in and check-out dates to verify availability and stay prices."
-                  : "Thêm ngày nhận và trả phòng để kiểm tra lịch trống và giá kỳ ở."}
+                {t("aiSearch.addDates")}
               </p>
             ) : null}
             {result.unverified_near_center ? (
               <p className="mt-1 text-sm text-muted-ink">
-                {english
-                  ? "Some distances to the mapped city center could not be verified."
-                  : "Một số khoảng cách đến tâm địa danh trên bản đồ chưa được xác minh; hãy xem vị trí trên trang phòng."}
+                {t("aiSearch.unverifiedDistance")}
               </p>
             ) : null}
             {result.unmatched_amenities.length ? (
               <p className="mt-1 text-sm text-muted-ink">
-                {english
-                  ? "Amenities not found: "
-                  : "Không tìm thấy tiện nghi: "}
-                {result.unmatched_amenities.join(", ")}
+                {t("aiSearch.unmatchedAmenities", { amenities: result.unmatched_amenities.join(", ") })}
               </p>
             ) : null}
             {result.limited_to_first ? (
               <p className="mt-1 text-sm text-muted-ink">
-                {english
-                  ? "Suggestions are ranked from an initial set of listings. Refine your request for a narrower search."
-                  : "Đề xuất được xếp từ một tập phòng ban đầu. Hãy mô tả cụ thể hơn để thu hẹp kết quả."}
+                {t("aiSearch.limitedResults")}
               </p>
             ) : null}
           </div>
@@ -178,7 +150,7 @@ export default function AiSearchExperience({ compact = false }) {
                     checkOut={result.criteria.check_out}
                   />
                   <p className="text-sm font-semibold text-ink">
-                    {english ? "Why this place" : "Vì sao phù hợp"}
+                    {t("aiSearch.why")}
                   </p>
                   <ul className="flex flex-wrap gap-2">
                     {listing.reasons.map((reason, index) => (
@@ -186,7 +158,7 @@ export default function AiSearchExperience({ compact = false }) {
                         key={index}
                         className="px-3 py-1 text-xs rounded-full bg-muted-surface text-muted-ink"
                       >
-                        {reasonLabel(reason)}
+                        {t(`aiSearch.reasons.${["city", "guests", "amenity", "distance"].includes(reason.type) ? reason.type : "rating"}`, { value: reason.value })}
                       </li>
                     ))}
                   </ul>
@@ -196,9 +168,7 @@ export default function AiSearchExperience({ compact = false }) {
           ) : (
             <p className="p-5 rounded-control bg-muted-surface text-muted-ink">
               <MagnifyingGlass aria-hidden className="mb-2" size={24} />
-              {english
-                ? "No matching places. Try changing your city, budget or amenities."
-                : "Chưa có phòng phù hợp. Hãy thử đổi thành phố, ngân sách hoặc tiện nghi."}
+              {t("aiSearch.empty")}
             </p>
           )}
           {compact && result.items.length > visibleItems.length ? (
@@ -206,9 +176,7 @@ export default function AiSearchExperience({ compact = false }) {
               href="/ai-search"
               className="inline-flex items-center text-sm font-semibold min-h-11 text-brand hover:underline"
             >
-              {english
-                ? `See all ${result.items.length} places`
-                : `Xem tất cả ${result.items.length} phòng`}
+              {t("aiSearch.seeAll", { count: result.items.length })}
             </Link>
           ) : null}
         </section>
