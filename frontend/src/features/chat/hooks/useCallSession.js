@@ -5,11 +5,12 @@ import { useSelector } from "react-redux";
 import { chatApi } from "../api/chatApi";
 import { useChatSocket } from "./useChatSocket";
 import { useWebRTCCall } from "./useWebRTCCall";
-import CallOverlay from "../components/CallOverlay";
+import dynamic from "next/dynamic";
 import { isTerminalCall, mergeCallState } from "../utils/mergeCallState.mjs";
 import { playMessageSound, startIncomingCallRingtone, unlockChatAudio } from "../utils/chatSounds";
 
 const CallContext = createContext(null);
+const CallOverlay = dynamic(() => import("../components/CallOverlay"), { ssr: false });
 
 /** Giữ một call canonical cho toàn website; event trễ không được hồi sinh call đã kết thúc. */
 export function CallSessionProvider({ children }) {
@@ -178,7 +179,7 @@ export function CallSessionProvider({ children }) {
     startCall, accept: () => act("accept", call, true), decline: () => act("decline", call),
     cancel: () => act("cancel", call), end: () => act("end", call),
     retryAudioOnly, dismiss, reconcile };
-  return <CallContext.Provider value={value}>{children}<CallOverlay session={value} /></CallContext.Provider>;
+  return <CallContext.Provider value={value}>{children}{call && <CallOverlay session={value} />}</CallContext.Provider>;
 }
 
 export function useCallSession() {

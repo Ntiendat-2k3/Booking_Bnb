@@ -101,6 +101,35 @@ const { getListingCardData } = dataLoader("lib/listings.js");
 const { getDictionary, createTranslator, translate } = dataLoader("i18n/config.js");
 const constants = dataLoader("lib/constants.js");
 const t = createTranslator("vn");
+
+test("Overlay cuộc gọi chỉ được nạp khi có cuộc gọi và vẫn giữ trạng thái kết thúc đến lúc đóng", () => {
+  const harness = hookHarness();
+  let listener;
+  const Provider = createLoader({
+    react: harness.hooks,
+    "next/dynamic": () => "LazyCallOverlay",
+    "react-redux": { useSelector: (selector) => selector({ auth: { user: { id: "user-1" } } }) },
+    "../api/chatApi": { chatApi: {} },
+    "./useChatSocket": { useChatSocket: (_, callback) => { listener = callback; } },
+    "./useWebRTCCall": { useWebRTCCall: () => ({}) },
+    "../utils/chatSounds": {},
+  }, { crypto: { randomUUID: () => "instance-1" } })("features/chat/hooks/useCallSession.js").CallSessionProvider;
+  const render = () => harness.render(() => Provider({ children: "Nội dung trang" }));
+  let tree = render();
+  assert.equal(tree.props.children[0], "Nội dung trang");
+  assert(!elements(tree).some((node) => node.type === "LazyCallOverlay"));
+  const call = { id: "call-1", caller_id: "user-2", callee_id: "user-1", status: "ringing", revision: 1 };
+  listener("call:state", call);
+  tree = render();
+  assert.equal(elements(tree).find((node) => node.type === "LazyCallOverlay").props.session.call, call);
+  listener("call:state", { ...call, status: "ended", revision: 2 });
+  tree = render();
+  const overlay = elements(tree).find((node) => node.type === "LazyCallOverlay");
+  assert.equal(overlay.props.session.call.status, "ended");
+  overlay.props.session.dismiss();
+  assert(!elements(render()).some((node) => node.type === "LazyCallOverlay"));
+});
+
 const listing = {
   id: "room-1", title: "Chỗ ở kiểm thử", city: "Hà Nội", country: "Việt Nam",
   price_per_night: 980000, avg_rating: "4.8", review_count: 14, distance_km: 0,
