@@ -21,6 +21,7 @@ const output = outputIndex < 0 ? null : path.resolve(argumentsList[outputIndex +
 const baselineIndex = argumentsList.indexOf("--baseline");
 const baselinePath = baselineIndex < 0 ? null : path.resolve(argumentsList[baselineIndex + 1]);
 const verify = argumentsList.includes("--verify");
+const serve = argumentsList.includes("--serve");
 const round = (number) => Math.round(number * 10) / 10;
 let serverProcess;
 let requests = [];
@@ -166,6 +167,16 @@ try {
   console.log("Đang build production riêng cho benchmark với API fixture 350 ms...");
   fixtureBuildStarted = true;
   await buildWebsite(true);
+  if (serve) {
+    await startWebsite();
+    console.log(`Fixture production sẵn sàng: ${origin}. Gửi Enter hoặc SIGINT để dừng và khôi phục build.`);
+    await new Promise((resolve) => {
+      process.once("SIGINT", resolve);
+      process.once("SIGTERM", resolve);
+      process.stdin.once("data", resolve);
+    });
+    process.stdin.pause();
+  } else {
   const cold = [];
   let homepageHtml;
   for (let sample = 0; sample < samples; sample++) {
@@ -216,6 +227,7 @@ try {
     assert(report.resources.home.css.gzipBytes <= cssBudget, `CSS homepage vượt baseline/budget ${cssBudget} B gzip`);
   }
   if (verify) console.log("Các giới hạn hiệu năng và kiểm tra dữ liệu đã đạt.");
+  }
 } finally {
   await stopWebsite();
   await clearFixtureCache();

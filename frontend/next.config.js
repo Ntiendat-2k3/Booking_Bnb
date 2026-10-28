@@ -61,4 +61,6 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = process.env.ANALYZE === "true"
+  ? require("@next/bundle-analyzer")({ enabled: true, analyzerMode: "json", openAnalyzer: false })(nextConfig)
+  : nextConfig;
