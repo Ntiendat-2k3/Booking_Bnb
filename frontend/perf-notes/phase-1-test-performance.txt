@@ -1,0 +1,50 @@
+
+> airbnb-frontend-user@1.0.0 test:performance
+> node --test scripts/performance-regression.cjs
+
+✔ Tách i18n giữ VN/EN, nội suy số 0 và hợp đồng export cũ (31.5518ms)
+✔ Dữ liệu gọn giữ nguyên card, popup, giá, ảnh và tọa độ; loại dữ liệu thừa (132.5017ms)
+✔ Hero và một form tìm kiếm xuất trước API; carousel dùng cùng promise gợi ý (78.3017ms)
+✔ Thành phố rỗng dùng truy vấn dự phòng; lỗi API vẫn giữ hero và carousel (121.6592ms)
+✔ Tìm kiếm giữ ngày nhận phòng, khách, vị trí, phân trang và lấy API mới (57.651ms)
+✔ Ô lịch dùng chung định dạng, locale và chỉ tải bộ lịch khi mở (583.8558ms)
+✔ DatePicker thật truyền ref và sự kiện vào input dùng chung (59.632ms)
+✔ Lịch tìm kiếm giữ ngày ISO, địa điểm và số khách; xóa ngày không giữ query cũ (65.0673ms)
+✔ Chọn gợi ý Mapbox chỉ dùng tọa độ để căn bản đồ, không đổi bộ lọc vị trí (71.6943ms)
+✔ Ngày nhận phòng mới xóa ngày trả phòng cũ không còn hợp lệ (97.5172ms)
+✔ Card giữ đủ hai ngày từ tìm kiếm đến trang chi tiết (25.0409ms)
+✔ Nút yêu thích dùng chung giữ kiểm tra phiên, đồng bộ trạng thái và báo lỗi (15.2147ms)
+✔ Đánh giá đã gửi thu gọn thành nhận xét và chỉ mở form khi chỉnh sửa (47.3806ms)
+✔ Khoảng ngày lịch dùng chung giữ ngày đặt phòng và tính số đêm (54.8919ms)
+✔ Lịch đặt phòng mobile nhận khoảng ngày URL và chặn ngày trả không hợp lệ (168.3112ms)
+✔ Form phòng dùng chung giữ cập nhật địa chỉ, chọn tiện nghi bất biến và nạp lại phòng khác (29.2429ms)
+✔ Chi tiết chuyến đi chỉ được tải khi mở và được đóng cùng trạng thái hỗ trợ truy cập (51.2955ms)
+✔ Ba chế độ lịch giữ cùng trạng thái, giá và sự kiện chọn ngày; không lọc lại khi đổi lựa chọn (32.4742ms)
+✔ Camera QR dừng khi rời màn hình, kể cả khi quyền truy cập trả về muộn (76.8332ms)
+✔ Camera QR chỉ chuyển token hợp lệ và dừng luồng trước khi xử lý booking (45.6007ms)
+✔ Gợi ý địa danh debounce khi gõ nhanh, tái dùng kết quả trong một phút và tách ngôn ngữ (24.1101ms)
+✔ Gợi ý địa danh hủy request cũ, không hiện kết quả trễ và không cache lỗi (26.0129ms)
+✔ Cache gợi ý địa danh có giới hạn và không chia sẻ token hoặc loại địa danh (19.406ms)
+✔ Tải hội thoại gom nhiều sự kiện thành một lượt bổ sung và hủy dữ liệu tài khoản/từ khóa cũ (17.3793ms)
+✔ Trợ lý AI chỉ tải khi rảnh, có fallback timer và giữ instance sau khi chuyển route (29.1474ms)
+✔ Realtime tải sau đăng nhập, dùng một socket và vẫn gửi/nhận signaling khi đổi subscriber (18.4059ms)
+✔ Import realtime trả về muộn không mở socket sau logout hoặc unmount (20.8543ms)
+✔ Tìm tin nhắn debounce và hủy cả phân trang cũ khi người dùng đổi từ khóa (246.7974ms)
+✔ Observer chỉ kích hoạt một lần khi thấy phần tử và hủy callback sau unmount (15.9501ms)
+✔ Trình duyệt thiếu IntersectionObserver vẫn tải; microtask sau unmount bị bỏ (19.2818ms)
+✔ components/MapboxStaticMap.jsx: không tải SDK ngoài viewport; hủy an toàn và không khởi tạo trùng (26.0053ms)
+✔ components/Search/SearchResultsMap.jsx: không tải SDK ngoài viewport; hủy an toàn và không khởi tạo trùng (201.8088ms)
+✔ Card và bản đồ đồng bộ hover, chọn phòng mà vẫn giữ link chi tiết riêng (8.3573ms)
+✔ Camera và khoảng đệm bản đồ theo desktop, tablet, mobile (7.2906ms)
+✔ Marker giữ giá đầy đủ và đổi 2D/3D không tạo lại map hoặc ghim (66.0162ms)
+✔ Carousel lặp nguyên chu kỳ ảnh, giữ ảnh phụ trong cùng dải và chỉ preload ảnh đầu (98.1774ms)
+✔ Embla thật chạy sang trái qua nhiều vòng; ảnh luân phiên lớn/nhỏ và không kéo méo (818.0641ms)
+✔ Carousel không có nút điều khiển; focus tạm dừng, blur tiếp tục và giữ giảm chuyển động (26.4916ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4046.2714

@@ -1,10 +1,10 @@
 "use client";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler } from "chart.js";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { useLocale } from "@/i18n/LocaleProvider";
 import { formatVND } from "@/lib/format";
 import { useTheme } from "next-themes";
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
 export default function RevenueChart({ labels, values }) {
   const { locale, t } = useLocale();
