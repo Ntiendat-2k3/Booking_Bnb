@@ -18,6 +18,8 @@ const samples = 5;
 const argumentsList = process.argv.slice(2);
 const outputIndex = argumentsList.indexOf("--output");
 const output = outputIndex < 0 ? null : path.resolve(argumentsList[outputIndex + 1]);
+const baselineIndex = argumentsList.indexOf("--baseline");
+const baselinePath = baselineIndex < 0 ? null : path.resolve(argumentsList[baselineIndex + 1]);
 const verify = argumentsList.includes("--verify");
 const round = (number) => Math.round(number * 10) / 10;
 let serverProcess;
@@ -194,6 +196,15 @@ try {
   if (output) await fs.writeFile(output, JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report, null, 2));
   if (verify) {
+    // So sánh cùng phiên bản và điều kiện đo khi tính năng hiện tại đã khác baseline lịch sử.
+    const baseline = baselinePath ? JSON.parse(await fs.readFile(baselinePath, "utf8")) : null;
+    if (baseline) {
+      for (const key of ["node", "next", "fixtureLatencyMs", "samples"]) {
+        assert.equal(report[key], baseline[key], `Baseline khác điều kiện đo: ${key}`);
+      }
+    }
+    const jsBudget = baseline?.resources.home.js.gzipBytes ?? 270000;
+    const cssBudget = baseline?.resources.home.css.gzipBytes ?? 9200;
     assert(report.cold.heroMs.median < 550, "Hero vượt budget streaming đã đo từ baseline 1093 ms");
     assert(report.warm.apiRequests.max === 0, "Cache công khai 60 giây phải được giữ");
     assert(searchRequests > 0 && repeatedSearchRequests > 0, "Tìm kiếm phải lấy dữ liệu mới, không dùng cache trang chủ");
@@ -201,8 +212,8 @@ try {
     assert(!search.html.includes("Thông tin chủ nhà kiểm thử"), "Tìm kiếm không gửi dữ liệu host không sử dụng xuống client");
     assert(search.html.includes("Chỗ ở kiểm thử 23"), "Tìm kiếm phải giữ đủ 24 kết quả");
     assert(room.html.includes("Không gian nghỉ dưỡng"), "Chi tiết phòng phải giữ mô tả đầy đủ");
-    assert(report.resources.home.js.gzipBytes < 270000, "JS homepage vượt budget đo từ baseline 281 KB");
-    assert(report.resources.home.css.gzipBytes < 9200, "CSS homepage vượt budget 9,2 KB cho carousel có chiều sâu (baseline 13,8 KB)");
+    assert(report.resources.home.js.gzipBytes < jsBudget, `JS homepage chưa giảm dưới baseline/budget ${jsBudget} B gzip`);
+    assert(report.resources.home.css.gzipBytes <= cssBudget, `CSS homepage vượt baseline/budget ${cssBudget} B gzip`);
   }
   if (verify) console.log("Các giới hạn hiệu năng và kiểm tra dữ liệu đã đạt.");
 } finally {

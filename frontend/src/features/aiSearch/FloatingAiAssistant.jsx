@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X } from "@phosphor-icons/react";
 import { animated, to, useReducedMotion, useSpring } from "@react-spring/web";
 import { Mascot } from "page-mascot";
 import { useLocale } from "@/i18n/LocaleProvider";
-import AiSearchExperience from "./AiSearchExperience";
 import { useAiSearch } from "./AiSearchProvider";
 
+const AiSearchExperience = lazy(() => import("./AiSearchExperience"));
 const REACTION_CELLS = { listening: 4, thinking: 3, success: 8, error: 7 };
 const DIRECTIONS = "/mascots/ballerina-directions.webp";
 const REACTIONS = "/mascots/ballerina-reactions.webp";
@@ -33,9 +33,9 @@ function boundedPosition(x, y, width, height) {
 }
 
 /** Mascot có thể kéo thả; reaction và chuyển động ngắn vẫn phản ánh trạng thái AI. */
-export default function FloatingAiAssistant() {
+export default function FloatingAiAssistant({ hidden = false }) {
   const pathname = usePathname();
-  const { locale } = useLocale();
+  const { t } = useLocale();
   const { phase } = useAiSearch();
   const [openedAtPath, setOpenedAtPath] = useState(null);
   const [position, setPosition] = useState(null);
@@ -43,7 +43,6 @@ export default function FloatingAiAssistant() {
   const dockRef = useRef(null);
   const dragRef = useRef(null);
   const suppressClickUntilRef = useRef(0);
-  const english = locale === "en";
   const isFullPage = pathname === "/ai-search";
   const isOpen = openedAtPath === pathname && !isFullPage;
   const reactionIndex = REACTION_CELLS[phase];
@@ -53,8 +52,6 @@ export default function FloatingAiAssistant() {
     config: { tension: 360, friction: 18 },
     immediate: reducedMotion,
   });
-  const hidden = pathname.startsWith("/checkout/") || pathname.startsWith("/host/") ||
-    ["/login", "/register", "/forgot-password", "/reset-password"].includes(pathname);
 
   useEffect(() => {
     const restorePosition = () => {
@@ -138,7 +135,7 @@ export default function FloatingAiAssistant() {
       return;
     }
     if (isFullPage) {
-      document.getElementById("ai-search-message")?.focus();
+      document.querySelector("main [data-ai-search-input]")?.focus();
       return;
     }
     setOpenedAtPath(isOpen ? null : pathname);
@@ -178,26 +175,30 @@ export default function FloatingAiAssistant() {
 
   return <aside ref={dockRef} style={position ? { left: position.x, top: position.y } : undefined}
     className={`ai-mascot-dock fixed z-[60] ${position ? "ai-mascot-dock--moved" : "bottom-4 right-3 sm:right-6 md:bottom-6"}`}
-    aria-label={english ? "AI room search assistant" : "Trợ lý AI tìm phòng"}>
-    {isOpen ? <section id="ai-search-panel" role="dialog" aria-label={english ? "Ask Ballerina AI" : "Hỏi Ballerina AI"}
+    aria-label={t("aiSearch.assistantLabel")}>
+    {isOpen ? <section id="ai-search-panel" role="dialog" aria-label={t("aiSearch.askTitle")}
       onKeyDown={(event) => { if (event.key === "Escape") closeAndFocusMascot(); }}
       style={panelStyle}
       className={`${position ? "fixed" : "absolute bottom-full right-0 mb-3"} flex w-[min(420px,calc(100vw-24px))] flex-col overflow-hidden rounded-panel border border-line bg-surface shadow-float`}>
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2">
-        <Link href="/ai-search" onClick={() => setOpenedAtPath(null)} className="text-xs font-semibold text-brand hover:underline">{english ? "Full search page" : "Trang tìm kiếm đầy đủ"}</Link>
-        <button type="button" onClick={closeAndFocusMascot} aria-label={english ? "Close assistant" : "Đóng trợ lý"} className="grid h-11 w-11 place-items-center rounded-control text-muted-ink hover:bg-muted-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><X aria-hidden size={18} /></button>
+        <Link href="/ai-search" onClick={() => setOpenedAtPath(null)} className="text-xs font-semibold text-brand hover:underline">{t("aiSearch.fullPage")}</Link>
+        <button type="button" onClick={closeAndFocusMascot} aria-label={t("aiSearch.closeAssistant")} className="grid h-11 w-11 place-items-center rounded-control text-muted-ink hover:bg-muted-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><X aria-hidden size={18} /></button>
       </div>
-      <div className="min-h-0 overflow-y-auto p-4"><AiSearchExperience compact /></div>
+      <div className="min-h-0 overflow-y-auto p-4">
+        <Suspense fallback={<p role="status" className="p-4 text-sm text-muted-ink">{t("common.loading")}</p>}>
+          <AiSearchExperience compact />
+        </Suspense>
+      </div>
     </section> : null}
-    <animated.div className="relative ml-auto w-fit select-none" title={english ? "Drag to move; use arrow keys when focused" : "Giữ và kéo để di chuyển; dùng phím mũi tên khi đang chọn"}
+    <animated.div className="relative ml-auto w-fit select-none" title={t("aiSearch.dragHint")}
       onClickCapture={handleMascotClick} onKeyDown={handleMascotKeyDown}
       onPointerDown={handleDragStart} onPointerMove={handleDragMove}
       onPointerUp={handleDragEnd} onPointerCancel={handleDragEnd}
       style={{ touchAction: "none", transform: to([mascotSpring.y, mascotSpring.rotate, mascotSpring.scale],
         (y, rotate, scale) => `translate3d(0, ${y}px, 0) rotate(${rotate}deg) scale(${scale})`) }}>
-      <span aria-hidden="true" className="pointer-events-none absolute -top-2 right-2 z-10 rounded-full bg-brand px-3 py-1 text-xs font-bold text-on-brand shadow-sm">{english ? "Ask AI" : "Hỏi AI"}</span>
+      <span aria-hidden="true" className="pointer-events-none absolute -top-2 right-2 z-10 rounded-full bg-brand px-3 py-1 text-xs font-bold text-on-brand shadow-sm">{t("aiSearch.ask")}</span>
       <Mascot directions={DIRECTIONS} reactions={REACTIONS} size={MASCOT_SIZE}
-        label={english ? `Ballerina AI assistant, ${isOpen ? "close" : "open"} room search` : `Ballerina AI, ${isOpen ? "đóng" : "mở"} tìm phòng`}
+        label={t(isOpen ? "aiSearch.closeSearch" : "aiSearch.openSearch")}
         className="ai-mascot-button rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/50" />
       {reactionIndex !== undefined ? <span aria-hidden="true" className={`pointer-events-none absolute inset-0 bg-no-repeat ${phase === "thinking" ? "motion-safe:animate-pulse" : ""}`}
         style={{ backgroundImage: `url(${REACTIONS})`, backgroundSize: "300% 300%",

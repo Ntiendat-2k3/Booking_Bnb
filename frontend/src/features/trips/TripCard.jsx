@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import {
   Bed,
@@ -11,9 +12,7 @@ import {
   Clock,
   CreditCard,
   Images,
-  Key,
   MapPin,
-  Phone,
   Receipt,
   Star,
   Tag,
@@ -22,10 +21,10 @@ import {
 } from "@phosphor-icons/react";
 import { formatVND } from "@/lib/format";
 import { useLocale } from "@/i18n/LocaleProvider";
-import Avatar from "@/components/atoms/Avatar";
 import Badge from "@/components/atoms/Badge";
 import Button from "@/components/atoms/Button";
-import StayQrPanel from "./StayQrPanel";
+
+const TripBookingDetails = dynamic(() => import("./TripBookingDetails"));
 
 const paymentStatusKeys = {
   succeeded: "trips.paymentStatusSucceeded",
@@ -85,9 +84,6 @@ export default function TripCard({
     booking.check_out <= new Date().toISOString().slice(0, 10);
   const checkIn = format(parseISO(booking.check_in), "dd/MM/yyyy");
   const checkOut = format(parseISO(booking.check_out), "dd/MM/yyyy");
-  const bookedOn = booking.created_at
-    ? format(parseISO(booking.created_at), "dd/MM/yyyy")
-    : null;
   const nights = differenceInCalendarDays(
     parseISO(booking.check_out),
     parseISO(booking.check_in),
@@ -107,16 +103,6 @@ export default function TripCard({
         ? t("checkout.payAtProperty")
         : lastPayment?.provider;
   const location = [listing?.city, listing?.country].filter(Boolean).join(", ");
-  const renterName = booking.renter?.name;
-  const renterPhone = booking.renter?.phone;
-  const renterAvatar = booking.renter?.avatar_url;
-  const bookerName = booker?.full_name;
-  const separateRenter = Boolean(
-    renterName && bookerName && renterName.trim() !== bookerName.trim(),
-  );
-  const profileName = separateRenter ? bookerName : renterName || bookerName;
-  const profileAvatar =
-    booker?.avatar_url || booker?.avatar || booker?.photo_url || renterAvatar;
   const detailsId = `trip-details-${booking.id}`;
   const stayStatus = booking.stay_status || "not_checked_in";
 
@@ -360,126 +346,7 @@ export default function TripCard({
               : "pointer-events-none mt-0 max-h-0 -translate-y-2 pt-0 opacity-0 xl:ml-0 xl:w-0 xl:translate-y-0 xl:pl-0"
           }`}
         >
-          <h3 className="border-b border-line pb-4 text-lg font-bold text-ink">
-            {t("trips.bookingDetails")}
-          </h3>
-          {["confirmed", "completed"].includes(booking.status) && (
-            <StayQrPanel
-              key={`${booking.id}:${stayStatus}`}
-              booking={booking}
-            />
-          )}
-          <div className="flex items-center gap-3 py-5">
-            <Avatar
-              src={profileAvatar}
-              name={profileName || t("common.account")}
-              size={52}
-              className="shrink-0"
-            />
-            <div className="min-w-0">
-              <p className="text-xs text-muted-ink">
-                {t(
-                  separateRenter
-                    ? "trips.bookingAccount"
-                    : "chat.proposal.renterName",
-                )}
-              </p>
-              <p className="mt-1 break-words font-semibold text-ink">
-                {profileName || t("trips.notProvided")}
-              </p>
-            </div>
-          </div>
-          <dl className="divide-y divide-line text-sm">
-            {separateRenter && (
-              <div className="flex items-start justify-between gap-3 py-3">
-                <dt className="text-muted-ink">
-                  {t("chat.proposal.renterName")}
-                </dt>
-                <dd className="max-w-[60%] break-words text-right font-medium text-ink">
-                  {renterName}
-                </dd>
-              </div>
-            )}
-            <div className="flex items-start justify-between gap-3 py-3">
-              <dt className="flex shrink-0 items-center gap-2 text-muted-ink">
-                <Key aria-hidden size={18} />
-                {t("trips.bookingCode")}
-              </dt>
-              <dd className="max-w-[60%] break-all text-right font-semibold text-brand">
-                {booking.booking_code || t("trips.notProvided")}
-              </dd>
-            </div>
-            <div className="flex items-start justify-between gap-3 py-3">
-              <dt className="flex shrink-0 items-center gap-2 text-muted-ink">
-                <Bed aria-hidden size={18} />
-                {t("trips.roomCode")}
-              </dt>
-              <dd className="max-w-[60%] break-all text-right font-semibold text-brand">
-                {listing?.listing_code || t("trips.notProvided")}
-              </dd>
-            </div>
-            {lastPayment && (
-              <div className="flex items-start justify-between gap-3 py-3">
-                <dt className="flex shrink-0 items-center gap-2 text-muted-ink">
-                  <CreditCard aria-hidden size={18} />
-                  {t("trips.transactionCode")}
-                </dt>
-                <dd className="max-w-[60%] break-all text-right font-semibold text-brand">
-                  {lastPayment.payment_code || t("trips.notProvided")}
-                </dd>
-              </div>
-            )}
-            {bookedOn && (
-              <div className="flex items-center justify-between gap-3 py-3">
-                <dt className="flex items-center gap-2 text-muted-ink">
-                  <CalendarBlank aria-hidden size={18} />
-                  {t("trips.bookingDate")}
-                </dt>
-                <dd className="font-medium text-ink">{bookedOn}</dd>
-              </div>
-            )}
-            <div className="flex items-center justify-between gap-2 py-3">
-              <dt className="flex min-w-0 items-center gap-2 text-muted-ink">
-                <Phone aria-hidden size={18} className="shrink-0" />
-                {t("chat.proposal.renterPhone")}
-              </dt>
-              <dd className="shrink-0 whitespace-nowrap text-right font-medium tabular-nums text-ink">
-                {renterPhone || t("trips.notProvided")}
-              </dd>
-            </div>
-          </dl>
-          {booking.cancellation && (
-            <div className="mt-4 rounded-control border border-line bg-muted-surface/40 p-3 text-sm">
-              <p className="font-semibold text-ink">
-                {t("cancellation.refund")}:{" "}
-                {formatVND(
-                  booking.cancellation.refund_amount,
-                  locale === "en" ? "en-US" : "vi-VN",
-                )}
-              </p>
-              <p className="mt-1 text-muted-ink">
-                {t("cancellation.fee")}:{" "}
-                {formatVND(
-                  booking.cancellation.non_refundable_amount,
-                  locale === "en" ? "en-US" : "vi-VN",
-                )}
-              </p>
-              {booking.refunds?.[0] && (
-                <p className="mt-2 text-xs text-brand">
-                  {t("cancellation.refundStatus")}:{" "}
-                  {t(
-                    `cancellation.${booking.refunds[0].status === "processing" ? "processingStatus" : booking.refunds[0].status}`,
-                  )}
-                </p>
-              )}
-            </div>
-          )}
-          {booking.actual_check_out_at && (
-            <p className="mt-1 text-xs text-muted-ink">
-              {t("stay.actualCheckOut")}:{" "}
-              {new Date(booking.actual_check_out_at).toLocaleString("en-GB")}
-            </p>
-          )}
+          {detailsOpen && <TripBookingDetails booking={booking} booker={booker} />}
         </aside>
       </div>
     </article>

@@ -3,54 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
-import { addDays, addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth, parseISO, startOfMonth, startOfWeek } from "date-fns";
+import { addDays, addMonths, format, parseISO } from "date-fns";
 import { enUS, vi } from "date-fns/locale";
 import { ArrowClockwise, CalendarBlank, CaretLeft, CaretRight, Eye, EyeSlash, LockKey, LockKeyOpen, X } from "@phosphor-icons/react";
 import { apiFetch } from "@/lib/api";
-import { formatVND } from "@/lib/format";
 import { canManageListings } from "@/lib/roles";
 import { useLocale } from "@/i18n/LocaleProvider";
 import Button from "@/components/atoms/Button";
 import InputField from "@/components/atoms/InputField";
 import DateField from "@/components/molecules/DateField";
 import SearchableSelect from "@/components/molecules/SearchableSelect";
+import HostCalendarDays, { statusStyles } from "@/features/hostListings/components/HostCalendarDays";
+import { dayEntries, visibleRange } from "@/features/hostListings/utils/calendar";
 import CalendarPricingEditor from "@/features/hostListings/components/CalendarPricingEditor";
 
 const VIEWS = ["month", "week", "list"];
-const VI_WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-const statusStyles = {
-  available: "border-positive/35 bg-positive/10 text-positive",
-  booked: "border-sky-500/45 bg-sky-500/15 text-sky-700 dark:text-sky-300",
-  held: "border-danger/45 bg-danger/15 text-danger",
-  blocked: "border-caution/50 bg-caution/15 text-caution",
-};
-const statusDots = {
-  available: "bg-positive",
-  booked: "bg-sky-500",
-  held: "bg-danger",
-  blocked: "bg-caution",
-};
-
-function visibleRange(anchor, view) {
-  if (view === "month") {
-    return {
-      start: startOfWeek(startOfMonth(anchor), { weekStartsOn: 1 }),
-      end: addDays(endOfWeek(endOfMonth(anchor), { weekStartsOn: 1 }), 1),
-    };
-  }
-  const start = view === "week" ? startOfWeek(anchor, { weekStartsOn: 1 }) : startOfMonth(anchor);
-  return { start, end: view === "week" ? addDays(start, 7) : addDays(endOfMonth(anchor), 1) };
-}
-
-/** Lịch giữ cả ngày trả phòng khi chưa có giờ nhận/trả phòng cụ thể. */
-function dayEntries(date, calendar) {
-  const bookings = calendar?.bookings?.filter((item) => item.check_in <= date && date <= item.check_out) || [];
-  const blocks = calendar?.blocks?.filter((item) => item.start_date <= date && date < item.end_date) || [];
-  const status = bookings.some((item) => item.status !== "pending_payment") ? "booked" :
-    bookings.length ? "held" : blocks.length ? "blocked" : "available";
-  return { bookings, blocks, status };
-}
-
 export default function HostCalendarPage() {
   const dateDialogRef = useRef(null);
   const detailsRef = useRef(null);
@@ -85,9 +52,7 @@ export default function HostCalendarPage() {
   const rangeStart = format(range.start, "yyyy-MM-dd");
   const rangeEnd = format(range.end, "yyyy-MM-dd");
   const requestKey = `${listingId}:${rangeStart}:${rangeEnd}`;
-  const days = useMemo(() => eachDayOfInterval({ start: range.start, end: addDays(range.end, -1) }), [range]);
   const selected = dayEntries(selectedDate, calendar);
-  const pricesByDate = new Map(calendar?.pricing?.days?.map((day) => [day.date, day]) || []);
   const selectedListing = listings.find((item) => item.id === listingId);
   const today = format(new Date(), "yyyy-MM-dd");
   const dateLocale = locale === "en" ? enUS : vi;
@@ -260,52 +225,8 @@ export default function HostCalendarPage() {
         {calendarErrorKey === requestKey ? <div role="alert" className="p-5 text-danger">{t("calendar.loadFailed")} <Button variant="secondary" size="sm" onClick={() => setRevision((current) => current + 1)}>{t("common.retry")}</Button></div> :
           loadedKey !== requestKey ? <div role="status" className="p-8 text-muted-ink">{t("common.loading")}</div> :
           <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_280px]">
-            <div className="min-w-0 p-2 sm:p-4">
-              {view !== "list" ? <>
-                <div className="grid grid-cols-7 pb-2 text-center text-xs font-semibold text-muted-ink">
-                  {VI_WEEKDAYS.map((label, index) => <span key={label}>
-                    {locale === "en" ? format(addDays(new Date(2024, 0, 1), index), "EEE", { locale: dateLocale }) : label}
-                  </span>)}
-                </div>
-                <div className="grid grid-cols-7 gap-px overflow-hidden rounded-control border border-line bg-line">
-                  {days.map((day) => {
-                    const date = format(day, "yyyy-MM-dd");
-                    const { status, bookings, blocks } = dayEntries(date, calendar);
-                    const price = pricesByDate.get(date);
-                    const label = bookings[0]?.renter_name || bookings[0]?.booking_code || blocks[0]?.reason || t(`calendar.${status}`);
-                    return <button key={date} type="button" onClick={() => selectDay(date)}
-                      aria-label={`${format(day, "dd/MM/yyyy")}: ${t(`calendar.${status}`)}${bookings[0]?.renter_name ? `, ${bookings[0].renter_name}` : ""}`}
-                      aria-pressed={selectedDate === date}
-                      className={`flex min-h-16 min-w-0 flex-col items-center gap-1 bg-surface p-1 text-left transition hover:bg-muted-surface focus-visible:z-10 sm:min-h-24 sm:items-stretch sm:p-2 ${view === "month" && !isSameMonth(day, anchor) ? "opacity-45" : ""} ${selectedDate === date ? "relative z-[1] ring-2 ring-inset ring-brand" : ""}`}>
-                      <span className={`grid size-7 place-items-center rounded-full text-xs font-semibold sm:size-8 sm:text-sm ${date === today ? "bg-brand text-on-brand" : "text-ink"}`}>{format(day, "d")}</span>
-                      <span aria-hidden className={`size-2 rounded-full sm:hidden ${statusDots[status]}`} />
-                      {price && <span className="hidden w-full truncate text-xs font-semibold text-ink sm:block">{formatVND(price.price_per_night, locale === "en" ? "en-US" : "vi-VN")}</span>}
-                      {status !== "available" && <span className={`hidden w-full truncate rounded-md border px-1.5 py-1 text-xs font-semibold sm:block ${statusStyles[status]}`}>{label}</span>}
-                    </button>;
-                  })}
-                </div>
-              </> : <div className="divide-y divide-line">
-                {days.map((day) => {
-                  const date = format(day, "yyyy-MM-dd");
-                  const { status, bookings, blocks } = dayEntries(date, calendar);
-                  const price = pricesByDate.get(date);
-                  return <button key={date} type="button" onClick={() => selectDay(date)} aria-pressed={selectedDate === date}
-                    className={`flex min-h-14 w-full items-center justify-between gap-3 px-3 py-2 text-left transition ${selectedDate === date ? "bg-muted-surface" : "hover:bg-muted-surface/50"}`}>
-                    <span className="min-w-0 text-sm font-medium text-ink">{format(day, "EEE, dd/MM/yyyy", { locale: dateLocale })}</span>
-                    <span className="flex min-w-0 items-center gap-2">
-                      {price && <span className="hidden text-xs font-semibold text-ink sm:block">{formatVND(price.price_per_night, locale === "en" ? "en-US" : "vi-VN")}</span>}
-                      {(bookings[0]?.renter_name || blocks[0]?.reason) && <span className="hidden max-w-48 truncate text-xs text-muted-ink sm:block">{bookings[0]?.renter_name || blocks[0]?.reason}</span>}
-                      <span className={`shrink-0 rounded-full border px-2 py-1 text-xs ${statusStyles[status]}`}>{t(`calendar.${status}`)}</span>
-                    </span>
-                  </button>;
-                })}
-              </div>}
-              <div className="flex flex-wrap gap-x-4 gap-y-2 px-1 pt-4 text-xs">
-                {Object.keys(statusStyles).map((status) => <span key={status} className="flex items-center gap-1.5 text-muted-ink">
-                  <span aria-hidden className={`size-2.5 rounded-full ${statusDots[status]}`} />{t(`calendar.${status}`)}
-                </span>)}
-              </div>
-            </div>
+            <HostCalendarDays calendar={calendar} range={range} anchor={anchor} view={view}
+              selectedDate={selectedDate} today={today} onSelect={selectDay} />
 
             <aside ref={detailsRef} className="scroll-mt-24 space-y-4 border-t border-line bg-muted-surface/20 p-4 sm:p-5 xl:border-l xl:border-t-0" aria-label={t("calendar.dayDetails")}>
               <div className="flex items-center gap-2"><CalendarBlank aria-hidden size={20} className="text-brand" /><h3 className="font-bold text-ink">{format(parseISO(selectedDate), "dd/MM/yyyy")}</h3></div>

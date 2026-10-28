@@ -1,7 +1,6 @@
 "use client";
 import { useTranslations } from "@/i18n/LocaleProvider";
 
-
 import { useEffect, useState } from "react";
 import Button from "@/components/atoms/Button";
 import { useRouter } from "next/navigation";
@@ -9,6 +8,7 @@ import { useDispatch } from "react-redux";
 import { ensureCsrf, fetchProfile } from "@/store/authThunks";
 import { notifyError, notifySuccess } from "@/lib/notify";
 
+import { useListingForm } from "@/features/hostListings/hooks/useListingForm";
 import { useAmenities } from "@/features/hostListings/hooks/useAmenities";
 import { HostListingsApi } from "@/features/hostListings/api/hostListingsApi";
 import { buildListingPayload } from "@/features/hostListings/utils/payload";
@@ -24,40 +24,7 @@ export default function HostListingNewPage() {
 
   const [busy, setBusy] = useState(false);
 
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    address: "",
-    city: "",
-    country: "",
-    lat: "",
-    lng: "",
-    price_per_night: "",
-    cancellation_policy_code: "moderate",
-    allow_pay_at_property: false,
-    allow_pay_at_property: false,
-    max_guests: "",
-    bedrooms: "",
-    beds: "",
-    bathrooms: "",
-    property_type: "",
-    room_type: "",
-  });
-
-  const [picked, setPicked] = useState(new Set());
-
-  function setField(k, v) {
-    setForm((prev) => ({ ...prev, [k]: v }));
-  }
-
-  function toggleAmenity(id) {
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
+  const { form, setForm, setField, picked, toggleAmenity } = useListingForm();
 
   useEffect(() => {
     async function boot() {
@@ -110,7 +77,7 @@ export default function HostListingNewPage() {
       <form onSubmit={onCreate} className="grid gap-6 lg:grid-cols-3">
         {/* CỘT TRÁI: CHIẾM 2 PHẦN */}
         <div className="space-y-4 lg:col-span-2">
-          <ListingFieldsCard form={form} setField={setField} disabled={busy} />
+          <ListingFieldsCard form={form} setField={setField} setForm={setForm} disabled={busy} />
         </div>
 
         {/* CỘT PHẢI */}

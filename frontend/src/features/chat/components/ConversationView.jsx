@@ -39,6 +39,8 @@ export default function ConversationView({ conversation, userId, userRole, onAct
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchPage, setSearchPage] = useState(1);
   const [searchHasMore, setSearchHasMore] = useState(false);
+  const searchPageRequest = useRef(null);
+  const normalizedSearch = searchText.trim();
   const [sharedType, setSharedType] = useState("image");
   const [shared, setShared] = useState([]);
   const [sharedLoading, setSharedLoading] = useState(false);
@@ -101,16 +103,20 @@ export default function ConversationView({ conversation, userId, userRole, onAct
     return () => { active = false; };
   }, [panel, conversation.other_id]);
   useEffect(() => {
-    if (panel !== "search" || searchText.trim().length < 2) return;
+    if (!detailsOpen || panel !== "search" || normalizedSearch.length < 2) return;
     let active = true;
+    const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      chatApi.searchMessages(conversation.id, searchText.trim()).then((page) => {
+      chatApi.searchMessages(conversation.id, normalizedSearch, 1, controller.signal).then((page) => {
         if (active) { setResults(page.items); setSearchPage(1);
           setSearchHasMore(page.hasMore); setSearchLoading(false); setPanelError(false); }
       }).catch(() => { if (active) { setSearchLoading(false); setPanelError(true); } });
     }, 250);
-    return () => { active = false; window.clearTimeout(timer); };
-  }, [panel, conversation.id, searchText]);
+    return () => {
+      active = false; controller.abort(); window.clearTimeout(timer);
+      searchPageRequest.current?.abort(); searchPageRequest.current = null;
+    };
+  }, [detailsOpen, panel, conversation.id, normalizedSearch]);
   useEffect(() => {
     if (panel !== "shared") return;
     let active = true;
@@ -174,11 +180,16 @@ export default function ConversationView({ conversation, userId, userRole, onAct
     } catch { setActionError("chat.actionFailed"); }
   };
   const moreSearch = async () => {
+    if (searchLoading || !searchHasMore || searchPageRequest.current) return;
+    const controller = new AbortController();
+    searchPageRequest.current = controller;
     try {
-      const page = await chatApi.searchMessages(conversation.id, searchText.trim(), searchPage + 1);
+      const page = await chatApi.searchMessages(conversation.id, normalizedSearch, searchPage + 1, controller.signal);
+      if (controller.signal.aborted) return;
       setResults((current) => [...current, ...page.items]); setSearchPage(page.page);
       setSearchHasMore(page.hasMore); setPanelError(false);
-    } catch { setPanelError(true); }
+    } catch { if (!controller.signal.aborted) setPanelError(true); }
+    finally { if (searchPageRequest.current === controller) searchPageRequest.current = null; }
   };
   const moreShared = async () => {
     try {
@@ -314,7 +325,9 @@ export default function ConversationView({ conversation, userId, userRole, onAct
           <label htmlFor="chat-content-search" className="sr-only">{t("chat.searchMessages")}</label>
           <input id="chat-content-search" type="search" value={searchText} onChange={(event) => {
             const value = event.target.value;
-            setSearchText(value); setResults([]); setSearchPage(1); setSearchHasMore(false);
+            setSearchText(value);
+            if (value.trim() === normalizedSearch) return;
+            setResults([]); setSearchPage(1); setSearchHasMore(false);
             setSearchLoading(value.trim().length >= 2); setPanelError(false);
           }}
             placeholder={t("chat.searchMessages")} className="field-control w-full" />

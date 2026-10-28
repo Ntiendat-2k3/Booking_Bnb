@@ -79,7 +79,7 @@ function TripsContent() {
           if (target && target.status !== "pending_payment") {
             clearInterval(intervalId);
           }
-        } catch (err) {
+        } catch {
           if (active) notifyError(t("trips.loadFailed"));
         } finally { polling = false; }
       }, 3000);

@@ -2,12 +2,11 @@
 
 import { animated, useReducedMotion, useTransition } from "@react-spring/web";
 import { useLocale } from "@/i18n/LocaleProvider";
-
-const EXAMPLE = "Tìm homestay ở Đà Lạt cho 4 người, dưới 1,5 triệu/đêm, có bếp và gần trung tâm";
+import { assistantReply } from "./assistantReply";
 
 /** Hiển thị hội thoại ở cả trang đầy đủ và trợ lý nổi, giữ chuyển động theo tùy chọn hệ thống. */
 export default function AiSearchConversation({ conversation, onExample }) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
   const reducedMotion = useReducedMotion();
   const transitions = useTransition(conversation, {
     keys: (_, index) => index,
@@ -24,12 +23,12 @@ export default function AiSearchConversation({ conversation, onExample }) {
         style={styles}
         className={`max-w-[85%] rounded-control px-4 py-3 text-sm ${entry.role === "user" ? "ml-auto bg-brand text-on-brand" : "bg-muted-surface text-ink"}`}
       >
-        {entry.text}
+        {entry.role === "assistant" ? assistantReply(entry.reply, t, locale) : entry.text}
       </animated.p>
     )) : <p className="text-sm text-muted-ink">
-      {locale === "en" ? "Try: " : "Ví dụ: "}
-      <button type="button" onClick={() => onExample(EXAMPLE)} className="font-medium text-left underline text-brand">
-        {EXAMPLE}
+      {t("aiSearch.tryExample")}
+      <button type="button" onClick={() => onExample(t("aiSearch.example"))} className="font-medium text-left underline text-brand">
+        {t("aiSearch.example")}
       </button>
     </p>}
   </div>;

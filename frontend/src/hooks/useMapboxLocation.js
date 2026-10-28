@@ -23,18 +23,20 @@ export async function geocodeReverse(lng, lat, token, signal, language = "vi") {
   if (!response.ok) throw new Error("Mapbox reverse geocoding failed");
   return response.json();
 }
-/** Giữ địa chỉ đang nhập, hủy truy vấn cũ và chỉ hiển thị gợi ý khớp với nội dung hiện tại. */
+/** Debounce 300 ms, hủy truy vấn cũ và giữ tối đa 10 kết quả địa danh công khai trong một phút ở ô đang nhập. */
 export function useMapboxAutocomplete({ token, initialQuery = "", onSelect, types, minLength = 3 }) {
   const { locale } = useLocale();
   const [draft, setDraft] = useState({ source: initialQuery, value: initialQuery });
   const query = draft.source === initialQuery ? draft.value : initialQuery;
   const setQuery = (value) => setDraft({ source: initialQuery, value });
-  const [result, setResult] = useState({ query: "", features: [], error: false });
+  const [result, setResult] = useState({ key: "", features: [], error: false });
+  const recentResults = useRef(new Map());
   const [openSug, setOpenSug] = useState(false);
   const wrapperRef = useRef(null);
   const suppressRef = useRef(false);
   const normalized = query.trim();
   const eligible = Boolean(token && openSug && normalized.length >= minLength);
+  const requestKey = JSON.stringify([token, locale, types, normalized]);
   useEffect(() => {
     function onDocMouseDown(event) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setOpenSug(false);
@@ -44,17 +46,27 @@ export function useMapboxAutocomplete({ token, initialQuery = "", onSelect, type
   }, []);
   useEffect(() => {
     if (!eligible) return;
+    const cached = recentResults.current.get(requestKey);
+    if (cached && Date.now() - cached.receivedAt < 60000) {
+      setResult({ key: requestKey, features: cached.features, error: false });
+      return;
+    }
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
         const data = await geocodeForward(normalized, token, controller.signal, locale === "en" ? "en" : "vi", { types });
-        if (!controller.signal.aborted) setResult({ query: normalized, features: data?.features || [], error: false });
+        if (controller.signal.aborted) return;
+        const features = data?.features || [];
+        recentResults.current.delete(requestKey);
+        recentResults.current.set(requestKey, { features, receivedAt: Date.now() });
+        if (recentResults.current.size > 10) recentResults.current.delete(recentResults.current.keys().next().value);
+        setResult({ key: requestKey, features, error: false });
       } catch {
-        if (!controller.signal.aborted) setResult({ query: normalized, features: [], error: true });
+        if (!controller.signal.aborted) setResult({ key: requestKey, features: [], error: true });
       }
     }, 300);
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [eligible, normalized, token, locale, types]);
+  }, [eligible, normalized, token, locale, types, requestKey]);
   const selectFeature = (feature) => {
     setOpenSug(false);
     setQuery(feature?.place_name || query);
@@ -73,5 +85,5 @@ export function useMapboxAutocomplete({ token, initialQuery = "", onSelect, type
     if (feature?.center?.length >= 2) { next.lng = String(feature.center[0]); next.lat = String(feature.center[1]); }
     onSelect?.(next);
   };
-  return { query, setQuery, suggestions: eligible && result.query === normalized ? result.features : [], openSug, setOpenSug, loadingSug: eligible && result.query !== normalized, suggestionError: eligible && result.query === normalized && result.error, wrapperRef, suppressRef, selectFeature };
+  return { query, setQuery, suggestions: eligible && result.key === requestKey ? result.features : [], openSug, setOpenSug, loadingSug: eligible && result.key !== requestKey, suggestionError: eligible && result.key === requestKey && result.error, wrapperRef, suppressRef, selectFeature };
 }
